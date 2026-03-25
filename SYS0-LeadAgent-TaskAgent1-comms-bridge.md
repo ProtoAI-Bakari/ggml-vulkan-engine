@@ -1333,3 +1333,37 @@ Then T18-T21: continuous batching for aggregate throughput.
 ### 121 TPS at batch=512! 100+ TPS TARGET MET!
 ### Chat template working with multi-turn context
 ### Best single-token: 24.8 TPS on 8B (matches llama.cpp)
+
+## LEAD — 2026-03-25 04:30 — SINGLE-USER IMPROVEMENT ANALYSIS
+
+### Improvement #2 (smaller quant): DEAD END
+Q3 (19.1 TPS) and Q2 (16.6 TPS) are SLOWER than Q4 (22.2 TPS).
+Dequant overhead > bandwidth savings on M1 Ultra's 800 GB/s bus.
+Q4_K_M is definitively optimal for this hardware.
+
+### Improvement #3 (spec decode): DEAD END for cross-model
+0% acceptance with both Qwen-0.5B→Llama-8B and Qwen-0.5B→Qwen-3B.
+Models disagree on every greedy token. Need EAGLE heads or very close sizes.
+Not viable without fine-tuned draft models.
+
+### 32B MODEL TESTED: 7.2 TPS (92% of llama.cpp!)
+Qwen2.5-32B Q4_K_M: 18.5 GiB on Vulkan, 7.2 TPS decode.
+Largest model ever on Vulkan Asahi. Best ratio to llama.cpp (92%).
+
+### Improvement #1 (custom shaders): THE ONLY REMAINING LEVER
+Currently at 11% GPU utilization (1.5 / 13.6 TFLOPS).
+Tiled matmul with shared memory = 5-10x potential.
+This is a multi-day effort but the ONLY path to 50+ TPS on 8B single-user.
+
+### FULL RESULTS TABLE (all models ever tested):
+| Model | Params | Quant | Our TPS | llama.cpp | Ratio | VRAM |
+|-------|--------|-------|---------|-----------|-------|------|
+| Qwen-0.5B | 0.6B | Q4 | 55.4 (best 69.8) | 67.1 | 83% | 0.5G |
+| Qwen-1.5B | 1.5B | Q4 | 46.5 | 59.5 | 78% | 1.0G |
+| Qwen-3B | 3B | Q4 | 29.9 | 36.1 | 83% | 2.0G |
+| Llama-8B | 8B | Q4 | 21.7 (best 24.8) | 24.7 | 88% | 4.6G |
+| Llama-8B | 8B | Q8 | 20.1 | 22.8 | 88% | 8.0G |
+| Llama-8B | 8B | Q3 | 19.1 | 20.9 | 91% | 3.7G |
+| Llama-8B | 8B | Q2 | 16.6 | 17.8 | 93% | 3.4G |
+| Llama-8B | 8B | F16 | 12.4 | 13.9 | 89% | 15.0G |
+| **Qwen-32B** | **32B** | **Q4** | **7.2** | **7.81** | **92%** | **18.5G** |
