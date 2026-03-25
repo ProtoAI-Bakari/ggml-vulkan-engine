@@ -1,0 +1,349 @@
+/*
+ * ggml_llama_gguf.c — Load Llama weights from GGUF file with native quantization.
+ * Extends ggml_llama_full.c with GGUF loading for Q4/Q8/F16 weights.
+ *
+ * Key: weights stay in their quantized format on Vulkan.
+ * ggml's Vulkan shaders handle dequantization during matmul.
+ * This is exactly how llama.cpp achieves 24.7 TPS with Q4_K_M.
+ *
+ * Build:
+ *   gcc -shared -O2 -fPIC -o libggml_llama_gguf.so ggml_llama_gguf.c \
+ *     -I ~/GITDEV/llama.cpp/ggml/include \
+ *     -L ~/GITDEV/llama.cpp/build-lib/bin \
+ *     -lggml -lggml-base -lggml-vulkan -lggml-cpu -lm \
+ *     -Wl,-rpath,/home/z/GITDEV/llama.cpp/build-lib/bin
+ */
+#include <ggml.h>
+#include <ggml-backend.h>
+#include <ggml-vulkan.h>
+#include <ggml-cpu.h>
+#include <gguf.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <math.h>
+
+#define MAX_LAYERS 64
+#define GRAPH_SIZE 16384
+
+typedef struct {
+    struct ggml_tensor *wq, *wk, *wv, *wo;
+    struct ggml_tensor *w_gate, *w_up, *w_down;
+    struct ggml_tensor *attn_norm, *ffn_norm;
+} layer_t;
+
+typedef struct {
+    ggml_backend_t backend_vk;
+    ggml_backend_t backend_cpu;
+    ggml_backend_sched_t sched;
+
+    int n_layers, hidden_dim, intermediate;
+    int n_heads, n_kv_heads, head_dim;
+    int vocab_size, n_ctx;
+    float rms_eps, rope_theta;
+
+    layer_t layers[MAX_LAYERS];
+    struct ggml_tensor *tok_embd, *output_norm, *output;
+
+    struct ggml_tensor *kv_k[MAX_LAYERS], *kv_v[MAX_LAYERS];
+    struct ggml_context *kv_ctx;
+    ggml_backend_buffer_t kv_buf;
+    int kv_used;
+
+    /* GGUF-loaded weight context */
+    struct ggml_context *w_ctx;
+    ggml_backend_buffer_t w_buf;
+} engine_t;
+
+/*
+ * Load model directly from GGUF file.
+ * Weights stay in their native format (Q4_K_M, Q8_0, F16, F32).
+ * ggml Vulkan shaders handle dequantization during compute.
+ */
+engine_t *engine_load_gguf(const char *gguf_path, int n_ctx) {
+    engine_t *e = calloc(1, sizeof(engine_t));
+
+    /* Init backends */
+    e->backend_vk = ggml_backend_vk_init(0);
+    if (!e->backend_vk) { fprintf(stderr, "Vulkan init failed\n"); free(e); return NULL; }
+    e->backend_cpu = ggml_backend_cpu_init();
+    ggml_backend_t backends[2] = { e->backend_vk, e->backend_cpu };
+    e->sched = ggml_backend_sched_new(backends, NULL, 2, GRAPH_SIZE, false, false);
+    e->n_ctx = n_ctx;
+
+    /* Read GGUF metadata + tensor info (no data yet) */
+    struct ggml_context *meta_ctx = NULL;
+    struct gguf_init_params gguf_params = { .no_alloc = true, .ctx = &meta_ctx };
+    struct gguf_context *gguf = gguf_init_from_file(gguf_path, gguf_params);
+    if (!gguf) { fprintf(stderr, "Failed to open GGUF: %s\n", gguf_path); return NULL; }
+
+    /* Extract model config from GGUF metadata */
+    int64_t key;
+    key = gguf_find_key(gguf, "llama.embedding_length");
+    e->hidden_dim = key >= 0 ? gguf_get_val_u32(gguf, key) : 4096;
+    key = gguf_find_key(gguf, "llama.feed_forward_length");
+    e->intermediate = key >= 0 ? gguf_get_val_u32(gguf, key) : 14336;
+    key = gguf_find_key(gguf, "llama.block_count");
+    e->n_layers = key >= 0 ? gguf_get_val_u32(gguf, key) : 32;
+    key = gguf_find_key(gguf, "llama.attention.head_count");
+    e->n_heads = key >= 0 ? gguf_get_val_u32(gguf, key) : 32;
+    key = gguf_find_key(gguf, "llama.attention.head_count_kv");
+    e->n_kv_heads = key >= 0 ? gguf_get_val_u32(gguf, key) : 8;
+    key = gguf_find_key(gguf, "llama.attention.layer_norm_rms_epsilon");
+    e->rms_eps = key >= 0 ? gguf_get_val_f32(gguf, key) : 1e-5f;
+    key = gguf_find_key(gguf, "llama.rope.freq_base");
+    e->rope_theta = key >= 0 ? gguf_get_val_f32(gguf, key) : 500000.0f;
+    /* vocab size from token_embd tensor shape */
+    e->head_dim = e->hidden_dim / e->n_heads;
+
+    fprintf(stderr, "[gguf] Model: %d layers, %d hidden, %d intermediate, %d heads, %d kv_heads\n",
+            e->n_layers, e->hidden_dim, e->intermediate, e->n_heads, e->n_kv_heads);
+
+    /* Create weight tensors with GGUF types (quantized) */
+    int64_t n_tensors = gguf_get_n_tensors(gguf);
+    fprintf(stderr, "[gguf] %lld tensors in file\n", (long long)n_tensors);
+
+    size_t w_ctx_size = (size_t)(n_tensors + 4) * ggml_tensor_overhead() + 32*1024*1024;
+    struct ggml_init_params wp = { .mem_size = w_ctx_size, .mem_buffer = NULL, .no_alloc = true };
+    e->w_ctx = ggml_init(wp);
+
+    /* Create tensors matching GGUF types exactly */
+    for (int64_t i = 0; i < n_tensors; i++) {
+        const char *name = gguf_get_tensor_name(gguf, i);
+        enum ggml_type type = gguf_get_tensor_type(gguf, i);
+
+        /* Find the tensor in meta_ctx (has shape info) */
+        struct ggml_tensor *meta = ggml_get_tensor(meta_ctx, name);
+        if (!meta) continue;
+
+        /* Create in our context with same shape and type */
+        struct ggml_tensor *t = NULL;
+        int n_dims = ggml_n_dims(meta);
+        if (n_dims == 1) {
+            t = ggml_new_tensor_1d(e->w_ctx, type, meta->ne[0]);
+        } else if (n_dims == 2) {
+            t = ggml_new_tensor_2d(e->w_ctx, type, meta->ne[0], meta->ne[1]);
+        } else if (n_dims == 3) {
+            t = ggml_new_tensor_3d(e->w_ctx, type, meta->ne[0], meta->ne[1], meta->ne[2]);
+        }
+        if (t) ggml_set_name(t, name);
+
+        /* Map to struct fields */
+        if (strcmp(name, "token_embd.weight") == 0) { e->tok_embd = t; e->vocab_size = meta->ne[1]; }
+        else if (strcmp(name, "output_norm.weight") == 0) e->output_norm = t;
+        else if (strcmp(name, "output.weight") == 0) e->output = t;
+        else {
+            int layer;
+            char wn[64];
+            if (sscanf(name, "blk.%d.%63s", &layer, wn) == 2 && layer < MAX_LAYERS) {
+                layer_t *l = &e->layers[layer];
+                if (strcmp(wn, "attn_q.weight") == 0) l->wq = t;
+                else if (strcmp(wn, "attn_k.weight") == 0) l->wk = t;
+                else if (strcmp(wn, "attn_v.weight") == 0) l->wv = t;
+                else if (strcmp(wn, "attn_output.weight") == 0) l->wo = t;
+                else if (strcmp(wn, "ffn_gate.weight") == 0) l->w_gate = t;
+                else if (strcmp(wn, "ffn_up.weight") == 0) l->w_up = t;
+                else if (strcmp(wn, "ffn_down.weight") == 0) l->w_down = t;
+                else if (strcmp(wn, "attn_norm.weight") == 0) l->attn_norm = t;
+                else if (strcmp(wn, "ffn_norm.weight") == 0) l->ffn_norm = t;
+            }
+        }
+    }
+
+    /* Allocate ALL weight tensors on Vulkan */
+    e->w_buf = ggml_backend_alloc_ctx_tensors(e->w_ctx, e->backend_vk);
+    if (!e->w_buf) {
+        fprintf(stderr, "[gguf] Vulkan alloc FAILED\n");
+        gguf_free(gguf);
+        ggml_free(meta_ctx);
+        return NULL;
+    }
+
+    size_t w_total = ggml_backend_buffer_get_size(e->w_buf);
+    fprintf(stderr, "[gguf] Weights allocated: %.2f GiB on Vulkan\n", w_total / (1024.0*1024*1024));
+
+    /* Load tensor data from GGUF file into Vulkan buffers */
+    FILE *fp = fopen(gguf_path, "rb");
+    size_t data_offset = gguf_get_data_offset(gguf);
+    int loaded = 0;
+
+    for (int64_t i = 0; i < n_tensors; i++) {
+        const char *name = gguf_get_tensor_name(gguf, i);
+        size_t offset = gguf_get_tensor_offset(gguf, i);
+        size_t size = gguf_get_tensor_size(gguf, i);
+
+        struct ggml_tensor *t = ggml_get_tensor(e->w_ctx, name);
+        if (!t) continue;
+
+        void *buf = malloc(size);
+        fseek(fp, data_offset + offset, SEEK_SET);
+        fread(buf, 1, size, fp);
+        ggml_backend_tensor_set(t, buf, 0, size);
+        free(buf);
+        loaded++;
+    }
+    fclose(fp);
+
+    fprintf(stderr, "[gguf] Loaded %d tensors from GGUF\n", loaded);
+
+    /* Allocate KV cache */
+    {
+        int HD = e->head_dim, NKV = e->n_kv_heads;
+        size_t kv_ctx_size = (size_t)(e->n_layers * 2) * ggml_tensor_overhead() + 4*1024*1024;
+        struct ggml_init_params kp = { .mem_size = kv_ctx_size, .mem_buffer = NULL, .no_alloc = true };
+        e->kv_ctx = ggml_init(kp);
+        for (int i = 0; i < e->n_layers; i++) {
+            char kn[32], vn[32];
+            e->kv_k[i] = ggml_new_tensor_3d(e->kv_ctx, GGML_TYPE_F16, HD, NKV, n_ctx);
+            snprintf(kn, sizeof(kn), "kv_k_%d", i); ggml_set_name(e->kv_k[i], kn);
+            e->kv_v[i] = ggml_new_tensor_3d(e->kv_ctx, GGML_TYPE_F16, HD, NKV, n_ctx);
+            snprintf(vn, sizeof(vn), "kv_v_%d", i); ggml_set_name(e->kv_v[i], vn);
+        }
+        e->kv_buf = ggml_backend_alloc_ctx_tensors(e->kv_ctx, e->backend_vk);
+        if (e->kv_buf) {
+            ggml_backend_buffer_clear(e->kv_buf, 0);
+            fprintf(stderr, "[gguf] KV cache: %.1f MiB\n",
+                    ggml_backend_buffer_get_size(e->kv_buf) / (1024.0*1024));
+        }
+    }
+
+    gguf_free(gguf);
+    ggml_free(meta_ctx);
+    return e;
+}
+
+/* Forward pass — same as ggml_llama_full.c but works with any weight type */
+int engine_forward(engine_t *e, int n_tokens,
+                   const int32_t *tokens, const int32_t *positions,
+                   float *logits_out) {
+    int H = e->hidden_dim, I = e->intermediate;
+    int NH = e->n_heads, NKV = e->n_kv_heads, HD = e->head_dim;
+
+    size_t ctx_size = (size_t)(e->n_layers * 25 + 15) * ggml_tensor_overhead() + 64*1024*1024;
+    struct ggml_init_params gp = { .mem_size = ctx_size, .mem_buffer = NULL, .no_alloc = true };
+    struct ggml_context *ctx = ggml_init(gp);
+    if (!ctx) return -1;
+
+    struct ggml_cgraph *graph = ggml_new_graph_custom(ctx, GRAPH_SIZE, false);
+
+    struct ggml_tensor *inp_tokens = ggml_new_tensor_1d(ctx, GGML_TYPE_I32, n_tokens);
+    ggml_set_name(inp_tokens, "tokens");
+    struct ggml_tensor *inp_pos = ggml_new_tensor_1d(ctx, GGML_TYPE_I32, n_tokens);
+    ggml_set_name(inp_pos, "positions");
+
+    struct ggml_tensor *cur = ggml_get_rows(ctx, e->tok_embd, inp_tokens);
+    struct ggml_tensor *inpL = cur;
+    float kq_scale = 1.0f / sqrtf((float)HD);
+
+    for (int il = 0; il < e->n_layers; il++) {
+        layer_t *l = &e->layers[il];
+        struct ggml_tensor *inpSA = inpL;
+
+        cur = ggml_rms_norm(ctx, inpL, e->rms_eps);
+        cur = ggml_mul(ctx, cur, l->attn_norm);
+
+        struct ggml_tensor *Qcur = ggml_mul_mat(ctx, l->wq, cur);
+        struct ggml_tensor *Kcur = ggml_mul_mat(ctx, l->wk, cur);
+        struct ggml_tensor *Vcur = ggml_mul_mat(ctx, l->wv, cur);
+
+        Qcur = ggml_reshape_3d(ctx, Qcur, HD, NH, n_tokens);
+        Kcur = ggml_reshape_3d(ctx, Kcur, HD, NKV, n_tokens);
+        Vcur = ggml_reshape_3d(ctx, Vcur, HD, NKV, n_tokens);
+
+        Qcur = ggml_rope_ext(ctx, Qcur, inp_pos, NULL,
+                             HD, 0, 0, e->rope_theta, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f);
+        Kcur = ggml_rope_ext(ctx, Kcur, inp_pos, NULL,
+                             HD, 0, 0, e->rope_theta, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f);
+
+        /* KV cache write + attention */
+        {
+            int kv_pos = e->kv_used;
+            struct ggml_tensor *Kf16 = ggml_cast(ctx, Kcur, GGML_TYPE_F16);
+            struct ggml_tensor *Vf16 = ggml_cast(ctx, Vcur, GGML_TYPE_F16);
+
+            size_t k_off = (size_t)kv_pos * NKV * HD * ggml_type_size(GGML_TYPE_F16);
+            struct ggml_tensor *k_dst = ggml_view_3d(ctx, e->kv_k[il], HD, NKV, n_tokens,
+                e->kv_k[il]->nb[1], e->kv_k[il]->nb[2], k_off);
+            ggml_build_forward_expand(graph, ggml_cpy(ctx, Kf16, k_dst));
+
+            size_t v_off = (size_t)kv_pos * NKV * HD * ggml_type_size(GGML_TYPE_F16);
+            struct ggml_tensor *v_dst = ggml_view_3d(ctx, e->kv_v[il], HD, NKV, n_tokens,
+                e->kv_v[il]->nb[1], e->kv_v[il]->nb[2], v_off);
+            ggml_build_forward_expand(graph, ggml_cpy(ctx, Vf16, v_dst));
+
+            int kv_len = kv_pos + n_tokens;
+            struct ggml_tensor *K_cached = ggml_view_3d(ctx, e->kv_k[il], HD, NKV, kv_len,
+                e->kv_k[il]->nb[1], e->kv_k[il]->nb[2], 0);
+            struct ggml_tensor *V_cached = ggml_view_3d(ctx, e->kv_v[il], HD, NKV, kv_len,
+                e->kv_v[il]->nb[1], e->kv_v[il]->nb[2], 0);
+
+            struct ggml_tensor *q_p = ggml_permute(ctx, Qcur, 0, 2, 1, 3);
+            struct ggml_tensor *k_p = ggml_permute(ctx, K_cached, 0, 2, 1, 3);
+            struct ggml_tensor *v_p = ggml_permute(ctx, V_cached, 0, 2, 1, 3);
+
+            cur = ggml_flash_attn_ext(ctx, q_p, k_p, v_p, NULL, kq_scale, 0.0f, 0.0f);
+        }
+
+        cur = ggml_reshape_2d(ctx, cur, NH * HD, n_tokens);
+        cur = ggml_mul_mat(ctx, l->wo, cur);
+
+        struct ggml_tensor *ffn_inp = ggml_add(ctx, cur, inpSA);
+
+        cur = ggml_rms_norm(ctx, ffn_inp, e->rms_eps);
+        cur = ggml_mul(ctx, cur, l->ffn_norm);
+
+        struct ggml_tensor *gate = ggml_mul_mat(ctx, l->w_gate, cur);
+        struct ggml_tensor *up   = ggml_mul_mat(ctx, l->w_up, cur);
+        cur = ggml_mul(ctx, ggml_silu(ctx, gate), up);
+        cur = ggml_mul_mat(ctx, l->w_down, cur);
+
+        inpL = ggml_add(ctx, cur, ffn_inp);
+    }
+
+    cur = ggml_rms_norm(ctx, inpL, e->rms_eps);
+    cur = ggml_mul(ctx, cur, e->output_norm);
+    cur = ggml_mul_mat(ctx, e->output, cur);
+    ggml_set_name(cur, "logits");
+
+    ggml_build_forward_expand(graph, cur);
+
+    ggml_backend_sched_reset(e->sched);
+    if (!ggml_backend_sched_alloc_graph(e->sched, graph)) {
+        fprintf(stderr, "[engine] graph alloc failed\n");
+        ggml_free(ctx);
+        return -2;
+    }
+
+    ggml_backend_tensor_set(inp_tokens, tokens, 0, n_tokens * sizeof(int32_t));
+    ggml_backend_tensor_set(inp_pos, positions, 0, n_tokens * sizeof(int32_t));
+
+    enum ggml_status status = ggml_backend_sched_graph_compute(e->sched, graph);
+    if (status != GGML_STATUS_SUCCESS) {
+        fprintf(stderr, "[engine] compute failed: %d\n", status);
+        ggml_free(ctx);
+        return -3;
+    }
+
+    size_t logits_size = (size_t)n_tokens * e->vocab_size * sizeof(float);
+    ggml_backend_tensor_get(cur, logits_out, 0, logits_size);
+
+    e->kv_used += n_tokens;
+    ggml_free(ctx);
+    return 0;
+}
+
+void engine_reset_kv(engine_t *e) {
+    e->kv_used = 0;
+    if (e->kv_buf) ggml_backend_buffer_clear(e->kv_buf, 0);
+}
+
+void engine_free(engine_t *e) {
+    if (e->w_buf) ggml_backend_buffer_free(e->w_buf);
+    if (e->w_ctx) ggml_free(e->w_ctx);
+    if (e->kv_buf) ggml_backend_buffer_free(e->kv_buf);
+    if (e->kv_ctx) ggml_free(e->kv_ctx);
+    if (e->sched) ggml_backend_sched_free(e->sched);
+    if (e->backend_cpu) ggml_backend_free(e->backend_cpu);
+    if (e->backend_vk) ggml_backend_free(e->backend_vk);
+    free(e);
+}
