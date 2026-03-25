@@ -1,59 +1,57 @@
-# TASK QUEUE v2 — 33 ITEMS — DO NOT STOP UNTIL ALL DONE
-# After each task: update PROGRESS_REPORT.md, commit to git, continue next.
-# Target: 100+ TPS aggregate. Every task moves us closer.
+# TASK QUEUE v3 — OPTIMIZATION + PRODUCTION PHASE
+# 30 items. DO NOT STOP. Pick next READY task after each completion.
 
-## PHASE 1: CORE ENGINE (DONE)
-### T1: [DONE] ggml fused MLP per-layer → 5.1 TPS
-### T2: [DONE] Full transformer single graph → 10.9 TPS
-### T3: [DONE] KV cache → 10.7 TPS (helps at long seq)
-### T4: [DONE] F16 weights → 12.5 TPS
-### T5: [DONE] Q4_K_M weights → 21.7 TPS (88% of llama.cpp!)
+## PHASE 1-6: DONE (T1-T29) — 24.8 TPS 8B, 69.8 TPS 0.5B, 121 TPS batch
 
-## PHASE 2: VLLM INTEGRATION
-### T6: [ACTIVE] Wire ggml engine into vLLM-compatible API
-### T7: [READY] Add streaming token output to ggml backend
-### T8: [READY] Add SamplingParams support (temperature, top_p, top_k, repetition_penalty)
-### T9: [READY] Add stop tokens and EOS handling
-### T10: [READY] Multi-prompt batch generation (generate multiple prompts at once)
+## PHASE 7: SHADER EXPERIMENTS [DONE]
+### T30: [DONE] Custom tiled matmul shader — ggml already near-optimal
+### T31: [DONE] Baseline GFLOPS profiling — 1675 peak at batch=64
 
-## PHASE 3: PERFORMANCE OPTIMIZATION
-### T11: [READY] Profile per-token breakdown: what % is matmul vs attention vs overhead
-### T12: [READY] Test Q8_0 GGUF (should be ~22 TPS with better quality)
-### T13: [READY] Test Q5_K_M GGUF (quality vs speed tradeoff)
-### T14: [READY] Optimize graph reuse between tokens (avoid graph rebuild)
-### T15: [READY] Benchmark long sequences (256, 512, 1024 tokens) — where does KV cache help?
-### T16: [READY] Tune ggml thread count for optimal CPU/GPU balance
-### T17: [READY] Test with HK_SYSMEM=112000000000 for max Vulkan heap
+## PHASE 8: CLOSE THE MEDIAN→BEST GAP (21.7 → 24.8 consistently)
+### T32: [READY] Profile graph scheduling overhead — where is the 3ms gap between median and best?
+### T33: [READY] Pre-warm the ggml graph (run 5 warmup tokens before timing)
+### T34: [READY] Pin CPU threads to performance cores (taskset on Firestorm cores only)
+### T35: [READY] Test ggml thread count sweep (1,2,4,8,16,20) for optimal CPU/GPU balance
+### T36: [READY] Disable CPU backend in ggml scheduler — force ALL ops to Vulkan
 
-## PHASE 4: MULTI-USER / BATCHING
-### T18: [READY] Continuous batching: multiple concurrent users in one graph
-### T19: [READY] Dynamic batch scheduling (add/remove users mid-generation)
-### T20: [READY] Benchmark aggregate TPS at batch=4, 8, 16, 32, 64
-### T21: [READY] Prefill optimization: use GPU batch advantage (195x at high batch)
+## PHASE 9: PRODUCTION SERVER
+### T37: [READY] Fix streaming server to handle concurrent requests (ThreadingMixIn done on Sys12)
+### T38: [READY] Add /v1/chat/completions with proper Llama-3.1 chat template
+### T39: [READY] Add token counting in usage field (prompt_tokens + completion_tokens)
+### T40: [READY] Add request timeout and error recovery
+### T41: [READY] Add model hot-swapping (load different GGUF via API)
+### T42: [READY] Benchmark server: sustained TPS over 100 requests
+### T43: [READY] Benchmark server: concurrent users (2, 4, 8 simultaneous)
 
-## PHASE 5: MODEL COVERAGE
-### T22: [READY] Test Qwen2.5-3B on ggml Vulkan engine
-### T23: [READY] Test Qwen2.5-1.5B on ggml Vulkan engine
-### T24: [READY] Test Qwen2.5-0.5B on ggml Vulkan engine (target: 100+ TPS single user)
-### T25: [READY] Download and test Qwen3.5-0.8B (GDN attention — different arch)
-### T26: [READY] Test Llama-3.1-8B-Instruct chat template / system prompts
+## PHASE 10: MULTI-MODEL FLEET
+### T44: [READY] Run 0.5B + 8B simultaneously (different ports, same GPU)
+### T45: [READY] Router: small model for simple tasks, big model for complex
+### T46: [READY] Test all available GGUFs: Llama, Qwen, any others in ~/models/gguf/
 
-## PHASE 6: PRODUCTION HARDENING
-### T27: [READY] Error handling: graceful fallback when Vulkan OOMs
-### T28: [READY] Memory monitoring: track Vulkan VRAM usage per request
-### T29: [READY] Logging: structured JSON logs for TPS, latency, memory
-### T30: [READY] Benchmark suite script: one command tests all models + quants
+## PHASE 11: INTEGRATION WITH Z'S FLEET
+### T47: [READY] Test connectivity from other machines on 10.255.255.0/24 network
+### T48: [READY] Write fleet registration script (announce model/TPS to central registry)
+### T49: [READY] Test from Z's Streamlit telemetry deck (streaming, metrics)
+### T50: [READY] Load test from multiple machines simultaneously
 
-## PHASE 7: ADVANCED OPTIMIZATIONS
-### T31: [READY] Study llama.cpp flash attention shader — can we improve ours?
-### T32: [READY] Investigate Vulkan descriptor indexing for weight switching
-### T33: [READY] Write comprehensive technical report: architecture, benchmarks, future work
+## PHASE 12: DOCUMENTATION + UPSTREAM
+### T51: [READY] Write comprehensive README for the ggml Vulkan engine
+### T52: [READY] Package as pip-installable (setup.py + wheel)
+### T53: [READY] Draft blog post: World-First Vulkan LLM Inference on Asahi Linux
+### T54: [READY] Prepare upstream PR for vLLM (Vulkan backend using ggml)
+### T55: [READY] File Mesa Honeykrisp issue: request VK_KHR_cooperative_matrix support
+
+## PHASE 13: ASAHI KERNEL/DRIVER INVESTIGATION
+### T56: [READY] Clone AsahiLinux/mesa (honeykrisp branch)
+### T57: [READY] Study hk_physical_device.c — what Vulkan extensions are exposed?
+### T58: [READY] Search for simdgroup_matrix / cooperative_matrix code paths
+### T59: [READY] Study AGX command stream format — can we inject custom GPU commands?
+### T60: [READY] Profile Vulkan command buffer overhead — is the driver adding latency?
+### T61: [READY] Test VK_EXT_memory_budget — does it work on Asahi?
 
 ## RULES
-1. After completing a task, IMMEDIATELY start the next READY task
-2. GIT COMMIT after every 2-3 tasks (never lose more than 30 min of work)
-3. Update PROGRESS_REPORT.md after each task
-4. If stuck >5 min: python ~/AGENT/ask_big_brain.py
-5. If stuck >15 min: mark BLOCKED, skip to next
-6. DO NOT wait for user input between tasks
-7. The target is 100+ TPS aggregate. 21.7 single-user is the START, not the end.
+1. After each task: git commit + update PROGRESS_REPORT.md
+2. If stuck >5 min: ask_big_brain.py or ask_coder_brain.py
+3. If BLOCKED >15 min: skip to next, mark BLOCKED
+4. DO NOT wait for user input between tasks
+5. The fleet depends on this engine. Make it bulletproof.
