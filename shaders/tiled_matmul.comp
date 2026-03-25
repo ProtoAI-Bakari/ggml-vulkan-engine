@@ -1,0 +1,151 @@
+#version 450
+
+/*
+ * Tiled FP32 matrix multiply optimized for Apple AGX via Vulkan.
+ * C = A × B^T  (A: MxK, B: NxK, C: MxN)
+ *
+ * Tile sizes: BM=64, BN=64, BK=32 (fits 32KB shared memory)
+ * Workgroup: 256 threads (8 warps of 32)
+ * Each thread computes a 4x4 block of output
+ *
+ * Memory layout: row-major, coalesced reads via vec4
+ */
+
+#extension GL_EXT_control_flow_attributes : enable
+#extension GL_KHR_shader_subgroup_arithmetic : enable
+
+// Tile parameters
+#define BM 64
+#define BN 64
+#define BK 32
+#define TM 4      // Each thread computes TM rows
+#define TN 4      // Each thread computes TN cols
+#define WG_SIZE 256
+
+layout(local_size_x = WG_SIZE, local_size_y = 1, local_size_z = 1) in;
+
+// Buffer storage (NOT images — key for performance)
+layout(binding = 0) readonly buffer A { float data_a[]; };
+layout(binding = 1) readonly buffer B { float data_b[]; };
+layout(binding = 2) writeonly buffer C { float data_c[]; };
+
+layout(push_constant) uniform Params {
+    uint M;
+    uint N;
+    uint K;
+    uint lda;  // stride for A (= K for row-major)
+    uint ldb;  // stride for B (= K for row-major, since B is NxK)
+    uint ldc;  // stride for C (= N for row-major)
+};
+
+// Shared memory for tiles (double-buffer A and B)
+// A tile: BM × BK = 64 × 32 = 2048 floats = 8KB
+// B tile: BN × BK = 64 × 32 = 2048 floats = 8KB
+// Total: 16KB (fits in 32KB shared memory with room for padding)
+shared float As[BM][BK + 1];  // +1 padding to avoid bank conflicts
+shared float Bs[BN][BK + 1];
+
+void main() {
+    uint tid = gl_LocalInvocationIndex;
+    uint warp_id = tid / 32;
+    uint lane_id = tid % 32;
+
+    // Block coordinates
+    uint bm = gl_WorkGroupID.x;  // Row block
+    uint bn = gl_WorkGroupID.y;  // Col block
+
+    // Global row/col for this block
+    uint row_start = bm * BM;
+    uint col_start = bn * BN;
+
+    // Each thread is responsible for TM×TN output elements
+    // Map threads to 2D positions within the tile
+    // WG_SIZE = 256 = (BM/TM) * (BN/TN) = 16 * 16
+    uint thread_row = (tid / (BN / TN)) * TM;  // 0, 4, 8, ..., 60
+    uint thread_col = (tid % (BN / TN)) * TN;  // 0, 4, 8, ..., 60
+
+    // Accumulator registers (TM × TN per thread)
+    float acc[TM][TN];
+    [[unroll]] for (uint i = 0; i < TM; i++)
+        [[unroll]] for (uint j = 0; j < TN; j++)
+            acc[i][j] = 0.0;
+
+    // Number of tiles along K dimension
+    uint num_k_tiles = (K + BK - 1) / BK;
+
+    for (uint kt = 0; kt < num_k_tiles; kt++) {
+        uint k_start = kt * BK;
+
+        // Cooperative load A tile into shared memory
+        // 256 threads load BM*BK = 2048 floats = 8 floats/thread
+        {
+            uint elems_per_thread = (BM * BK) / WG_SIZE;  // = 8
+            uint idx = tid * elems_per_thread;
+            [[unroll]] for (uint e = 0; e < elems_per_thread; e++) {
+                uint r = (idx + e) / BK;
+                uint c = (idx + e) % BK;
+                uint global_r = row_start + r;
+                uint global_c = k_start + c;
+                if (global_r < M && global_c < K) {
+                    As[r][c] = data_a[global_r * lda + global_c];
+                } else {
+                    As[r][c] = 0.0;
+                }
+            }
+        }
+
+        // Cooperative load B tile (B is NxK, we want B[col][k])
+        {
+            uint elems_per_thread = (BN * BK) / WG_SIZE;
+            uint idx = tid * elems_per_thread;
+            [[unroll]] for (uint e = 0; e < elems_per_thread; e++) {
+                uint r = (idx + e) / BK;
+                uint c = (idx + e) % BK;
+                uint global_r = col_start + r;
+                uint global_c = k_start + c;
+                if (global_r < N && global_c < K) {
+                    Bs[r][c] = data_b[global_r * ldb + global_c];
+                } else {
+                    Bs[r][c] = 0.0;
+                }
+            }
+        }
+
+        barrier();
+
+        // Compute TM × TN block using shared memory
+        [[unroll]] for (uint k = 0; k < BK; k++) {
+            // Load A fragment (TM elements from column k)
+            float a_frag[TM];
+            [[unroll]] for (uint i = 0; i < TM; i++) {
+                a_frag[i] = As[thread_row + i][k];
+            }
+
+            // Load B fragment (TN elements from column k)
+            float b_frag[TN];
+            [[unroll]] for (uint j = 0; j < TN; j++) {
+                b_frag[j] = Bs[thread_col + j][k];
+            }
+
+            // Outer product accumulate
+            [[unroll]] for (uint i = 0; i < TM; i++) {
+                [[unroll]] for (uint j = 0; j < TN; j++) {
+                    acc[i][j] += a_frag[i] * b_frag[j];
+                }
+            }
+        }
+
+        barrier();
+    }
+
+    // Write results to global memory
+    [[unroll]] for (uint i = 0; i < TM; i++) {
+        [[unroll]] for (uint j = 0; j < TN; j++) {
+            uint global_r = row_start + thread_row + i;
+            uint global_c = col_start + thread_col + j;
+            if (global_r < M && global_c < N) {
+                data_c[global_r * ldc + global_c] = acc[i][j];
+            }
+        }
+    }
+}
