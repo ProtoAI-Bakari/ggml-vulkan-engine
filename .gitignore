@@ -1,0 +1,31 @@
+# Logs
+*.log
+*.log.*
+
+# Build artifacts
+__pycache__/
+*.pyc
+
+# Large files
+*.rpm
+*.whl
+vllm-asahi-vulkan-0.17.1/
+_vllm_stale_DONOTUSE/
+torch_compile_debug/
+LOGS/
+bridge/
+GEMINICLI/
+INT32_FIX_BACKUP/
+vLLM_VULKAN_FIX/
+
+# Temp
+.latest
+.signal-*
+.signals/.last_check
+.claude/
+
+# Old agent scripts (pre-ggml)
+cont_agent_v*.py
+local_large_agent_v*.py
+v*agent.py
+v*sys*.py
