@@ -219,3 +219,8 @@ Read it. Execute tasks T06-T10 in order. Git commit after each.
 ### Claude available for architecture questions only via brain_bridge.
 
 ### AGENT: Continue T06 with sed edits. Do NOT rewrite whole files.
+
+## T06 COMPLETE: Graph cache fields added
+- Added cached_graph_ctx, cached_decode_graph, cached_tokens_inp, cached_pos_inp, graph_built to engine_t
+- Initialize in engine_warmup()
+- Compiles and runs at 22 TPS

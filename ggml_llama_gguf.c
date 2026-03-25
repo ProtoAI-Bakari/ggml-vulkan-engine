@@ -30,6 +30,11 @@ typedef struct {
     struct ggml_tensor *wq, *wk, *wv, *wo;
     struct ggml_tensor *w_gate, *w_up, *w_down;
     struct ggml_tensor *attn_norm, *ffn_norm;
+    /* MoE expert weights (optional) */
+    struct ggml_tensor *ffn_gate_exps, *ffn_up_exps, *ffn_down_exps;
+    struct ggml_tensor *ffn_gate_inp;
+    int expert_count;
+    int expert_used;
 } layer_t;
 
 typedef struct {
@@ -208,6 +213,25 @@ engine_t *engine_load_gguf(const char *gguf_path, int n_ctx) {
         free(buf);
         loaded++;
     }
+
+    /* Load MoE expert weights if present (T07) */
+    for (int il = 0; il < e->n_layers; il++) {
+        char name[64];
+        snprintf(name, sizeof(name), "blk.%d.ffn_gate_exps", il);
+        struct ggml_tensor *t = ggml_get_tensor(e->w_ctx, name);
+        if (t) {
+            e->layers[il].expert_count = t->ne[2];
+            e->layers[il].expert_used = 4; /* Default for gpt-oss */
+            e->layers[il].ffn_gate_exps = t;
+            snprintf(name, sizeof(name), "blk.%d.ffn_up_exps", il);
+            e->layers[il].ffn_up_exps = ggml_get_tensor(e->w_ctx, name);
+            snprintf(name, sizeof(name), "blk.%d.ffn_down_exps", il);
+            e->layers[il].ffn_down_exps = ggml_get_tensor(e->w_ctx, name);
+            snprintf(name, sizeof(name), "blk.%d.ffn_gate_inp", il);
+            e->layers[il].ffn_gate_inp = ggml_get_tensor(e->w_ctx, name);
+            fprintf(stderr, "[gguf] Layer %d: MoE detected (%d experts)\n", il, e->layers[il].expert_count);
+        }
+    }
     fclose(fp);
 
     fprintf(stderr, "[gguf] Loaded %d tensors from GGUF\n", loaded);
@@ -366,10 +390,62 @@ int engine_forward(engine_t *e, int n_tokens,
         cur = ggml_rms_norm(ctx, ffn_inp, e->rms_eps);
         cur = ggml_mul(ctx, cur, l->ffn_norm);
 
-        struct ggml_tensor *gate = ggml_mul_mat(ctx, l->w_gate, cur);
-        struct ggml_tensor *up   = ggml_mul_mat(ctx, l->w_up, cur);
-        cur = ggml_mul(ctx, ggml_silu(ctx, gate), up);
-        cur = ggml_mul_mat(ctx, l->w_down, cur);
+        /* MoE FFN if experts present, else dense FFN (T07) */
+        if (l->ffn_gate_exps) {
+            /* MoE path: router -> topK -> expert FFN -> weighted sum */
+            int N_EXPERT = l->expert_count;
+            int N_USED = l->expert_used;
+            int H = e->hidden_dim;
+            
+            /* Step 1: Router (gate_inp) -> expert logits [N_EXPERT, n_tokens] */
+            struct ggml_tensor *logits = ggml_mul_mat(ctx, l->ffn_gate_inp, cur);
+            
+            /* Step 2: Softmax for expert selection probabilities */
+            struct ggml_tensor *probs = ggml_soft_max(ctx, logits);
+            
+            /* Step 3: TopK selection (get indices of top 4 experts) */
+            struct ggml_tensor *selected_experts = ggml_argsort_top_k(ctx, probs, N_USED);
+            
+            /* Step 4: Get expert weights for selected experts */
+            struct ggml_tensor *weights = ggml_get_rows(ctx, probs, selected_experts);
+            weights = ggml_reshape_2d(ctx, weights, N_USED, n_tokens);
+            weights = ggml_soft_max(ctx, weights); /* Normalize weights */
+            weights = ggml_reshape_3d(ctx, weights, 1, N_USED, n_tokens);
+            
+            /* Step 5: Repeat cur for each selected expert [H, N_USED, n_tokens] */
+            struct ggml_tensor *cur_expert = ggml_repeat_4d(ctx, cur, H, N_USED, n_tokens, 1);
+            
+            /* Step 6: Multiply by weights */
+            cur_expert = ggml_mul(ctx, cur_expert, weights);
+            
+            /* Step 7: Expert up proj (fused gate+up for efficiency) */
+            struct ggml_tensor *gate_up_exps = ggml_mul_mat_id(ctx, l->ffn_up_exps, cur_expert, selected_experts);
+            
+            /* Step 8: Split gate and up */
+            int FF = gate_up_exps->ne[0] / 2;
+            struct ggml_tensor *gate_expert = ggml_view_3d(ctx, gate_up_exps, FF, N_USED, n_tokens, 
+                gate_up_exps->nb[1], gate_up_exps->nb[2], 0);
+            struct ggml_tensor *up_expert = ggml_view_3d(ctx, gate_up_exps, FF, N_USED, n_tokens,
+                gate_up_exps->nb[1], gate_up_exps->nb[2], FF * gate_up_exps->nb[0]);
+            
+            /* Step 9: SwiGLU activation */
+            struct ggml_tensor *gate_act = ggml_silu(ctx, gate_expert);
+            struct ggml_tensor *act = ggml_mul(ctx, gate_act, up_expert);
+            
+            /* Step 10: Expert down proj */
+            struct ggml_tensor *down_expert = ggml_mul_mat_id(ctx, l->ffn_down_exps, act, selected_experts);
+            
+            /* Step 11: Weighted sum across experts */
+            down_expert = ggml_mul(ctx, down_expert, weights);
+            cur = ggml_sum_rows(ctx, down_expert);
+            cur = ggml_reshape_2d(ctx, cur, H, n_tokens);
+        } else {
+            /* Dense FFN (original path) */
+            struct ggml_tensor *gate = ggml_mul_mat(ctx, l->w_gate, cur);
+            struct ggml_tensor *up   = ggml_mul_mat(ctx, l->w_up, cur);
+            cur = ggml_mul(ctx, ggml_silu(ctx, gate), up);
+            cur = ggml_mul_mat(ctx, l->w_down, cur);
+        }
 
         inpL = ggml_add(ctx, cur, ffn_inp);
     }
