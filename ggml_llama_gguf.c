@@ -58,6 +58,12 @@ typedef struct {
 
     /* GGUF-loaded weight context */
     struct ggml_context *w_ctx;
+    /* Graph cache for decode optimization (T06) */
+    struct ggml_context *cached_graph_ctx;
+    struct ggml_cgraph *cached_decode_graph;
+    struct ggml_tensor *cached_tokens_inp;
+    struct ggml_tensor *cached_pos_inp;
+    int graph_built;
     ggml_backend_buffer_t w_buf;
 } engine_t;
 
@@ -262,6 +268,13 @@ int engine_warmup(engine_t *e) {
     e->kv_used = 0;
     free(logits);
     fprintf(stderr, "[gguf] Warmup complete — 3 passes, scheduler fully primed\n");
+    /* T06: Initialize graph cache fields */
+    e->cached_graph_ctx = NULL;
+    e->cached_decode_graph = NULL;
+    e->cached_tokens_inp = NULL;
+    e->cached_pos_inp = NULL;
+    e->graph_built = 0;
+    return 0;
 }
 
 /* Forward pass — same as ggml_llama_full.c but works with any weight type */
