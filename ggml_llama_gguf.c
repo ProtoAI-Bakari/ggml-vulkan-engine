@@ -42,6 +42,10 @@ typedef struct {
     int vocab_size, n_ctx;
     float rms_eps, rope_theta;
 
+    /* Pre-allocated compute buffer (avoids malloc per token) */
+    void *compute_buf;
+    size_t compute_buf_size;
+
     layer_t layers[MAX_LAYERS];
     struct ggml_tensor *tok_embd, *output_norm, *output;
 
@@ -221,9 +225,37 @@ engine_t *engine_load_gguf(const char *gguf_path, int n_ctx) {
         }
     }
 
+    /* Pre-allocate compute buffer — avoids malloc/free per token */
+    {
+        int max_nodes = e->n_layers * 25 + 15;
+        e->compute_buf_size = (size_t)max_nodes * ggml_tensor_overhead()
+                            + ggml_graph_overhead_custom(GRAPH_SIZE, false)
+                            + 16*1024*1024;
+        e->compute_buf = malloc(e->compute_buf_size);
+        fprintf(stderr, "[gguf] Compute buffer: %.1f MiB (pre-allocated)\n",
+                e->compute_buf_size / (1024.0*1024));
+    }
+
     gguf_free(gguf);
     ggml_free(meta_ctx);
     return e;
+}
+
+/* Forward declaration */
+int engine_forward(engine_t *e, int n_tokens, const int32_t *tokens, const int32_t *positions, float *logits_out);
+
+/* Warmup: run a dummy forward pass to prime the scheduler's buffer allocation.
+ * After warmup, subsequent alloc_graph calls can reuse existing buffers. */
+int engine_warmup(engine_t *e) {
+    int32_t tok = 1;
+    int32_t pos = 0;
+    float *logits = (float*)malloc((size_t)e->vocab_size * sizeof(float));
+    e->kv_used = 0;
+    int ret = engine_forward(e, 1, &tok, &pos, logits);
+    e->kv_used = 0;  /* Reset KV after warmup */
+    free(logits);
+    if (ret == 0) fprintf(stderr, "[gguf] Warmup complete — scheduler primed\n");
+    return ret;
 }
 
 /* Forward pass — same as ggml_llama_full.c but works with any weight type */
@@ -233,8 +265,12 @@ int engine_forward(engine_t *e, int n_tokens,
     int H = e->hidden_dim, I = e->intermediate;
     int NH = e->n_heads, NKV = e->n_kv_heads, HD = e->head_dim;
 
-    size_t ctx_size = (size_t)(e->n_layers * 25 + 15) * ggml_tensor_overhead() + 64*1024*1024;
-    struct ggml_init_params gp = { .mem_size = ctx_size, .mem_buffer = NULL, .no_alloc = true };
+    /* Use pre-allocated buffer — no malloc per token */
+    struct ggml_init_params gp = {
+        .mem_size = e->compute_buf_size,
+        .mem_buffer = e->compute_buf,
+        .no_alloc = true,
+    };
     struct ggml_context *ctx = ggml_init(gp);
     if (!ctx) return -1;
 
@@ -352,6 +388,7 @@ void engine_reset_kv(engine_t *e) {
 }
 
 void engine_free(engine_t *e) {
+    if (e->compute_buf) free(e->compute_buf);
     if (e->w_buf) ggml_backend_buffer_free(e->w_buf);
     if (e->w_ctx) ggml_free(e->w_ctx);
     if (e->kv_buf) ggml_backend_buffer_free(e->kv_buf);
