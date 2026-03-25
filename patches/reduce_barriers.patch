@@ -1,0 +1,48 @@
+--- a/ggml/src/ggml-vulkan/ggml-vulkan.cpp
++++ b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+@@ -2775,20 +2775,32 @@ static void ggml_vk_sync_buffers(ggml_backend_vk_context* ctx, vk_context& subc
+     VK_LOG_DEBUG("ggml_vk_sync_buffers()");
+
+     const bool transfer_queue = subctx->p->q->transfer_only;
++    const bool uma = subctx->p->q->uma;  // unified memory architecture
+
+     if (ctx) {
+         ctx->prealloc_x_need_sync = ctx->prealloc_y_need_sync = ctx->prealloc_split_k_need_sync = false;
+     }
+
+-    subctx->s->buffer->buf.pipelineBarrier(
+-        subctx->p->q->stage_flags,
+-        subctx->p->q->stage_flags,
+-        {},
+-        { {
+-          { !transfer_queue ? (vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eShaderWrite | vk::AccessFlagBits::eTransferRead | vk::AccessFlagBits::eTransferWrite) : (vk::AccessFlagBits::eTransferRead | vk::AccessFlagBits::eTransferWrite) },
+-          { !transfer_queue ? (vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eShaderWrite | vk::AccessFlagBits::eTransferRead | vk::AccessFlagBits::eTransferWrite) : (vk::AccessFlagBits::eTransferRead | vk::AccessFlagBits::eTransferWrite) }
+-        } },
+-        {},
+-        {}
+-    );
++    if (uma && !transfer_queue) {
++        // On UMA (Apple Silicon), use minimal compute-only barrier
++        // No need for transfer flags since memory is unified
++        subctx->s->buffer->buf.pipelineBarrier(
++            vk::PipelineStageFlagBits::eComputeShader,
++            vk::PipelineStageFlagBits::eComputeShader,
++            {},
++            { { vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eShaderRead } },
++            {},
++            {}
++        );
++    } else {
++        subctx->s->buffer->buf.pipelineBarrier(
++            subctx->p->q->stage_flags,
++            subctx->p->q->stage_flags,
++            {},
++            { {
++              { !transfer_queue ? (vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eShaderWrite | vk::AccessFlagBits::eTransferRead | vk::AccessFlagBits::eTransferWrite) : (vk::AccessFlagBits::eTransferRead | vk::AccessFlagBits::eTransferWrite) },
++              { !transfer_queue ? (vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eShaderWrite | vk::AccessFlagBits::eTransferRead | vk::AccessFlagBits::eTransferWrite) : (vk::AccessFlagBits::eTransferRead | vk::AccessFlagBits::eTransferWrite) }
++            } },
++            {},
++            {}
++        );
++    }
+ }

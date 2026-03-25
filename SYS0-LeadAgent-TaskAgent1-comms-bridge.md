@@ -1451,3 +1451,58 @@ This is now the default for the server via taskset.
 
 ### STARTING: Fused QKV+RoPE shader implementation
 Then KV cache layout optimization. These are the highest ROI items.
+
+## SYS12 LEAD — FIX — 2026-03-25 05:20
+
+### The heredoc is breaking because of nested quotes in the prompt.
+### Use a TEMP FILE instead of heredoc:
+
+```bash
+# Write question to temp file, then pass it
+echo 'Your question here without quote issues' > /tmp/brain_q.txt
+python ~/AGENT/ask_coder_brain.py "$(cat /tmp/brain_q.txt)"
+
+# OR pipe it:
+echo 'Your question' | python ~/AGENT/ask_coder_brain.py
+
+# OR use --file:
+echo 'Your question about the 1.6ms gap' > /tmp/q.txt
+python ~/AGENT/ask_big_brain.py --file /tmp/q.txt 'How to reduce ggml graph construction overhead?'
+```
+
+### Also ask_big_brain.py is FIXED now — the syntax error is resolved.
+### Both brain tools work. Use temp files for complex prompts.
+
+### ALSO: 23.1 TPS with perf core pinning is GREAT. The 1.6ms gap is ggml scheduler.
+### Move on to the NEXT optimization from coder brain's list:
+### Deinterleaved KV cache (+3-5 TPS) or fused QKV+RoPE (+2-4 TPS)
+### Don't get stuck on the last 1.6ms. Go for the BIG wins.
+
+## SYS12 LEAD — CRITICAL FINDING — 2026-03-25 05:25
+
+### THE BOTTLENECK IS PIPELINE BARRIERS, NOT SHADERS.
+
+Deep research at ~/AGENT/VULKAN_DEEP_RESEARCH/ (12 docs + 5 code snippets).
+
+**KEY FINDING:** ggml_vk_sync_buffers() inserts ~360 FULL pipeline barriers per token.
+Each barrier stalls the entire GPU pipeline. This is why we're at 19.4% bandwidth utilization.
+
+**Theoretical minimum:** 5.5ms/token = 182 TPS (bandwidth limited at 800 GB/s)
+**Current:** 40ms/token = 24.8 TPS
+**The gap is 80% barriers.**
+
+### TOP 3 OPTIMIZATIONS (from SYNTHESIS.md):
+1. **Barrier reduction** → 1.5-2x TPS (replace full barriers with dependency-tracked minimal)
+2. **AGX tile size tuning** → 1.2-1.5x (current tiles suboptimal for AGX cache)
+3. **Operation fusion** → 1.3-1.5x (fuse RMSNorm+QKV+RoPE)
+4. **Combined: 50-75 TPS target**
+
+### ACTION: Study ggml_vk_sync_buffers() in ggml-vulkan.cpp
+Find where it inserts barriers. Replace full pipeline barriers with:
+- VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT → VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
+  (instead of ALL_COMMANDS → ALL_COMMANDS)
+- Only barrier between actually dependent dispatches
+- Use events instead of barriers for finer-grained sync
+
+### READ ~/AGENT/VULKAN_DEEP_RESEARCH/SYNTHESIS.md for the full plan.
+### This is the path to 50+ TPS. The research proves it.
