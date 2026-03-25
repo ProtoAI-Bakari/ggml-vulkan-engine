@@ -75,9 +75,26 @@ class GgmlModelWrapper(torch.nn.Module):
         tokens_np = input_ids.cpu().numpy().astype(np.int32)
         positions_np = positions.cpu().numpy().astype(np.int32)
 
-        # Reset KV cache when new request starts (position 0 present)
-        if positions_np.min() == 0:
+        # KV cache management:
+        # - Prefill (n_tokens > 1 OR positions start fresh): reset KV, process full sequence
+        # - Decode (n_tokens == 1, sequential position): append to existing KV
+        is_prefill = n_tokens > 1
+        print(f"[GGML] n={n_tokens} prefill={is_prefill} pos={positions_np[:5].tolist()} tok={tokens_np[:5].tolist()}", file=sys.stderr, flush=True)
+
+        if is_prefill:
             _lib.engine_reset_kv(self._engine)
+            # vLLM may send partial tokens due to prefix caching (starting at pos > 0).
+            # Our engine needs sequential positions from 0.
+            # Remap positions to start from 0.
+            positions_np = np.arange(n_tokens, dtype=np.int32)
+            self._last_pos = n_tokens  # Track where we are in KV cache
+        else:
+            # Decode: single token, append to KV cache
+            # Use sequential position from our tracking, not vLLM's
+            if not hasattr(self, '_last_pos'):
+                self._last_pos = 0
+            positions_np = np.array([self._last_pos], dtype=np.int32)
+            self._last_pos += 1
 
         # Allocate output — hidden_states (4096) or logits (vocab_size)
         out_dim = self.hidden_dim if self.return_hidden else self.vocab_size
