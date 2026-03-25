@@ -15,7 +15,11 @@ import ctypes
 import numpy as np
 import os
 import time
-from dataclasses import dataclass
+import json
+import logging
+from dataclasses import dataclass, field, asdict
+
+logger = logging.getLogger("ggml_vllm")
 
 # Load the C engine
 _LIB_PATH = os.path.expanduser("~/AGENT/libggml_llama_gguf.so")
@@ -25,6 +29,8 @@ _lib.engine_load_gguf.restype = ctypes.c_void_p
 _lib.engine_forward.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
 _lib.engine_forward.restype = ctypes.c_int
 _lib.engine_reset_kv.argtypes = [ctypes.c_void_p]
+_lib.engine_warmup.argtypes = [ctypes.c_void_p]
+_lib.engine_warmup.restype = ctypes.c_int
 _lib.engine_free.argtypes = [ctypes.c_void_p]
 
 
@@ -56,6 +62,18 @@ class GenerationResult:
     prefill_tps: float
     total_time: float
     finish_reason: str = "length"  # "length", "stop", "error"
+    prefill_tokens: int = 0
+    decode_tokens: int = 0
+
+    def to_json(self):
+        return json.dumps({
+            "text": self.text[:200],
+            "tps": round(self.tps, 1),
+            "prefill_tps": round(self.prefill_tps, 1),
+            "total_time": round(self.total_time, 2),
+            "finish_reason": self.finish_reason,
+            "tokens_generated": len(self.token_ids),
+        })
 
 
 class GgmlLLM:
@@ -74,15 +92,31 @@ class GgmlLLM:
             self.tokenizer = None
 
         # Load model via C engine
-        print(f"[GgmlLLM] Loading {self.model_path}...")
+        logger.info(f"Loading {self.model_path}")
         t0 = time.time()
-        self._engine = _lib.engine_load_gguf(self.model_path.encode(), n_ctx)
+        try:
+            self._engine = _lib.engine_load_gguf(self.model_path.encode(), n_ctx)
+        except Exception as e:
+            raise RuntimeError(f"Failed to load model: {self.model_path}: {e}")
         if not self._engine:
-            raise RuntimeError(f"Failed to load model: {self.model_path}")
-        print(f"[GgmlLLM] Loaded in {time.time()-t0:.1f}s")
+            raise RuntimeError(f"Failed to load model (null engine): {self.model_path}")
 
-        # Get vocab size from first forward
-        self.vocab_size = 128256  # Llama-3.1 default
+        # Warmup to prime scheduler buffers
+        _lib.engine_warmup(self._engine)
+        load_time = time.time() - t0
+        logger.info(f"Loaded in {load_time:.1f}s")
+        print(f"[GgmlLLM] Loaded in {load_time:.1f}s", flush=True)
+
+        # Detect vocab size from model name
+        base = os.path.basename(self.model_path).lower()
+        if "qwen" in base:
+            self.vocab_size = 151936
+        else:
+            self.vocab_size = 128256  # Llama-3.1 default
+
+        # Stats tracking
+        self._total_tokens = 0
+        self._total_time = 0
 
     def _find_tokenizer(self):
         """Find HF tokenizer for the model."""
@@ -201,10 +235,17 @@ class GgmlLLM:
 
         decode_tps = len(decode_times) / sum(decode_times) if decode_times else 0
 
-        return GenerationResult(
+        # Track stats
+        self._total_tokens += len(generated_ids)
+        self._total_time += t_total
+
+        result = GenerationResult(
             text=text, token_ids=generated_ids, tps=decode_tps,
             prefill_tps=prefill_tps, total_time=t_total, finish_reason=finish_reason,
+            prefill_tokens=len(input_ids), decode_tokens=len(generated_ids),
         )
+        logger.info(result.to_json())
+        return result
 
     def _sample(self, logits, params, prev_tokens=None):
         """Sample next token with full sampling params."""
@@ -252,6 +293,18 @@ class GgmlLLM:
             probs = probs / (probs.sum() + 1e-10)
 
         return int(np.random.choice(len(probs), p=probs))
+
+    def stats(self):
+        """Return engine statistics."""
+        avg_tps = self._total_tokens / self._total_time if self._total_time > 0 else 0
+        return {
+            "total_tokens": self._total_tokens,
+            "total_time": round(self._total_time, 2),
+            "avg_tps": round(avg_tps, 1),
+            "model": os.path.basename(self.model_path),
+            "vocab_size": self.vocab_size,
+            "n_ctx": self.n_ctx,
+        }
 
     def batch_generate(self, prompts, **kwargs):
         """Generate for multiple prompts sequentially."""
