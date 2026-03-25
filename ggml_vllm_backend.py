@@ -29,12 +29,33 @@ _lib.engine_free.argtypes = [ctypes.c_void_p]
 
 
 @dataclass
+class SamplingParams:
+    """vLLM-compatible sampling parameters."""
+    temperature: float = 0.0
+    top_k: int = -1       # -1 = disabled
+    top_p: float = 1.0
+    min_p: float = 0.0
+    repetition_penalty: float = 1.0
+    max_tokens: int = 100
+    stop: list = None       # stop strings
+    stop_token_ids: set = None  # stop token IDs
+    seed: int = None
+
+    def __post_init__(self):
+        if self.stop is None:
+            self.stop = []
+        if self.stop_token_ids is None:
+            self.stop_token_ids = set()
+
+
+@dataclass
 class GenerationResult:
     text: str
     token_ids: list
     tps: float
     prefill_tps: float
     total_time: float
+    finish_reason: str = "length"  # "length", "stop", "error"
 
 
 class GgmlLLM:
@@ -81,20 +102,34 @@ class GgmlLLM:
                         return os.path.join(c, snaps[0])
         return None
 
-    def generate(self, prompt, max_tokens=100, temperature=0.0, top_k=1, stop_tokens=None):
-        """Generate text from prompt. Returns GenerationResult."""
-        if stop_tokens is None:
-            stop_tokens = {128001, 128008, 128009}  # Llama-3.1 stop tokens
+    def generate(self, prompt, params=None, stream_callback=None, **kwargs):
+        """Generate text from prompt.
+
+        Args:
+            prompt: str or list[int] (token IDs)
+            params: SamplingParams object, or pass kwargs directly
+            stream_callback: callable(token_text, token_id) called per token for streaming
+        Returns: GenerationResult
+        """
+        if params is None:
+            params = SamplingParams(**kwargs) if kwargs else SamplingParams()
+
+        # Default stop tokens for Llama-3.1
+        stop_ids = params.stop_token_ids | {128001, 128008, 128009}
+
+        if params.seed is not None:
+            np.random.seed(params.seed)
 
         # Tokenize
-        if self.tokenizer:
+        if isinstance(prompt, list):
+            input_ids = prompt
+        elif self.tokenizer:
             input_ids = self.tokenizer.encode(prompt, add_special_tokens=True)
         else:
-            input_ids = [128000]  # BOS
+            input_ids = [128000]
 
         _lib.engine_reset_kv(self._engine)
         generated_ids = []
-        logits_buf = np.empty((max(len(input_ids), 1), self.vocab_size), dtype=np.float32)
 
         # Prefill
         tokens = np.array(input_ids, dtype=np.int32)
@@ -108,20 +143,24 @@ class GgmlLLM:
         t_prefill = time.perf_counter() - t_start
 
         if ret != 0:
-            return GenerationResult(f"[PREFILL FAILED: {ret}]", [], 0, 0, 0)
+            return GenerationResult(f"[PREFILL FAILED: {ret}]", [], 0, 0, 0, "error")
 
         prefill_tps = len(input_ids) / t_prefill
 
         # Sample first token
-        next_token = self._sample(logits_buf[-1], temperature, top_k)
+        next_token = self._sample(logits_buf[-1], params, generated_ids)
         generated_ids.append(next_token)
+        if stream_callback and self.tokenizer:
+            stream_callback(self.tokenizer.decode([next_token]), next_token)
 
         # Decode loop
         decode_times = []
         logits_1 = np.empty((1, self.vocab_size), dtype=np.float32)
+        finish_reason = "length"
 
-        for i in range(max_tokens - 1):
-            if next_token in stop_tokens:
+        for i in range(params.max_tokens - 1):
+            if next_token in stop_ids:
+                finish_reason = "stop"
                 break
 
             tok = np.array([next_token], dtype=np.int32)
@@ -134,14 +173,27 @@ class GgmlLLM:
             decode_times.append(time.perf_counter() - t0)
 
             if ret != 0:
+                finish_reason = "error"
                 break
 
-            next_token = self._sample(logits_1[0], temperature, top_k)
+            next_token = self._sample(logits_1[0], params, generated_ids)
             generated_ids.append(next_token)
+
+            if stream_callback and self.tokenizer:
+                stream_callback(self.tokenizer.decode([next_token]), next_token)
+
+            # Check stop strings
+            if params.stop and self.tokenizer:
+                text_so_far = self.tokenizer.decode(generated_ids, skip_special_tokens=True)
+                for s in params.stop:
+                    if text_so_far.endswith(s):
+                        finish_reason = "stop"
+                        break
+                if finish_reason == "stop":
+                    break
 
         t_total = time.perf_counter() - t_start
 
-        # Decode token IDs to text
         if self.tokenizer:
             text = self.tokenizer.decode(generated_ids, skip_special_tokens=True)
         else:
@@ -150,31 +202,55 @@ class GgmlLLM:
         decode_tps = len(decode_times) / sum(decode_times) if decode_times else 0
 
         return GenerationResult(
-            text=text,
-            token_ids=generated_ids,
-            tps=decode_tps,
-            prefill_tps=prefill_tps,
-            total_time=t_total,
+            text=text, token_ids=generated_ids, tps=decode_tps,
+            prefill_tps=prefill_tps, total_time=t_total, finish_reason=finish_reason,
         )
 
-    def _sample(self, logits, temperature=0.0, top_k=1):
-        """Sample next token from logits."""
-        if temperature == 0 or top_k == 1:
+    def _sample(self, logits, params, prev_tokens=None):
+        """Sample next token with full sampling params."""
+        logits = logits.copy()
+
+        # Repetition penalty
+        if params.repetition_penalty != 1.0 and prev_tokens:
+            for tid in set(prev_tokens):
+                if logits[tid] > 0:
+                    logits[tid] /= params.repetition_penalty
+                else:
+                    logits[tid] *= params.repetition_penalty
+
+        # Greedy
+        if params.temperature == 0:
             return int(np.argmax(logits))
 
-        # Temperature scaling
-        logits = logits / temperature
+        # Temperature
+        logits = logits / params.temperature
 
         # Top-k
-        if top_k > 0:
-            indices = np.argsort(logits)[-top_k:]
+        if params.top_k > 0:
+            indices = np.argsort(logits)[-params.top_k:]
             mask = np.full_like(logits, -np.inf)
             mask[indices] = logits[indices]
             logits = mask
 
         # Softmax
         logits = logits - np.max(logits)
-        probs = np.exp(logits) / np.sum(np.exp(logits))
+        probs = np.exp(logits) / (np.sum(np.exp(logits)) + 1e-10)
+
+        # Top-p (nucleus)
+        if params.top_p < 1.0:
+            sorted_idx = np.argsort(probs)[::-1]
+            cumsum = np.cumsum(probs[sorted_idx])
+            cutoff = np.searchsorted(cumsum, params.top_p) + 1
+            mask = np.zeros_like(probs)
+            mask[sorted_idx[:cutoff]] = probs[sorted_idx[:cutoff]]
+            probs = mask / (mask.sum() + 1e-10)
+
+        # Min-p
+        if params.min_p > 0:
+            max_p = probs.max()
+            probs[probs < params.min_p * max_p] = 0
+            probs = probs / (probs.sum() + 1e-10)
+
         return int(np.random.choice(len(probs), p=probs))
 
     def batch_generate(self, prompts, **kwargs):
@@ -197,20 +273,46 @@ if __name__ == "__main__":
 
     llm = GgmlLLM(model)
 
-    prompts = [
-        "The capital of France is",
-        "Explain quantum computing in one paragraph:",
-        "Write a haiku about programming:",
-        "2 + 2 =",
-    ]
-
     print("\n" + "=" * 60)
     print("GgmlLLM Benchmark — Q4_K_M on Vulkan")
     print("=" * 60)
 
-    for prompt in prompts:
-        result = llm.generate(prompt, max_tokens=100, temperature=0)
-        print(f"\nPrompt: {prompt}")
-        print(f"Output: {result.text[:150]}")
-        print(f"Decode: {result.tps:.1f} TPS | Prefill: {result.prefill_tps:.1f} TPS | "
-              f"Tokens: {len(result.token_ids)} | Time: {result.total_time:.1f}s")
+    # T6: Basic generation
+    print("\n--- Greedy (temperature=0) ---")
+    for prompt in ["The capital of France is", "2 + 2 ="]:
+        r = llm.generate(prompt, params=SamplingParams(temperature=0, max_tokens=50))
+        print(f"  [{r.tps:.1f} TPS] {prompt} → {r.text[:80]}  [{r.finish_reason}]")
+
+    # T7: Streaming
+    print("\n--- Streaming ---")
+    print("  Streaming: ", end="", flush=True)
+    r = llm.generate("Once upon a time",
+                     params=SamplingParams(temperature=0.7, max_tokens=30, top_k=40),
+                     stream_callback=lambda text, _: print(text, end="", flush=True))
+    print(f"  [{r.tps:.1f} TPS]")
+
+    # T8: Sampling params
+    print("\n--- Temperature=0.8 top_p=0.9 rep_penalty=1.1 ---")
+    r = llm.generate("Write a creative story about a robot:",
+                     params=SamplingParams(temperature=0.8, top_p=0.9,
+                                           repetition_penalty=1.1, max_tokens=80))
+    print(f"  [{r.tps:.1f} TPS] {r.text[:150]}")
+
+    # T9: Stop tokens/strings
+    print("\n--- Stop on newline ---")
+    r = llm.generate("List three colors:\n1.",
+                     params=SamplingParams(temperature=0, max_tokens=50, stop=["\n3."]))
+    print(f"  [{r.tps:.1f} TPS] {r.text[:100]}  [{r.finish_reason}]")
+
+    # T10: Multi-prompt batch
+    print("\n--- Batch generation (4 prompts) ---")
+    t0 = time.time()
+    results = llm.batch_generate(
+        ["Hello!", "Goodbye!", "What is AI?", "Why is the sky blue?"],
+        params=SamplingParams(temperature=0, max_tokens=30),
+    )
+    elapsed = time.time() - t0
+    total_tok = sum(len(r.token_ids) for r in results)
+    print(f"  {total_tok} tokens in {elapsed:.1f}s = {total_tok/elapsed:.1f} aggregate TPS")
+    for r in results:
+        print(f"    [{r.tps:.1f} TPS] {r.text[:60]}")
