@@ -77,22 +77,36 @@ engine_t *engine_load_gguf(const char *gguf_path, int n_ctx) {
     struct gguf_context *gguf = gguf_init_from_file(gguf_path, gguf_params);
     if (!gguf) { fprintf(stderr, "Failed to open GGUF: %s\n", gguf_path); return NULL; }
 
-    /* Extract model config from GGUF metadata */
+    /* Extract model config — try multiple arch prefixes (llama, qwen2, etc.) */
+    const char *prefixes[] = {"llama", "qwen2", "phi3", "gemma", "mistral", NULL};
     int64_t key;
-    key = gguf_find_key(gguf, "llama.embedding_length");
-    e->hidden_dim = key >= 0 ? gguf_get_val_u32(gguf, key) : 4096;
-    key = gguf_find_key(gguf, "llama.feed_forward_length");
-    e->intermediate = key >= 0 ? gguf_get_val_u32(gguf, key) : 14336;
-    key = gguf_find_key(gguf, "llama.block_count");
-    e->n_layers = key >= 0 ? gguf_get_val_u32(gguf, key) : 32;
-    key = gguf_find_key(gguf, "llama.attention.head_count");
-    e->n_heads = key >= 0 ? gguf_get_val_u32(gguf, key) : 32;
-    key = gguf_find_key(gguf, "llama.attention.head_count_kv");
-    e->n_kv_heads = key >= 0 ? gguf_get_val_u32(gguf, key) : 8;
-    key = gguf_find_key(gguf, "llama.attention.layer_norm_rms_epsilon");
-    e->rms_eps = key >= 0 ? gguf_get_val_f32(gguf, key) : 1e-5f;
-    key = gguf_find_key(gguf, "llama.rope.freq_base");
-    e->rope_theta = key >= 0 ? gguf_get_val_f32(gguf, key) : 500000.0f;
+    char kbuf[128];
+
+    #define FIND_KEY_U32(field, suffix, default_val) do { \
+        e->field = default_val; \
+        for (const char **p = prefixes; *p; p++) { \
+            snprintf(kbuf, sizeof(kbuf), "%s.%s", *p, suffix); \
+            key = gguf_find_key(gguf, kbuf); \
+            if (key >= 0) { e->field = gguf_get_val_u32(gguf, key); break; } \
+        } \
+    } while(0)
+
+    #define FIND_KEY_F32(field, suffix, default_val) do { \
+        e->field = default_val; \
+        for (const char **p = prefixes; *p; p++) { \
+            snprintf(kbuf, sizeof(kbuf), "%s.%s", *p, suffix); \
+            key = gguf_find_key(gguf, kbuf); \
+            if (key >= 0) { e->field = gguf_get_val_f32(gguf, key); break; } \
+        } \
+    } while(0)
+
+    FIND_KEY_U32(hidden_dim,   "embedding_length",                  4096);
+    FIND_KEY_U32(intermediate, "feed_forward_length",              14336);
+    FIND_KEY_U32(n_layers,     "block_count",                         32);
+    FIND_KEY_U32(n_heads,      "attention.head_count",                32);
+    FIND_KEY_U32(n_kv_heads,   "attention.head_count_kv",              8);
+    FIND_KEY_F32(rms_eps,      "attention.layer_norm_rms_epsilon", 1e-5f);
+    FIND_KEY_F32(rope_theta,   "rope.freq_base",               500000.0f);
     /* vocab size from token_embd tensor shape */
     e->head_dim = e->hidden_dim / e->n_heads;
 
