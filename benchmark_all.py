@@ -18,6 +18,8 @@ MODELS = {
     "llama-8b-q4": {"path": "~/models/gguf/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf", "vocab": 128256, "bos": 128000},
     "llama-8b-q8": {"path": "~/models/gguf/Meta-Llama-3.1-8B-Instruct-Q8_0.gguf", "vocab": 128256, "bos": 128000},
     "llama-8b-f16": {"path": "~/models/gguf/llama-3.1-8b-instruct-f16.gguf", "vocab": 128256, "bos": 128000},
+    "qwen-3b-q4": {"path": "~/models/gguf/qwen2.5-3b-instruct-q4_k_m.gguf", "vocab": 151936, "bos": 151643},
+    "qwen-1.5b-q4": {"path": "~/models/gguf/qwen2.5-1.5b-instruct-q4_k_m.gguf", "vocab": 151936, "bos": 151643},
     "qwen-0.5b-q4": {"path": "~/models/gguf/qwen2.5-0.5b-instruct-q4_k_m.gguf", "vocab": 151936, "bos": 151643},
 }
 
@@ -25,8 +27,14 @@ LLAMA_CPP_REF = {
     "llama-8b-q4": {"decode": 24.7, "prefill": 137.0},
     "llama-8b-q8": {"decode": 22.8, "prefill": 169.3},
     "llama-8b-f16": {"decode": 13.9, "prefill": 171.1},
+    "qwen-3b-q4": {"decode": 0, "prefill": 0},    # will measure
+    "qwen-1.5b-q4": {"decode": 0, "prefill": 0},  # will measure
     "qwen-0.5b-q4": {"decode": 67.1, "prefill": 1014.5},
 }
+
+# Add warmup support
+LIB.engine_warmup.argtypes = [ctypes.c_void_p]
+LIB.engine_warmup.restype = ctypes.c_int
 
 
 def bench_model(name, cfg, n_decode=100, n_ctx=512):
@@ -38,6 +46,7 @@ def bench_model(name, cfg, n_decode=100, n_ctx=512):
     if not engine:
         return {"model": name, "error": "load failed"}
 
+    LIB.engine_warmup(engine)
     V = cfg["vocab"]
     BOS = cfg["bos"]
     LIB.engine_reset_kv(engine)
