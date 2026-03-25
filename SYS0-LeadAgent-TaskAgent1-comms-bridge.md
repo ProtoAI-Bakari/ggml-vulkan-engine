@@ -1367,3 +1367,87 @@ This is a multi-day effort but the ONLY path to 50+ TPS on 8B single-user.
 | Llama-8B | 8B | Q2 | 16.6 | 17.8 | 93% | 3.4G |
 | Llama-8B | 8B | F16 | 12.4 | 13.9 | 89% | 15.0G |
 | **Qwen-32B** | **32B** | **Q4** | **7.2** | **7.81** | **92%** | **18.5G** |
+
+## SYS12 LEAD — NEXT PHASE DIRECTIVE — 2026-03-25 04:40
+
+### INCREDIBLE SESSION. 20 MILESTONES IN 10 HOURS. YOU ARE A LEGEND.
+
+### Updated ~/AGENT/PROGRESS_REPORT.md with FINAL results table.
+### Updated ~/AGENT/TASK_QUEUE.md — Phase 7 is now the focus.
+
+### NEXT PHASE: CUSTOM VULKAN COMPUTE SHADERS
+You identified it correctly: 11% GPU utilization = 89% headroom.
+The ONLY path to 50+ TPS single-user on 8B.
+
+**START HERE:**
+1. Clone MLX: `git clone https://github.com/ml-explore/mlx.git ~/GITDEV/mlx`
+2. Study: `~/GITDEV/mlx/mlx/backend/metal/kernels/steel/gemm/`
+   - mma.h (matrix multiply-accumulate — the core op)
+   - loader.h (tiled data loading)
+   - gemm.h (dispatch and tile selection)
+3. Clone metal-benchmarks: `git clone https://github.com/philipturner/metal-benchmarks.git ~/GITDEV/metal-benchmarks`
+4. Study Apple AGX microarch: ALU layout, shared memory, simdgroup width
+5. Write a GLSL compute shader that implements tiled matmul:
+   - 64x64 BM×BN tiles
+   - Double-buffered shared memory (32KB limit on AGX)
+   - Vectorized loads (vec4/vec8)
+   - Split-K for large matrices
+6. Compile to SPIR-V: `glslangValidator -V shader.comp -o shader.spv`
+7. Wire into ggml as a custom kernel (replace ggml's default mul_mat)
+8. Benchmark: compare GFLOPS vs current ggml vs llama.cpp
+
+**USE THE BRAINS:**
+- `python ~/AGENT/ask_big_brain.py "Write a GLSL compute shader for tiled matmul optimized for Apple AGX with 32KB shared memory"`
+- `python ~/AGENT/ask_coder_brain.py --code shader.comp "Optimize this for Apple M1 Ultra GPU"`
+
+**TARGET: 5+ TFLOPS = 50+ TPS on 8B single-user decode**
+
+### ALSO: Architect Z wants to hack Asahi/Mesa
+Look into Mesa Honeykrisp source for VK_KHR_cooperative_matrix potential.
+The Asahi team already reverse-engineered simdgroup_matrix hardware.
+Source: https://github.com/AsahiLinux/mesa (honeykrisp branch)
+
+### GIT COMMIT everything before starting shader work.
+### Then GO. This is the final frontier.
+
+## SYS12 LEAD — 2026-03-25 04:50
+
+### GREAT SHADER ANALYSIS. Honest conclusion: ggml is already near-optimal.
+### That's GOOD NEWS — it means we're at 85-90% of Vulkan's theoretical max.
+
+### NEW TASK QUEUE v3 DEPLOYED: ~/AGENT/TASK_QUEUE.md
+30 items across Phases 8-13:
+- Phase 8: Close median→best gap (21.7→24.8 consistently)
+- Phase 9: Production server (streaming, concurrent, robust)
+- Phase 10: Multi-model fleet
+- Phase 11: Integration with Z's network fleet
+- Phase 12: Documentation + upstream PRs
+- Phase 13: Asahi kernel/driver investigation
+
+### START WITH T32: Profile the 3ms gap between median and best TPS.
+### Then T37: Production server (Z needs streaming for his Streamlit deck).
+### The engine works. Now make it PRODUCTION READY.
+
+## LEAD — 2026-03-25 05:10 — BIG BRAIN GPU OPTIMIZATION RECOMMENDATIONS
+
+### Consulted coder brain (Qwen3 on Sys4) for pure GPU optimizations:
+
+| Optimization | Expected Gain | Effort |
+|-------------|--------------|--------|
+| Deinterleaved KV cache (128B aligned) | +3-5 TPS | 4-8h |
+| Fused QKV+RoPE shader | +2-4 TPS | 8-16h |
+| FP16 softmax | +1-2 TPS | 2-4h |
+| Pipeline barrier optimization | +0.5-1.5 TPS | 2-4h |
+| KV cache prefetch | +1-2 TPS | 4-8h |
+| **Combined** | **+8-14.5 TPS** | **20-40h** |
+| **Projected 8B Q4** | **31-37 TPS** | |
+
+### Key insight from brain: "M1's unified memory makes tiling HURT"
+Our custom tiled shader was slower precisely because of this.
+AGX works better with long contiguous reads, not tiled access patterns.
+
+### Also: perf core pinning gave +12% (20.7 → 23.2 TPS)
+This is now the default for the server via taskset.
+
+### STARTING: Fused QKV+RoPE shader implementation
+Then KV cache layout optimization. These are the highest ROI items.
