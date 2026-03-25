@@ -1,0 +1,31 @@
+{
+  "fleet": {
+    "sys0": {
+      "ip": "10.255.255.128",
+      "role": "compute",
+      "gpu": "M1 Ultra 128GB",
+      "capabilities": ["vulkan_inference", "ggml_engine", "model_loading"],
+      "models": ["llama-8b-q4", "qwen-32b-q4", "gpt-oss-120b-mxfp4"]
+    },
+    "sys4": {
+      "ip": "10.255.255.4",
+      "port": 8000,
+      "role": "coder",
+      "model": "Qwen3-Coder-Next",
+      "capabilities": ["code_generation", "debugging", "shader_writing"]
+    },
+    "cluster": {
+      "ip": "10.255.255.11",
+      "port": 8000,
+      "role": "reasoning",
+      "model": "Qwen3.5-122B-A10B-FP8",
+      "capabilities": ["architecture_design", "debugging", "research"]
+    }
+  },
+  "task_routing": {
+    "code_tasks": "sys4",
+    "architecture_tasks": "cluster",
+    "inference_tasks": "sys0",
+    "debugging": "cluster"
+  }
+}
