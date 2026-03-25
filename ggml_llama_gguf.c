@@ -262,7 +262,6 @@ int engine_warmup(engine_t *e) {
     e->kv_used = 0;
     free(logits);
     fprintf(stderr, "[gguf] Warmup complete — 3 passes, scheduler fully primed\n");
-    return 0;
 }
 
 /* Forward pass — same as ggml_llama_full.c but works with any weight type */
