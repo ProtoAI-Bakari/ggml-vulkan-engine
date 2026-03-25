@@ -75,6 +75,10 @@ class GgmlModelWrapper(torch.nn.Module):
         tokens_np = input_ids.cpu().numpy().astype(np.int32)
         positions_np = positions.cpu().numpy().astype(np.int32)
 
+        # Reset KV cache when new request starts (position 0 present)
+        if positions_np.min() == 0:
+            _lib.engine_reset_kv(self._engine)
+
         # Allocate output — hidden_states (4096) or logits (vocab_size)
         out_dim = self.hidden_dim if self.return_hidden else self.vocab_size
         logits_np = np.empty((n_tokens, out_dim), dtype=np.float32)
