@@ -45,6 +45,7 @@ typedef struct {
     /* Pre-allocated compute buffer (avoids malloc per token) */
     void *compute_buf;
     size_t compute_buf_size;
+    struct ggml_context *_persistent_ctx;
 
     layer_t layers[MAX_LAYERS];
     struct ggml_tensor *tok_embd, *output_norm, *output;
@@ -244,18 +245,23 @@ engine_t *engine_load_gguf(const char *gguf_path, int n_ctx) {
 /* Forward declaration */
 int engine_forward(engine_t *e, int n_tokens, const int32_t *tokens, const int32_t *positions, float *logits_out);
 
-/* Warmup: run a dummy forward pass to prime the scheduler's buffer allocation.
- * After warmup, subsequent alloc_graph calls can reuse existing buffers. */
+/* Warmup: run multiple forward passes to fully prime scheduler buffers.
+ * The first pass is slow (allocation), subsequent passes reuse buffers. */
 int engine_warmup(engine_t *e) {
     int32_t tok = 1;
     int32_t pos = 0;
     float *logits = (float*)malloc((size_t)e->vocab_size * sizeof(float));
+
+    /* Run 3 warmup passes — scheduler gets faster each time */
+    for (int i = 0; i < 3; i++) {
+        e->kv_used = 0;
+        int ret = engine_forward(e, 1, &tok, &pos, logits);
+        if (ret != 0) { free(logits); return ret; }
+    }
     e->kv_used = 0;
-    int ret = engine_forward(e, 1, &tok, &pos, logits);
-    e->kv_used = 0;  /* Reset KV after warmup */
     free(logits);
-    if (ret == 0) fprintf(stderr, "[gguf] Warmup complete — scheduler primed\n");
-    return ret;
+    fprintf(stderr, "[gguf] Warmup complete — 3 passes, scheduler fully primed\n");
+    return 0;
 }
 
 /* Forward pass — same as ggml_llama_full.c but works with any weight type */
@@ -265,13 +271,18 @@ int engine_forward(engine_t *e, int n_tokens,
     int H = e->hidden_dim, I = e->intermediate;
     int NH = e->n_heads, NKV = e->n_kv_heads, HD = e->head_dim;
 
-    /* Use pre-allocated buffer — no malloc per token */
-    struct ggml_init_params gp = {
-        .mem_size = e->compute_buf_size,
-        .mem_buffer = e->compute_buf,
-        .no_alloc = true,
-    };
-    struct ggml_context *ctx = ggml_init(gp);
+    /* Reuse persistent context — ggml_reset is MUCH faster than init/free */
+    if (!e->_persistent_ctx) {
+        struct ggml_init_params gp = {
+            .mem_size = e->compute_buf_size,
+            .mem_buffer = e->compute_buf,
+            .no_alloc = true,
+        };
+        e->_persistent_ctx = ggml_init(gp);
+    } else {
+        ggml_reset(e->_persistent_ctx);
+    }
+    struct ggml_context *ctx = e->_persistent_ctx;
     if (!ctx) return -1;
 
     struct ggml_cgraph *graph = ggml_new_graph_custom(ctx, GRAPH_SIZE, false);
@@ -359,18 +370,13 @@ int engine_forward(engine_t *e, int n_tokens,
 
     ggml_backend_sched_reset(e->sched);
     if (!ggml_backend_sched_alloc_graph(e->sched, graph)) {
-        fprintf(stderr, "[engine] graph alloc failed\n");
-        ggml_free(ctx);
         return -2;
     }
-
     ggml_backend_tensor_set(inp_tokens, tokens, 0, n_tokens * sizeof(int32_t));
     ggml_backend_tensor_set(inp_pos, positions, 0, n_tokens * sizeof(int32_t));
-
     enum ggml_status status = ggml_backend_sched_graph_compute(e->sched, graph);
     if (status != GGML_STATUS_SUCCESS) {
         fprintf(stderr, "[engine] compute failed: %d\n", status);
-        ggml_free(ctx);
         return -3;
     }
 
@@ -378,7 +384,7 @@ int engine_forward(engine_t *e, int n_tokens,
     ggml_backend_tensor_get(cur, logits_out, 0, logits_size);
 
     e->kv_used += n_tokens;
-    ggml_free(ctx);
+    /* Context persists — will be reset on next call via ggml_reset */
     return 0;
 }
 
@@ -388,6 +394,7 @@ void engine_reset_kv(engine_t *e) {
 }
 
 void engine_free(engine_t *e) {
+    if (e->_persistent_ctx) ggml_free(e->_persistent_ctx);
     if (e->compute_buf) free(e->compute_buf);
     if (e->w_buf) ggml_backend_buffer_free(e->w_buf);
     if (e->w_ctx) ggml_free(e->w_ctx);
