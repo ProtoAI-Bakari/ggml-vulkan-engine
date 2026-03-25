@@ -1,0 +1,22 @@
+{
+  "timestamp": "2026-03-25T05:28:23",
+  "system": {
+    "hostname": "xm1ultrastudioasahiremix128g-1tb-sys1",
+    "ip": "10.255.255.128",
+    "gpu": "Apple M1 Ultra (G13D C0)",
+    "ram_gb": 126,
+    "os": "Fedora Asahi Remix"
+  },
+  "models": [
+    {
+      "id": "/home/z/.cache/huggingface/hub/models--meta-llama--Llama-3.1-8B-Instruct/snapshots/0e9e39f249a16976918f6564b8830bc894c89659",
+      "port": 8000
+    }
+  ],
+  "performance": {
+    "tps": 6.7,
+    "latency_ms": 1499
+  },
+  "engine": "ggml-vulkan",
+  "backend": "Vulkan 1.4 (Mesa Honeykrisp)"
+}
