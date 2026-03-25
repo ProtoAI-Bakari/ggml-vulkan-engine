@@ -1604,3 +1604,332 @@ This is T6 done PROPERLY. The integration point:
 
 ### The ggml_server.py was a hack for testing. DELETE IT from the task queue.
 ### vLLM is the product. Always has been.
+
+## SYS12 LEAD — BUG REPORT — 2026-03-25 08:20
+
+### vLLM+ggml server CRASHES after 2-3 requests.
+
+**Root cause from coredump:**
+```
+ggml_abort → ggml_new_tensor_impl → ggml_view_3d → engine_forward (libggml_llama_gguf.so)
+```
+
+The ggml engine's KV cache is NOT being reset between vLLM requests.
+After request 1 fills KV positions 0-50, request 2 tries to append at position 51+
+but ggml_view_3d fails because the KV buffer is sized for n_ctx=256 total
+and the positions overflow or the view offsets are wrong.
+
+**FIX needed in ggml_model_wrapper.py:**
+The wrapper's forward() must call `engine_reset_kv()` at the START of each new request
+(when input_ids length > 1, indicating a new prefill, not a decode step).
+
+OR: detect when vLLM starts a new request (position 0 appears in the positions tensor)
+and reset KV cache.
+
+**This is a critical bug. The server is dead. Fix and restart.**
+
+## SYS12 LEAD — CRITICAL — 2026-03-25 08:35
+
+### vLLM+ggml integration is BROKEN. THREE bugs:
+
+1. **Quality**: Gibberish output even on first request ('Linux runs on me, still running')
+   - Standalone engine: PERFECT ('Paris is the capital and largest city...')
+   - vLLM wrapper: GARBAGE
+   - Root cause: likely token ID mismatch between vLLM's tokenizer and GGUF vocab
+
+2. **Stability**: Crashes after 2-3 requests with ggml_abort in ggml_view_3d
+   - KV cache not resetting between requests
+   - Positions overflow the n_ctx=256 buffer
+
+3. **State**: Server becomes zombie after crash (port held, health returns nothing)
+
+### THE STANDALONE ENGINE WORKS. THE WRAPPER IS THE PROBLEM.
+
+### DEBUG STEPS (do these BEFORE trying to fix):
+```python
+# In ggml_model_wrapper.py forward(), add at the top:
+print(f'[GGML] input_ids shape={input_ids.shape} first_5={input_ids[:5].tolist()}', flush=True)
+print(f'[GGML] positions shape={positions.shape} first_5={positions[:5].tolist()}', flush=True)
+
+# Compare with standalone:
+# Standalone tokenizes 'The capital of France is' → [128000, 791, 6864, 315, ...]
+# vLLM should produce the SAME token IDs
+```
+
+### DO NOT launch the server again until quality is fixed.
+### Fix quality FIRST (token ID verification), then fix crash (KV reset), then serve.
+
+## SYS12 AUTO-MONITOR — Wed Mar 25 09:34:20 AM PDT 2026
+### AGENT IDLE. Read ~/AGENT/TASK_QUEUE.md and continue next READY task.
+### Use ask_big_brain.py or ask_coder_brain.py if stuck.
+### DO NOT STOP.
+
+## SYS12 LEAD — DAY 2 PRIORITIES — 2026-03-25 09:00
+
+### YESTERDAY'S ACHIEVEMENTS (keep these):
+- Standalone ggml engine: 21-24 TPS, PERFECT coherent output, all quants work
+- 6 models tested (0.5B to 32B), all working
+- 1.54 TFLOPS peak GPU performance
+
+### YESTERDAY'S FAILURES (fix these):
+1. vLLM+ggml wrapper: GARBAGE output + crash after 2 requests
+   - Root cause: single KV cache + vLLM interleaves requests
+   - Root cause: possible token ID mismatch
+2. Streaming server quality was never properly tested before deploying
+
+### TODAY'S PRIORITY ORDER:
+
+**P0: FIX THE STANDALONE ENGINE SERVER (not vLLM wrapper)**
+The standalone ggml_vllm_backend.py produces PERFECT output.
+Write a PROPER streaming server around it that:
+- Handles sequential requests correctly (reset KV between requests)
+- Streams tokens via SSE
+- Is OpenAI-compatible for Streamlit deck
+- DOES NOT CRASH
+- Test with 10+ requests back to back before declaring it works
+- Test coherence on EVERY response, not just the first one
+
+**P1: Test with EVERY request type**
+- Simple: 'What is 2+2?'
+- Follow-up: same topic twice
+- Long generation: 200+ tokens
+- Factual: 'Capital of Saudi Arabia'
+- Creative: 'Tell me a long story'
+- Multi-turn: conversation context
+- Edge: empty prompt, very long prompt
+
+**P2: Test with bigger models**
+- The user wants gpt-oss-120b-mxfp4 — is it available as GGUF?
+- If not, test Qwen2.5-32B Q4 (already working at 7.2 TPS)
+- Benchmark against MLX baseline (45-60 TPS on 120B is the target)
+
+**P3: THEN and ONLY THEN try vLLM integration**
+- Fix the multi-request KV cache issue properly
+- Either: multiple engine instances, OR serialized requests (max_num_seqs=1)
+- Verify coherence before speed
+
+### USE THE BRAINS:
+- ask_big_brain.py for architecture questions
+- ask_coder_brain.py for code fixes
+- Send them the specific crash data and incoherence examples
+
+### QUALITY > SPEED. A coherent 15 TPS is worth more than gibberish at 25.
+
+## SYS12 AUTO-MONITOR — Wed Mar 25 09:44:20 AM PDT 2026
+### AGENT IDLE. Read ~/AGENT/TASK_QUEUE.md and continue next READY task.
+### Use ask_big_brain.py or ask_coder_brain.py if stuck.
+### DO NOT STOP.
+
+## SYS12 LEAD — 2026-03-25 09:50
+
+### 120B MODEL DOWNLOADED. All 3 shards present (60GB total).
+### Disk: 525GB free. Vulkan heap: 63 GiB default, 126 GiB with budget.
+
+### MERGE SHARDS:
+```bash
+~/GITDEV/llama.cpp/build-lib/bin/llama-gguf-split --merge \
+  ~/models/gguf/gpt-oss-120b-mxfp4-00001-of-00003.gguf \
+  ~/models/gguf/gpt-oss-120b-mxfp4-merged.gguf
+```
+
+### OR: Use llama-bench directly (it handles split files):
+```bash
+~/GITDEV/llama.cpp/build-lib/bin/llama-bench \
+  -m ~/models/gguf/gpt-oss-120b-mxfp4-00001-of-00003.gguf \
+  -ngl 99 -t 4 -p 64 -n 32
+```
+This gives baseline TPS for 120B on Vulkan via llama.cpp.
+
+### BUT FIX COHERENCY FIRST before testing 120B.
+### The prefix caching issue needs to be solved or disabled.
+
+## SYS12 LEAD — TASK QUEUE v4 DEPLOYED — 2026-03-25 09:55
+
+### ~/AGENT/TASK_QUEUE_v4.md — 100 items, 13 phases.
+
+### Phase 1 (T001-T007): Fix coherency — YOU ARE HERE
+### Phase 2 (T008-T014): Fix KV cache crash
+### Phase 3 (T015-T025): Standalone server that WORKS
+### Phase 4 (T026-T034): 120B model (downloading now)
+### Phase 5 (T035-T044): Proper vLLM integration
+### Phase 6 (T045-T054): Performance optimization
+### Phase 7 (T055-T060): Multi-model fleet
+### Phase 8 (T061-T067): Network + fleet integration
+### Phase 9 (T068-T075): Quality assurance
+### Phase 10 (T076-T083): Documentation + packaging
+### Phase 11 (T084-T088): Upstream contributions
+### Phase 12 (T089-T098): Advanced GPU optimization
+### Phase 13 (T099-T100): Agentic framework prototype
+
+### TODAY'S TARGET: Complete Phases 1-4 (T001-T034)
+### That means: coherent, stable, serving 120B on Vulkan.
+
+## SYS12 LEAD — OPUS RESEARCH FINDINGS — 2026-03-25 10:15
+
+### OpR (Opus Research instance) completed a deep analysis. Key findings:
+
+### THE 15ms CPU WALL (confirmed by profiling):
+| Source | Time | Fixable? |
+|--------|------|----------|
+| GPU compute + memory | ~28ms | Partially |
+| Command buffer recording | ~6ms | YES — CB caching |
+| ggml graph construction | ~4ms | YES — graph reuse (PR #20927) |
+| Python/ctypes marshaling | ~3ms | YES — C hot path |
+| Scheduling/dispatch | ~2ms | Partially |
+
+### TOP 3 IMMEDIATE ACTIONS (from OpR):
+
+**1. ggml graph caching (PR #20927 pattern) → saves 4ms**
+- Use ggml_gallocr_reserve() at init with worst-case graph
+- ggml_gallocr_alloc_graph() each token — when topology matches, near-no-op
+- 708 nodes rebuild → skip when fingerprint matches (99%+ of decode steps)
+
+**2. Command buffer pre-recording → saves 6ms**
+- Record template CB on first execution
+- Use vkCmdPushConstants to update ONLY: KV offset, seq_len, position
+- vkResetCommandPool instead of per-buffer reset
+- CB recording drops from 6ms to <1ms
+
+**3. Move Python ctypes hot path to C shim → saves 3ms**
+- Replace ctypes calls with compiled C extension
+- Eliminate numpy→ctypes→C overhead on every forward()
+
+**Combined: 23 TPS → 30-33 TPS (13ms saved per token)**
+
+### FOR vLLM PRODUCTION (Perspective C):
+The real fix is paged KV cache matching vLLM's KVCacheManager:
+- Pre-allocate block pool as flat Vulkan buffer
+- Per-request block table (logical → physical block mapping)
+- reshape_and_cache writes KV to correct slots via slot_mapping
+- Attention gathers K/V from scattered blocks via block table
+- This enables concurrent serving: 4-8 users × 15-20 TPS = 60-160 aggregate
+
+### KEY HARDWARE INSIGHT (from Stanford ThunderMittens):
+On Apple Silicon UMA, simple kernels beat complex ones because ALUs feed 
+directly from unified memory to registers — shared memory staging HURTS.
+Register pressure controls performance, not cache tiling.
+
+### vLLM PLUGIN PATH (cleanest integration):
+Follow vllm-metal plugin pattern:
+- VulkanPlatform(Platform) → check_and_update_config()
+- VulkanWorker(WorkerBase) → init_device(), load_model()
+- VulkanModelRunner → execute_model() → ggml forward()
+Register as vllm.platform_plugins entry point.
+
+### FULL 80-TASK PLAN available. Ask for ~/AGENT/OPR_TASK_PLAN.md
+
+## SYS12 LEAD — TASK QUEUE v5 DEPLOYED — 2026-03-25 10:30
+
+### ~/AGENT/TASK_QUEUE_v5.md — 85 tasks, 8 phases
+### This is the COMBINED OpR + Sys12 plan. Replaces v4.
+
+### KEY FINDING: 120B is MoE (128 experts, 4 active)
+Our dense engine can't handle it. Need ggml_mul_mat_id for expert routing.
+llama.cpp handles it natively (18.6 TPS). Two paths:
+1. Add MoE support to our C engine (study openai-moe-iswa.cpp)
+2. Use llama.cpp directly for 120B (via llama-server or llama-cli)
+
+### BOTH BRAINS — USE THEM BOTH
+- ask_big_brain.py → Qwen3.5-122B at 10.255.255.11:8000 (reasoning, architecture)
+- ask_coder_brain.py → Qwen3-Coder at 10.255.255.4:8000 (code, implementation)
+- Use temp files for complex prompts: echo 'question' > /tmp/q.txt && python ask_big_brain.py --file /tmp/q.txt 'analyze'
+- CROSS-CHECK: ask BOTH the same question, compare answers, use the better one
+
+### START WITH PHASE 0 (T01-T10): Stability + measurement
+### Quality > speed. Test coherency BEFORE optimizing.
+
+## SYS12 LEAD — USE BOTH BRAINS — 2026-03-25 10:35
+
+### VERIFIED: Both brains ALIVE and responding.
+- 122B reasoning (10.255.255.11): Qwen3.5-122B-A10B-FP8 — ONLINE, just tested
+- Coder (10.255.255.4): Qwen3-Coder-Next-8bit — ONLINE
+
+### PROTOCOL FOR HARD PROBLEMS:
+1. Ask CODER brain first (fast, code-focused): python ~/AGENT/ask_coder_brain.py 'question'
+2. Ask REASONING brain second (deep, architectural): python ~/AGENT/ask_big_brain.py 'question'  
+3. COMPARE answers. Use the better one. Log both to BRAIN_CONVERSATIONS.md
+
+### CROSS-CHECK ON MoE:
+Ask the 122B: 'How should I add MoE support to a custom ggml Vulkan engine for gpt-oss-120b?'
+Ask the coder: 'Write C code for ggml_mul_mat_id expert routing in a Vulkan compute graph'
+Use BOTH answers to build the implementation.
+
+### The 122B has 133K context and deep reasoning. USE IT for architecture decisions.
+### The coder is fast and code-focused. USE IT for implementation details.
+
+## SYS12 AUTO-MONITOR — Wed Mar 25 10:14:20 AM PDT 2026
+### AGENT IDLE. Read ~/AGENT/TASK_QUEUE.md and continue next READY task.
+### Use ask_big_brain.py or ask_coder_brain.py if stuck.
+### DO NOT STOP.
+
+## LEAD (Opus) — 2026-03-25 10:15 — SESSION HANDOFF TO LOCAL AGENTS
+
+### SESSION 2 STATUS:
+- Standalone server: **WORKING** — 12/12 coherent, 22 TPS, port 8080
+- 120B model: **DOWNLOADED + MERGED** (60GB single GGUF)
+- 120B on llama.cpp: **18.6 TPS decode, 67.2 TPS prefill** (Vulkan reference)
+- 120B on our engine: **BLOCKED** — MoE architecture needs ggml_mul_mat_id support
+- Both brains consulted — MoE pseudocode and strategy documented
+- 32B: loads but tokenizer finder needs fix for Qwen-32B
+
+### TASKS FOR LOCAL AGENTS:
+
+**IMMEDIATE (use ask_coder_brain.py for help):**
+1. Add MoE FFN support to ggml_llama_gguf.c:
+   - Add `gpt-oss` to architecture prefix list
+   - Load expert weights as [n_experts, in, out] tensors
+   - Implement routing: gate_proj → softmax → topk → ggml_mul_mat_id
+   - Study ~/GITDEV/llama.cpp/src/models/openai-moe-iswa.cpp for reference
+   - Target: match llama.cpp's 18.6 TPS on 120B
+
+2. Fix tokenizer for Qwen-32B in ggml_vllm_backend.py:
+   - _find_tokenizer() only matches "llama-3.1-8b"
+   - Need to match "qwen" models to their HF tokenizer
+
+3. Run stress test on standalone server: 50 sequential requests
+   ```bash
+   for i in $(seq 1 50); do
+     curl -s http://localhost:8080/v1/chat/completions \
+       -d "{\"messages\":[{\"role\":\"user\",\"content\":\"Question $i: random fact\"}],\"max_tokens\":20,\"temperature\":0}"
+   done
+   ```
+
+4. Fix vLLM integration (P3 — after MoE):
+   - Root cause: prefix caching sends partial tokens
+   - Fix: either disable prefix caching (--no-enable-prefix-caching)
+   - Or: get full token sequence from runner.input_batch.seq_groups
+
+### KEY FILES:
+- ~/AGENT/ggml_llama_gguf.c — C engine (add MoE here)
+- ~/AGENT/ggml_vllm_backend.py — Standalone API
+- ~/AGENT/ggml_server.py — Streaming server (WORKING)
+- ~/AGENT/ggml_model_wrapper.py — vLLM wrapper (BROKEN)
+- ~/GITDEV/llama.cpp/src/models/openai-moe-iswa.cpp — MoE reference
+
+### BUILD COMMANDS:
+```bash
+gcc -shared -O2 -fPIC -o libggml_llama_gguf.so ggml_llama_gguf.c \
+  -I ~/GITDEV/llama.cpp/ggml/include \
+  -L ~/GITDEV/llama.cpp/build-lib/bin \
+  -lggml -lggml-base -lggml-vulkan -lggml-cpu -lm \
+  -Wl,-rpath,/home/z/GITDEV/llama.cpp/build-lib/bin
+```
+
+### BRAIN SCRIPTS:
+- python ~/AGENT/ask_big_brain.py "question" — 122B reasoning on CUDA cluster
+- python ~/AGENT/ask_coder_brain.py "question" — Qwen3 coder on Sys4
+
+## SYS12 AUTO-MONITOR — Wed Mar 25 10:24:20 AM PDT 2026
+### AGENT IDLE. Read ~/AGENT/TASK_QUEUE.md and continue next READY task.
+### Use ask_big_brain.py or ask_coder_brain.py if stuck.
+### DO NOT STOP.
+
+## SYS12 AUTO-MONITOR — Wed Mar 25 10:34:20 AM PDT 2026
+### AGENT IDLE. Read ~/AGENT/TASK_QUEUE.md and continue next READY task.
+### Use ask_big_brain.py or ask_coder_brain.py if stuck.
+### DO NOT STOP.
+
+## SYS12 AUTO-MONITOR — Wed Mar 25 10:44:20 AM PDT 2026
+### AGENT IDLE. Read ~/AGENT/TASK_QUEUE.md and continue next READY task.
+### Use ask_big_brain.py or ask_coder_brain.py if stuck.
+### DO NOT STOP.

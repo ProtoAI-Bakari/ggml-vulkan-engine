@@ -1,0 +1,461 @@
+{
+  "timestamp": "2026-03-25T13:25:04.107362",
+  "total": 50,
+  "coherent": 49,
+  "coherence_pct": 98.0,
+  "avg_tps": 21.9,
+  "results": [
+    {
+      "prompt": "What is 2 + 2?",
+      "output": " -2\nWhat is 2 + 2? -2\nWhen you add 2 + 2, the answer is 4, not",
+      "tps": 21.86965684205318,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.86
+    },
+    {
+      "prompt": "Calculate 15 * 16",
+      "output": "\nCalculate 15 * 16 = 240\nCalculate 15 * 16 = 240\n15 * 16 = 240\nCalculate",
+      "tps": 21.903329813939006,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.0
+    },
+    {
+      "prompt": "What is the capital of France?",
+      "output": " The capital of France is Paris. France is the largest country in Europe, and Paris is the country's largest city. The city is the seat of",
+      "tps": 21.901152583978856,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.09
+    },
+    {
+      "prompt": "Who wrote Romeo and Juliet?",
+      "output": " William Shakespeare wrote Romeo and Juliet. Romeo and Juliet is a tragedy written by William Shakespeare. Romeo and Juliet is a story about two young lovers who fall",
+      "tps": 21.536045461479084,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.03
+    },
+    {
+      "prompt": "What year did World War II end?",
+      "output": " 1945\nWho was the President of the United States at the end of World War II? Franklin D. Roosevelt\nWho was the President of",
+      "tps": 21.856374054577838,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.87
+    },
+    {
+      "prompt": "Write a short poem about the ocean.",
+      "output": " Ocean poem ideas. Create a poem about the ocean using any of the following ideas: The ocean is vast, The ocean is deep, The ocean is",
+      "tps": 21.879932359196367,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.87
+    },
+    {
+      "prompt": "Tell me a joke about programmers.",
+      "output": " Here is a joke about programmers:\nWhy do programmers prefer dark beer?\nBecause it is the only way to get them to talk about their code.\nI",
+      "tps": 21.87837170698551,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.09
+    },
+    {
+      "prompt": "Write a Python function to compute factorial:",
+      "output": " factorial function will take an integer as input and return the factorial of that number. The function should return 0 for inputs 0 and 1.\n",
+      "tps": 21.816940963581956,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.87
+    },
+    {
+      "prompt": "Explain what artificial intelligence is in simple terms.",
+      "output": " Artificial intelligence is a technology that is used to make, something, or to analyze data for a computer or a machine. It is also used to make",
+      "tps": 21.889206857131455,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.87
+    },
+    {
+      "prompt": "Hello",
+      "output": " everyone, today I want to share with you the story of my grandma. Her name is Dina and she was an amazing woman. I will share",
+      "tps": 22.037325012516742,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.8
+    },
+    {
+      "prompt": "The quick brown fox jumps over the lazy dog.",
+      "output": " The dog does not jump, he runs. The fox is fast. The fox is quick. The dog is lazy. The fox is brown. The",
+      "tps": 21.93670497979459,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.86
+    },
+    {
+      "prompt": "What is the largest planet in our solar system?",
+      "output": " The largest planet in our solar system is Jupiter. It is the fifth planet from the sun and the largest of all the planets. Jupiter is a gas",
+      "tps": 21.98552086519893,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.86
+    },
+    {
+      "prompt": "How do I bake a chocolate cake?",
+      "output": " A recipe.\nHow do I bake a cake? A recipe.\nHow do I make a cake? A recipe.\nHow do I make a cake?",
+      "tps": 21.80747883330601,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.89
+    },
+    {
+      "prompt": "What is the meaning of life?",
+      "output": " Is it to find happiness? The meaning of life is a mystery that has been debated by philosophers, theologians, and scientists for centuries. There is",
+      "tps": 21.841546543509892,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.1
+    },
+    {
+      "prompt": "List 5 fruits.",
+      "output": " You can start with any fruit you like.\nI'll start with an apple.\nSome people call it a pomme.\nIn French, it's called",
+      "tps": 21.77830895954161,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.95
+    },
+    {
+      "prompt": "What is photosynthesis?",
+      "output": " What is the equation for photosynthesis?\nPhotosynthesis is the process by which green plants and some other organisms use sunlight to synthesize foods from carbon dioxide",
+      "tps": 21.994303463279543,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.95
+    },
+    {
+      "prompt": "Who was Albert Einstein?",
+      "output": " A brief introduction\nAlbert Einstein was a brilliant physicist who is widely regarded as one of the most influential scientists of the 20th century. He is",
+      "tps": 21.9937300517735,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.95
+    },
+    {
+      "prompt": "Write a haiku about mountains.",
+      "output": " A haiku is a type of poetry that is written in a specific pattern, which includes. A haiku is a type of poetry that is written",
+      "tps": 21.88413656102944,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.09
+    },
+    {
+      "prompt": "What is the capital of Japan?",
+      "output": " Tokyo is the capital city of Japan.\nWhat is the capital of Japan?\nTokyo is the capital city of Japan. The city of Tokyo is located",
+      "tps": 21.987205164686973,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.08
+    },
+    {
+      "prompt": "Explain quantum computing in 2 sentences.",
+      "output": " 3. Can you explain quantum computing in 2 sentences? 4. Can you explain quantum computing in 2 sentences? 5. Can",
+      "tps": 21.906036401461655,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.87
+    },
+    {
+      "prompt": "What is 100 / 4?",
+      "output": " is the same as 100 \u00f7 4?\n## Step 1: Understand the problem\nWe need to determine if \"What is 100",
+      "tps": 21.6372253480809,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.88
+    },
+    {
+      "prompt": "Name 3 colors of the rainbow.",
+      "output": " The colors of the rainbow are: red, orange, yellow, green, blue, indigo, and violet. So, the 3 colors of",
+      "tps": 21.961287842890183,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.87
+    },
+    {
+      "prompt": "What is the boiling point of water?",
+      "output": " The boiling point of water is 100\u00b0C (212\u00b0F) at sea level. At higher elevations, the boiling point of water is lower due",
+      "tps": 21.942587733741,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.87
+    },
+    {
+      "prompt": "Who painted the Mona Lisa?",
+      "output": " Leonardo da Vinci painted the Mona Lisa.\nThe Mona Lisa is a portrait of a woman who is thought to be Lisa Gualdo, the wife of",
+      "tps": 21.82094167611723,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.02
+    },
+    {
+      "prompt": "Write a short story about a cat.",
+      "output": " Spinning is a type of activity that cats enjoy. This story can be a play on words. The story will be about a cat named Luna who",
+      "tps": 21.81767617893546,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.88
+    },
+    {
+      "prompt": "What is the speed of light?",
+      "output": " How fast is light? The speed of light is a fundamental constant of nature. It is a universal speed that is used as a reference point for measuring",
+      "tps": 21.91143837252889,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.09
+    },
+    {
+      "prompt": "How many continents are there?",
+      "output": " There are 7 continents.\nAfrica is the continent where the first humans lived.\nAsia is the continent where the largest population lives.\nEurope is the continent",
+      "tps": 21.895323763352426,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.02
+    },
+    {
+      "prompt": "What is the largest ocean?",
+      "output": " The largest ocean is the Pacific Ocean. It is the largest of the world's five oceans and it covers approximately 155.6 million square kilometers.\n",
+      "tps": 21.920579427751456,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.0
+    },
+    {
+      "prompt": "Who wrote Harry Potter?",
+      "output": " J.K. Rowling, a British author, wrote the Harry Potter series. The first book, \"Harry Potter and the Philosopher's Stone,\" was",
+      "tps": 22.010041358829334,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.94
+    },
+    {
+      "prompt": "What is the chemical symbol for gold?",
+      "output": " \u2013 Gold is a chemical element with the symbol Au and atomic number 79. Gold is a chemical element with the symbol Au and atomic number 79",
+      "tps": 21.95398370514051,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.86
+    },
+    {
+      "prompt": "What is 7 * 8?",
+      "output": " (That is, 7 multiplied by 8.)\n7 * 8 = 56\nWhat is 7 \u00d7 8? (That is",
+      "tps": 21.933846380269987,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.86
+    },
+    {
+      "prompt": "Name 4 seasons of the year.",
+      "output": " Name 4 seasons of the year.\nName 4 seasons of the year. Name 4 seasons of the year.\nName 4 seasons of the",
+      "tps": 21.973265178271348,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.87
+    },
+    {
+      "prompt": "What is the capital of Germany?",
+      "output": " Berlin is the capital of Germany. Berlin is located in the northeastern part of Germany. It is the country\u2019s largest city and is home to many famous",
+      "tps": 21.99302872410476,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.08
+    },
+    {
+      "prompt": "Who discovered penicillin?",
+      "output": " Alexander Fleming discovered penicillin in 1928. He observed that a mold had contaminated one of his bacterial cultures, and he realized that the mold",
+      "tps": 21.979509038854193,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.0
+    },
+    {
+      "prompt": "Write a limerick about a dog.",
+      "output": " The limerick should have five lines, the first, second, and last lines rhyme with each other, and the first, second, and last",
+      "tps": 21.871026447051477,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.88
+    },
+    {
+      "prompt": "What is the tallest mountain?",
+      "output": " The tallest mountain is Mount Everest, located in the Himalayas on the border between Nepal and Tibet. It stands at an elevation of 29,029",
+      "tps": 21.959362294906565,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.01
+    },
+    {
+      "prompt": "What is the square root of 144?",
+      "output": " What is the square root of 144? What is the square root of 144? What is the square root of 144? What is the",
+      "tps": 21.98790191974183,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.87
+    },
+    {
+      "prompt": "Name 3 types of clouds.",
+      "output": " Clouds are made up of water vapor or ice crystals. They come in different shapes and sizes. Here are three types of clouds: 1.",
+      "tps": 21.878685351384213,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.1
+    },
+    {
+      "prompt": "What is the currency of the UK?",
+      "output": " The currency of the UK is the pound sterling. It is divided into 100 pence.\nWhat is the currency of the UK? The currency of",
+      "tps": 21.812412652490913,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.88
+    },
+    {
+      "prompt": "Who was the first president of the US?",
+      "output": " George Washington\nWho was the second president of the US? John Adams\nWho was the third president of the US? Thomas Jefferson\nWho was the",
+      "tps": 21.877398033898,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.88
+    },
+    {
+      "prompt": "What is the freezing point of water?",
+      "output": "?\nThe freezing point of water is 0\u00b0C (32\u00b0F). At this temperature, water will freeze into ice. The freezing point is the temperature",
+      "tps": 21.85468164120576,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.88
+    },
+    {
+      "prompt": "How many days in a year?",
+      "output": " 365 days in a year, except for leap year, which has 366 days. Leap year occurs every four years.\nWhat is Leap Year?\n",
+      "tps": 21.89452758285987,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.09
+    },
+    {
+      "prompt": "What is the largest mammal?",
+      "output": " The largest mammal is the blue whale. On average, an adult blue whale can weigh around 50,000 pounds (22,680 kg)",
+      "tps": 21.894016519986792,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.09
+    },
+    {
+      "prompt": "Who wrote Pride and Prejudice?",
+      "output": " Jane Austen\nWhat is the name of the main character? Elizabeth Bennet\nWhat is the name of the love interest? Mr. Darcy",
+      "tps": 21.85442285260955,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.88
+    },
+    {
+      "prompt": "What is the capital of Italy?",
+      "output": " Rome\nWhat is the capital of Ireland? Dublin\nWhat is the capital of India? New Delhi\nWhat is the capital of Iceland? Reyk",
+      "tps": 21.821732546463316,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.11
+    },
+    {
+      "prompt": "Write a joke about cats.",
+      "output": " How do I write a joke about cats? Here are some tips to help you create a joke about cats:\n1. Start with a basic joke structure",
+      "tps": 21.860090591395554,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.01
+    },
+    {
+      "prompt": "What is 25 + 37?",
+      "output": " 25 + 37 = 62. What is 62 - 25? 62 - 25 = 37. What is 37",
+      "tps": 21.89591128184093,
+      "coherent": false,
+      "issues": [
+        "gibberish detected"
+      ],
+      "finish_reason": "length",
+      "latency_s": 2.87
+    },
+    {
+      "prompt": "Name 5 vegetables.",
+      "output": " 1. Broccoli 2. Cauliflower 3. Brussels sprouts 4. Asparagus 5. Carrots.\nThe five vegetables",
+      "tps": 21.91342381199373,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.96
+    },
+    {
+      "prompt": "What is the largest country by area?",
+      "output": " Russia is the largest country by area, covering more than 6.6 million square miles (17.2 million square kilometers). The country has the",
+      "tps": 21.946703840364158,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.86
+    },
+    {
+      "prompt": "Who invented the telephone?",
+      "output": " An invention that revolutionized the way people communicate, the telephone has become an essential tool for personal and professional communication. While there is no single inventor of",
+      "tps": 21.981244366758904,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.94
+    }
+  ]
+}

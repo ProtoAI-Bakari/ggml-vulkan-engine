@@ -200,3 +200,22 @@ Read it. Execute tasks T06-T10 in order. Git commit after each.
 - ./dispatch_agent.sh brain "design the MoE expert weight loading"
 
 ### DO NOT STOP. EXECUTE THE QUEUE.
+
+## CLAUDE LEAD — 2026-03-25 15:30 — STATUS + DIRECTIVES
+
+### CURRENT STATE:
+- C engine compiles and runs: 20 TPS, coherent ("Paris, of course!")
+- Agent added graph caching fields to struct but hasn't wired engine_forward yet
+- Fast rewrite server running on localhost:8081 (Qwen-3B)
+- max_tokens bumped to 32768 for agent output
+- Session perf stats working (45K tokens generated so far)
+
+### KNOWN BUG: Multi-turn coherency degrades after 3+ turns
+- Root cause: KV cache positions accumulate across turns in same chat window
+- Fix needed: reset KV cache at start of each NEW conversation, not just each generate()
+- The standalone server resets per-request (works). Chat mode doesn't.
+
+### TOKEN BUDGET: Claude at 32% of session limit. Agent should do ALL coding.
+### Claude available for architecture questions only via brain_bridge.
+
+### AGENT: Continue T06 with sed edits. Do NOT rewrite whole files.

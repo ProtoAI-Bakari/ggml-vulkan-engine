@@ -1,0 +1,174 @@
+// llama.cpp mul_mm.comp - ANNOTATED VERSION
+// This is the main GEMM (batch > 1) shader for Vulkan matmul
+// Source: llama.cpp/ggml/src/ggml-vulkan/vulkan-shaders/mul_mm.comp
+//
+// CRITICAL UNDERSTANDING:
+// - This shader handles BOTH the scalar FMA path and the cooperative matrix path
+// - On Apple Silicon (Honeykrisp), only the scalar path runs (no COOPMAT)
+// - The scalar path uses manual FMA chains with register-cached tile elements
+
+#version 450
+#extension GL_EXT_control_flow_attributes : enable
+#extension GL_EXT_shader_16bit_storage : require
+
+// ============================================================
+// SPECIALIZATION CONSTANTS (set at pipeline creation time)
+// ============================================================
+layout (constant_id = 0) const uint BLOCK_SIZE = 64;  // Threads per workgroup
+layout (constant_id = 1) const uint BM = 64;          // Tile rows (output)
+layout (constant_id = 2) const uint BN = 64;          // Tile columns (output)
+// constant_id = 3: BK for quant types (16 or 32)
+layout (constant_id = 4) const uint WM = 32;          // Warp tile M
+layout (constant_id = 5) const uint WN = 32;          // Warp tile N
+layout (constant_id = 6) const uint WMITER = 2;       // Warp M iterations
+layout (constant_id = 7) const uint TM = 4;           // Thread tile M
+layout (constant_id = 8) const uint TN = 2;           // Thread tile N
+layout (constant_id = 10) const uint WARP = 32;       // Subgroup size
+
+// For f16/f32: BK=32, BK_STEP=4 (hardcoded)
+// For quant:   BK=16, BK_STEP=2 (from constant_id 3)
+
+// ============================================================
+// SHARED MEMORY LAYOUT
+// ============================================================
+// SHMEM_STRIDE = BK/2 + 1 (scalar) or BK/2 + 4 (coopmat)
+// The +1 padding prevents bank conflicts for 32-wide access patterns
+// Data stored as vec2 pairs to maximize load efficiency
+
+#define SHMEM_STRIDE (BK / 2 + 1)
+shared FLOAT_TYPE_VEC2 buf_a[BM * SHMEM_STRIDE];  // A tile in shared memory
+shared FLOAT_TYPE_VEC2 buf_b[BN * SHMEM_STRIDE];  // B tile in shared memory
+// Size example: BM=128, BK=32 -> 128 * 17 * 4 = 8704 bytes per tile
+// Total: ~17 KB (fits in AGX 60 KB threadgroup memory)
+
+// ============================================================
+// PUSH CONSTANTS (per-dispatch parameters)
+// ============================================================
+layout (push_constant) uniform parameter {
+    uint M, N, K;                    // Matrix dimensions
+    uint stride_a, stride_b, stride_d;  // Row strides (in elements)
+    uint batch_stride_a, batch_stride_b, batch_stride_d;
+    uint base_work_group_z;          // For overflow handling
+    uint num_batches;
+    uint k_split;                    // Split-K partition size (0 = disabled)
+    uint ne02, ne12;                 // Broadcast dimensions
+    uint broadcast2, broadcast3;     // Broadcast factors
+} p;
+
+// ============================================================
+// WORKGROUP AND THREAD MAPPING
+// ============================================================
+void main() {
+    // STEP 1: Map workgroup to output tile
+    const uint blocks_m = (p.M + BM - 1) / BM;
+    const uint ir = gl_WorkGroupID.x % blocks_m;   // Row block index
+    const uint ik = gl_WorkGroupID.x / blocks_m;   // Split-K index (0 if no split)
+    const uint ic = gl_WorkGroupID.y;               // Column block index
+
+    // STEP 2: Map thread within workgroup to warp position
+    const uint NUM_WARPS = BLOCK_SIZE / WARP;
+    const uint warp_i = gl_LocalInvocationID.x / WARP;  // Which warp
+    const uint tiw = gl_LocalInvocationID.x % WARP;     // Lane within warp
+
+    const uint WNITER = (WM * WN) / (WARP * TM * TN * WMITER);
+    const uint WSUBM = WM / WMITER;
+    const uint WSUBN = WN / WNITER;
+
+    // Warp position within the BM x BN tile
+    const uint warp_r = warp_i % (BM / WM);  // Warp's row position
+    const uint warp_c = warp_i / (BM / WM);  // Warp's column position
+
+    // Thread position for reading from shared memory
+    const uint tiwr = tiw % (WSUBM / TM);
+    const uint tiwc = tiw / (WSUBM / TM);
+
+    // STEP 3: Map thread for loading from global memory
+    const uint loadr_a = gl_LocalInvocationID.x % (BK / LOAD_VEC_A);
+    const uint loadc_a = gl_LocalInvocationID.x / (BK / LOAD_VEC_A);
+    const uint loadstride_a = BLOCK_SIZE * LOAD_VEC_A / BK;
+
+    // ============================================================
+    // REGISTER ACCUMULATOR
+    // ============================================================
+    // Each thread maintains TM*TN/2 partial sums as vec2
+    // Total: WMITER * TM * WNITER * TN / 2 vec2 accumulators
+    ACC_TYPE_VEC2 sums[WMITER * TM * WNITER * TN / 2];
+    for (uint i = 0; i < WMITER*TM*WNITER*TN/2; i++) {
+        sums[i] = ACC_TYPE_VEC2(0.0f, 0.0f);
+    }
+
+    // ============================================================
+    // MAIN K-DIMENSION LOOP
+    // ============================================================
+    // This is the performance-critical inner loop
+    for (uint block = start_k; block < end_k; block += BK) {
+        // LOAD PHASE: Global -> Shared Memory
+        // load_a_to_shmem: Includes dequantization for quant types
+        // load_b_to_shmem: Direct load (B is always f16/f32)
+        [[unroll]] for (uint l = 0; l < BM; l += loadstride_a) {
+            load_a_to_shmem(pos_a, loadr_a, loadc_a + l, ...);
+        }
+        [[unroll]] for (uint l = 0; l < BN; l += loadstride_b) {
+            load_b_to_shmem(pos_b, loadr_b, loadc_b + l, ...);
+        }
+
+        barrier();  // All threads must finish loading before computing
+
+        pos_a += BK / LOAD_VEC_A;  // Advance A pointer
+        pos_b += BK / LOAD_VEC_B;  // Advance B pointer
+
+        // COMPUTE PHASE: Shared Memory -> Registers
+        // Process BK/BK_STEP iterations, each reading BK_STEP elements
+        [[unroll]] for (uint i = 0; i < BK / BK_STEP; i++) {
+            // Load A fragment from shared memory into registers
+            [[unroll]] for (uint wsir = 0; wsir < WMITER; wsir++) {
+                [[unroll]] for (uint j = 0; j < TM; j++) {
+                    // Each thread loads its portion of A
+                    cache_a[wsir * TM + j] = buf_a[...];
+                }
+            }
+
+            // Load B and compute FMA chain
+            [[unroll]] for (uint wsic = 0; wsic < WNITER; wsic++) {
+                [[unroll]] for (uint cc = 0; cc < TN; cc++) {
+                    cache_b = buf_b[...];
+                    [[unroll]] for (uint wsir = 0; wsir < WMITER; wsir++) {
+                        [[unroll]] for (uint cr = 0; cr < TM / 2; cr++) {
+                            // THE CORE FMA:
+                            // For f16: 2 FMA per iteration (vec2)
+                            // For f32: 4 FMA per iteration (vec4)
+                            sums[idx].x = fma(cache_a[...].x, cache_b.x,
+                                         fma(cache_a[...].y, cache_b.y,
+                                             sums[idx].x));
+                            sums[idx].y = fma(cache_a[...].x, cache_b.x,
+                                         fma(cache_a[...].y, cache_b.y,
+                                             sums[idx].y));
+                        }
+                    }
+                }
+            }
+        }
+
+        barrier();  // All threads must finish computing before next load
+    }
+
+    // ============================================================
+    // STORE RESULTS
+    // ============================================================
+    // Each thread writes its portion of the output tile
+    // Bounds checking for edge tiles where M or N doesn't divide evenly
+    [[unroll]] for (uint wsic = 0; wsic < WNITER; wsic++) {
+        [[unroll]] for (uint wsir = 0; wsir < WMITER; wsir++) {
+            [[unroll]] for (uint cc = 0; cc < TN; cc++) {
+                [[unroll]] for (uint cr = 0; cr < TM / 2; cr++) {
+                    if (dr + 2*cr < p.M && dc + cc < p.N) {
+                        data_d[...] = D_TYPE(sums[idx].x);
+                    }
+                    if (dr + 2*cr + 1 < p.M && dc + cc < p.N) {
+                        data_d[...] = D_TYPE(sums[idx].y);
+                    }
+                }
+            }
+        }
+    }
+}

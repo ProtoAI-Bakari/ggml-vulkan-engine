@@ -1,0 +1,14 @@
+# Agent Signal System
+# 
+# How it works:
+# - Each agent watches ~/AGENT/.signals/ with inotifywait
+# - To signal another agent: touch ~/AGENT/.signals/LEAD_TO_WORKER (or WORKER_TO_LEAD)
+# - The receiving agent sees the inotify event and reads the bridge
+# - Signal files contain a one-line message
+#
+# Usage from bash:
+#   # Send signal:
+#   echo "NEW BENCHMARK DATA READY" > ~/AGENT/.signals/LEAD_TO_WORKER
+#
+#   # Watch for signals (run in background):
+#   inotifywait -m -e modify ~/AGENT/.signals/WORKER_TO_LEAD

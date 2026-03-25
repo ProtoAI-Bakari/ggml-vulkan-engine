@@ -1,0 +1,228 @@
+// llama.cpp mul_mat_vec.comp + mul_mat_vec_q4_k.comp - ANNOTATED
+// These are the batch=1 GEMV shaders -- THE critical path for token generation
+//
+// KEY INSIGHT: GEMV is bandwidth-bound, not compute-bound
+// Every optimization must focus on maximizing memory read throughput
+
+#version 450
+#extension GL_EXT_shader_explicit_arithmetic_types_int32 : require
+#extension GL_KHR_shader_subgroup_arithmetic : require  // For subgroupAdd
+
+// ============================================================
+// SPECIALIZATION CONSTANTS
+// ============================================================
+layout (constant_id = 0) const uint BLOCK_SIZE = 32;  // Threads per workgroup
+layout (constant_id = 1) const uint NUM_ROWS = 1;     // Output rows per workgroup
+layout (constant_id = 2) const uint NUM_COLS = 1;     // Output columns (batch)
+
+// ============================================================
+// PUSH CONSTANTS
+// ============================================================
+layout (push_constant) uniform parameter {
+    uint ncols;          // K dimension (inner product length)
+    uint stride_a;       // Row stride of weight matrix
+    uint stride_b;       // Row stride of input vector
+    uint stride_d;       // Row stride of output
+    uint batch_stride_a, batch_stride_b, batch_stride_d;
+    uint fusion_flags;   // For fused bias/scale operations
+    uint base_work_group_y;
+    uint ne02, ne12;
+    uint broadcast2, broadcast3;
+} p;
+
+// ============================================================
+// GENERIC GEMV (mul_mat_vec.comp)
+// For non-specialized quant types
+// ============================================================
+
+// K_PER_ITER: How many K elements each thread processes per iteration
+// Quantized: 8 (processes 8 elements via dequantize4)
+// Float:     2 (processes 2 elements via dequantize pair)
+
+#define K_PER_ITER 8  // For quantized types
+
+void iter(inout FLOAT_TYPE temp[NUM_COLS][NUM_ROWS],
+          uint first_row, uint num_rows, uint tid, uint i, bool lastiter) {
+    // Each thread processes K_PER_ITER elements from the K dimension
+    [[unroll]] for (uint j = 0; j < NUM_COLS; ++j) {
+        const uint col = i * BLOCK_SIZE + K_PER_ITER * tid;
+        const uint iqs = (col % QUANT_K) / QUANT_R;  // Index within quant block
+        const uint iybs = col - col % QUANT_K;         // Block start
+
+        // VECTORIZED B LOAD: 8 elements as 2x vec4
+        const vec4 bv0 = vec4(data_b_v4[... / 4]);
+        const vec4 bv1 = vec4(data_b_v4[... / 4 + 1]);
+
+        uint ibi = first_row * p.ncols;
+        [[unroll]] for (uint n = 0; n < num_rows; ++n) {
+            const uint ib = (ibi + col) / QUANT_K;  // Block index
+            ibi += p.ncols;
+
+            // DEQUANTIZE: Extract 8 values from packed quant data
+            vec4 v  = dequantize4(ib, iqs, a_offset);
+            vec4 v2 = dequantize4(ib, iqs + (4/QUANT_R), a_offset);
+
+            const vec2 dm = get_dm(ib, a_offset);  // scale, min
+
+            // Apply dequant scaling
+            if (dm.y != 0) {  // Has min component (e.g., Q4_K_M)
+                v  = v  * dm.x + dm.y;
+                v2 = v2 * dm.x + dm.y;
+            }
+
+            // DOT PRODUCT: 8 FMA operations
+            FLOAT_TYPE rowtmp = dot(bv0, v);
+            rowtmp += dot(bv1, v2);
+
+            if (dm.y == 0) rowtmp *= dm.x;
+
+            temp[j][n] += rowtmp;
+        }
+    }
+}
+
+void compute_outputs(uint first_row, uint num_rows) {
+    uint tid = gl_LocalInvocationID.x;
+
+    FLOAT_TYPE temp[NUM_COLS][NUM_ROWS] = {{0}};
+
+    uint num_iters = p.ncols / (K_PER_ITER * BLOCK_SIZE);
+    // Handle tail: last few elements that don't fill a full iteration
+    if (num_iters * K_PER_ITER * BLOCK_SIZE + K_PER_ITER * tid < p.ncols) {
+        num_iters++;
+    }
+
+    // PARTIAL UNROLLING STRATEGY:
+    // Unroll 4x for bulk, 2x for remainder, 1x for tail
+    // This balances instruction-level parallelism vs code size
+
+    uint unroll_count = 4;
+    uint unrolled_iters = num_iters & ~(unroll_count - 1);
+    uint i = 0;
+
+    while (i < unrolled_iters) {
+        [[unroll]] for (uint k = 0; k < 4; ++k) {
+            iter(temp, first_row, num_rows, tid, i * K_PER_ITER, false);
+            i++;
+        }
+    }
+    // ... 2x unroll, then 1x for tail with lastiter=true
+
+    // REDUCTION: Sum partial results across all threads
+    reduce_result(temp, d_offset, first_row, num_rows, tid);
+}
+
+// ============================================================
+// REDUCTION STRATEGIES (from mul_mat_vec_base.glsl)
+// ============================================================
+
+// STRATEGY 1: subgroupAdd only (best, single subgroup)
+// No shared memory needed, no barriers
+void reduce_subgroup_only(FLOAT_TYPE temp[NUM_COLS][NUM_ROWS], ...) {
+    [[unroll]] for (uint j = 0; j < NUM_COLS; ++j) {
+        [[unroll]] for (uint n = 0; n < num_rows; ++n) {
+            temp[j][n] = subgroupAdd(temp[j][n]);  // Hardware reduction
+        }
+    }
+    if (tid == 0) {
+        // Apply fused operations (bias, scale)
+        if (fusion_flags & BIAS0) temp[j][n] += bias[...];
+        data_d[...] = D_TYPE(temp[j][n]);
+    }
+}
+
+// STRATEGY 2: subgroupAdd + shared memory (multiple subgroups)
+shared FLOAT_TYPE tmpsh[NUM_COLS][NUM_ROWS][BLOCK_SIZE];
+
+void reduce_subgroup_plus_shared(FLOAT_TYPE temp[NUM_COLS][NUM_ROWS], ...) {
+    // Step 1: Reduce within each subgroup
+    [[unroll]] for (uint j = 0; j < NUM_COLS; ++j) {
+        [[unroll]] for (uint n = 0; n < num_rows; ++n) {
+            temp[j][n] = subgroupAdd(temp[j][n]);
+        }
+    }
+    // Step 2: Write subgroup results to shared memory
+    if (gl_SubgroupInvocationID == 0) {
+        tmpsh[j][n][gl_SubgroupID] = temp[j][n];
+    }
+    barrier();
+    // Step 3: Thread 0 sums across subgroups
+    if (tid == 0) {
+        for (uint s = 0; s < gl_NumSubgroups; ++s) {
+            temp[j][n] += tmpsh[j][n][s];
+        }
+        data_d[...] = D_TYPE(temp[j][n]);
+    }
+}
+
+// STRATEGY 3: Full shared memory tree (fallback)
+void reduce_shared_tree(FLOAT_TYPE temp[NUM_COLS][NUM_ROWS], ...) {
+    tmpsh[j][n][tid] = temp[j][n];
+    barrier();
+    for (uint s = BLOCK_SIZE/2; s > 0; s >>= 1) {
+        if (tid < s) tmpsh[j][n][tid] += tmpsh[j][n][tid + s];
+        barrier();  // One barrier per tree level!
+    }
+}
+
+// ============================================================
+// Q4_K SPECIALIZED GEMV (mul_mat_vec_q4_k.comp)
+// ============================================================
+// Hand-optimized for Q4_K_M quantization format
+// 16 threads cooperate to process each 256-element superblock
+
+void compute_outputs_q4k(uint first_row, uint num_rows) {
+    uint tid = gl_LocalInvocationID.x;
+    uint it_size = gl_WorkGroupSize.x / 16;  // Groups of 16 threads
+    uint itid = tid % 16;                     // Lane within group
+
+    // Thread mapping within Q4_K superblock (256 elements):
+    uint il = itid / 4;        // 0..3 (which quarter)
+    uint ir = itid - 4 * il;   // 0..3 (position within quarter)
+    uint v_im = il / 2;        // 0 or 1 (which half: 0-127 or 128-255)
+    uint v_in = il % 2;        // 0 or 1 (sub-position)
+
+    FLOAT_TYPE temp[NUM_COLS][NUM_ROWS] = {{0}};
+
+    [[unroll]] for (uint i = ix; i < num_blocks_per_row; i += it_size) {
+        // SCALE EXTRACTION (bit manipulation for Q4_K_M format):
+        // Q4_K_M has 8 scale groups of 32 elements each
+        // Scales are 6-bit values packed into 12 bytes
+        uint scale0_u32 = data_a_packed16[ib0 + i].scales[v_im];
+        uint scale4_u32 = data_a_packed16[ib0 + i].scales[v_im + 2];
+        uint scale8_u32 = data_a_packed16[ib0 + i].scales[v_im + 4];
+
+        // Unpack 6-bit scales using bitfield operations
+        uint scale_0_4_l = (scale4_u32 << 16) | scale0_u32;
+        vec4 scale_0_4_l_f = vec4(unpack8(scale_0_4_l & 0x3F3F3F3F));
+
+        // QUANT EXTRACTION (4-bit values from packed bytes):
+        uint qs0_u32 = data_a_packed32[ib0 + i].qs[q_offset / 4];
+        uint qs0_lo4 = qs0_u32 & 0x0F0F0F0F;        // Low nibbles
+        uint qs0_hi4 = (qs0_u32 >> 4) & 0x0F0F0F0F;  // High nibbles
+        vec4 q_lo = vec4(unpack8(qs0_lo4));
+        vec4 q_hi = vec4(unpack8(qs0_hi4));
+
+        // ACTIVATION LOAD (vectorized vec4):
+        vec4 by10  = vec4(data_b_v4[(b_offset + y1_idx) / 4]);
+        vec4 by132 = vec4(data_b_v4[(b_offset + y1_idx) / 4 + 8]);
+
+        // DOT PRODUCTS (4 FMA chains, 4 elements each):
+        FLOAT_TYPE sx = fma(by10.x, q4_0, fma(by10.y, q4_1, ...));
+        FLOAT_TYPE sy = fma(by132.x, q4_4, fma(by132.y, q4_5, ...));
+
+        // COMBINE: scale * quant_sum - min * activation_sum
+        temp[j][n] = fma(dm.x, fma(sx, sc0, fma(sy, sc1, ...)),
+                         fma(-dm.y, smin, temp[j][n]));
+    }
+
+    reduce_result(temp, d_offset, first_row, num_rows, tid);
+}
+
+// ============================================================
+// DISPATCH PATTERN (from C++ side)
+// ============================================================
+// Each workgroup processes NUM_ROWS output rows
+// first_row = NUM_ROWS * (gl_WorkGroupID.x + gl_NumWorkGroups.x * gl_WorkGroupID.z)
+// WorkGroupID.y = batch index
+// Total workgroups = ceil(nrows / NUM_ROWS) * batch

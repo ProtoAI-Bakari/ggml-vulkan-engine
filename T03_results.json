@@ -1,0 +1,647 @@
+{
+  "timestamp": "2026-03-25T11:46:04.951710",
+  "total": 50,
+  "coherent": 50,
+  "coherence_pct": 100.0,
+  "avg_tps": 22.3,
+  "category_stats": {
+    "Greedy math": {
+      "total": 1,
+      "coherent": 1
+    },
+    "Greedy arithmetic": {
+      "total": 1,
+      "coherent": 1
+    },
+    "Greedy root": {
+      "total": 1,
+      "coherent": 1
+    },
+    "Greedy division": {
+      "total": 1,
+      "coherent": 1
+    },
+    "Greedy multiplication": {
+      "total": 1,
+      "coherent": 1
+    },
+    "Greedy addition": {
+      "total": 1,
+      "coherent": 1
+    },
+    "Greedy large mult": {
+      "total": 1,
+      "coherent": 1
+    },
+    "Greedy factorial": {
+      "total": 1,
+      "coherent": 1
+    },
+    "Greedy power": {
+      "total": 1,
+      "coherent": 1
+    },
+    "Greedy subtraction": {
+      "total": 1,
+      "coherent": 1
+    },
+    "Geography": {
+      "total": 4,
+      "coherent": 4
+    },
+    "Literature": {
+      "total": 3,
+      "coherent": 3
+    },
+    "History": {
+      "total": 1,
+      "coherent": 1
+    },
+    "Science": {
+      "total": 1,
+      "coherent": 1
+    },
+    "Physics": {
+      "total": 1,
+      "coherent": 1
+    },
+    "Temp=0.7": {
+      "total": 5,
+      "coherent": 5
+    },
+    "Temp=0.8": {
+      "total": 3,
+      "coherent": 3
+    },
+    "Temp=0.6": {
+      "total": 2,
+      "coherent": 2
+    },
+    "Python function": {
+      "total": 1,
+      "coherent": 1
+    },
+    "JavaScript function": {
+      "total": 1,
+      "coherent": 1
+    },
+    "SQL": {
+      "total": 1,
+      "coherent": 1
+    },
+    "NumPy": {
+      "total": 1,
+      "coherent": 1
+    },
+    "SQL schema": {
+      "total": 1,
+      "coherent": 1
+    },
+    "Temp=0.5, long": {
+      "total": 5,
+      "coherent": 5
+    },
+    "Very short": {
+      "total": 1,
+      "coherent": 1
+    },
+    "Single char": {
+      "total": 1,
+      "coherent": 1
+    },
+    "Simple": {
+      "total": 1,
+      "coherent": 1
+    },
+    "Medium": {
+      "total": 1,
+      "coherent": 1
+    },
+    "Unicode Chinese": {
+      "total": 1,
+      "coherent": 1
+    },
+    "Unicode accented": {
+      "total": 1,
+      "coherent": 1
+    },
+    "Empty prompt": {
+      "total": 1,
+      "coherent": 1
+    },
+    "Whitespace only": {
+      "total": 1,
+      "coherent": 1
+    },
+    "Newlines only": {
+      "total": 1,
+      "coherent": 1
+    },
+    "Tabs": {
+      "total": 1,
+      "coherent": 1
+    }
+  },
+  "results": [
+    {
+      "prompt": "2 + 2 =",
+      "category": "Greedy math",
+      "output": " 4. This is a basic arithmetic operation that is easy to understand and perform. However, there",
+      "tps": 22.158875129828953,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.05
+    },
+    {
+      "prompt": "15 * 16 =",
+      "category": "Greedy arithmetic",
+      "output": " 240\n15 * 17 = 255\n15 * 18 = 270\n15",
+      "tps": 22.204087870917878,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.05
+    },
+    {
+      "prompt": "sqrt(144) =",
+      "category": "Greedy root",
+      "output": " 12. The square root of 144 is 12. The square root of a number is",
+      "tps": 21.961728712471206,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.05
+    },
+    {
+      "prompt": "100 / 4 =",
+      "category": "Greedy division",
+      "output": " 25\n100 / 4 = 25\n100 ÷ 4 = 25\n",
+      "tps": 22.137785755683762,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.05
+    },
+    {
+      "prompt": "7 * 8 =",
+      "category": "Greedy multiplication",
+      "output": " 56\n7 * 9 = 63\n7 * 10 = 70\n7",
+      "tps": 22.172807721443544,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.05
+    },
+    {
+      "prompt": "What is 25 + 37?",
+      "category": "Greedy addition",
+      "output": " 25 + 37 = 62. What is 25 + 37 + 2?",
+      "tps": 22.114073488072187,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.97
+    },
+    {
+      "prompt": "Calculate 123 * 456",
+      "category": "Greedy large mult",
+      "output": "\nTo calculate 123 * 456, we need to multiply 123 by 456.\n123",
+      "tps": 22.161415574654946,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.11
+    },
+    {
+      "prompt": "10! =",
+      "category": "Greedy factorial",
+      "output": " 10 × 9 × 8 × 7 × 6 × 5 × 4",
+      "tps": 21.98871340169569,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.04
+    },
+    {
+      "prompt": "What is 2^10?",
+      "category": "Greedy power",
+      "output": " 2^10 = 1024. What is 2^10 - 1? ",
+      "tps": 22.071015399427854,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.2
+    },
+    {
+      "prompt": "1000 - 377 =",
+      "category": "Greedy subtraction",
+      "output": " 623\n1000 - 377 = 623\n1000 - 377 = 623",
+      "tps": 22.064658880242003,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.11
+    },
+    {
+      "prompt": "Capital of France?",
+      "category": "Geography",
+      "output": " Paris!\nCapital of France? Paris!\nParis, the City of Light, is famous for its iconic landmarks like the Eiffel Tower and Notre-D",
+      "tps": 21.820501226648915,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.99
+    },
+    {
+      "prompt": "Capital of Japan?",
+      "category": "Geography",
+      "output": " That’s Tokyo!\nJapan is an East Asian island country with a population of over 128 million people. It is the world’s eleventh-largest economy",
+      "tps": 21.91984297699284,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.89
+    },
+    {
+      "prompt": "Capital of Germany?",
+      "category": "Geography",
+      "output": " Berlin\nThe capital of Germany is Berlin. Berlin is the country's largest city and is located in the northeastern part of the country. It is situated",
+      "tps": 21.97555825066153,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.89
+    },
+    {
+      "prompt": "Capital of Italy?",
+      "category": "Geography",
+      "output": " That’s a trick question! The capital of Italy is Rome (Italian: Roma). But did you know that Rome is not just the capital of Italy",
+      "tps": 21.971243279183795,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.9
+    },
+    {
+      "prompt": "Who wrote Hamlet?",
+      "category": "Literature",
+      "output": " William Shakespeare\nWhat does Hamlet say about the human condition? Hamlet explores the nature of human existence, including madness, morality, and mortality.\n",
+      "tps": 21.962280324285473,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.95
+    },
+    {
+      "prompt": "Who wrote Pride and Prejudice?",
+      "category": "Literature",
+      "output": " Pride and Prejudice was written by Jane Austen. Pride and Prejudice is a romance. The story is about Elizabeth Bennet and D",
+      "tps": 21.90895882954537,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.87
+    },
+    {
+      "prompt": "Who wrote Harry Potter?",
+      "category": "Literature",
+      "output": " J.K. Rowling wrote the Harry Potter series. She is a British author who created the main character Harry Potter and his magical world. Her books have",
+      "tps": 22.00172626609175,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.95
+    },
+    {
+      "prompt": "When did WWII end?",
+      "category": "History",
+      "output": " Is it the same as World War I?\nNo, World War I and World War II are two separate wars.\nWorld War I ended on November ",
+      "tps": 21.95877701961322,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.95
+    },
+    {
+      "prompt": "Who discovered penicillin?",
+      "category": "Science",
+      "output": " Alexander Fleming\nAlexander Fleming discovered penicillin in 1928. He was a Scottish biologist, pharmacologist, and Nobel prize winner. He left",
+      "tps": 21.90797205501942,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.01
+    },
+    {
+      "prompt": "What is the speed of light?",
+      "category": "Physics",
+      "output": " - 299,792,458 meters per second (m/s)\nWhat is the speed of light in miles per second? - 186,282",
+      "tps": 22.00362589402088,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.09
+    },
+    {
+      "prompt": "Write a poem about rain.",
+      "category": "Temp=0.7",
+      "output": " You can write any type of poem you like, but make a topic sentence to start your poem. Rain is a soothing way to wash away the world",
+      "tps": 23.35045960178145,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.53
+    },
+    {
+      "prompt": "Write a poem about stars.",
+      "category": "Temp=0.7",
+      "output": " \nWe are made of stars, they say.\nIn our bodies, their light stays.\nA tiny star was I,\nA single light, a shooting",
+      "tps": 23.344968575605584,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.53
+    },
+    {
+      "prompt": "Write a haiku about winter.",
+      "category": "Temp=0.7",
+      "output": " This is a haiku with five syllables in the first line, seven syllables in the second line, and five syllables in the third line",
+      "tps": 23.270040756318632,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.64
+    },
+    {
+      "prompt": "Tell me a joke about AI.",
+      "category": "Temp=0.8",
+      "output": " Here's one: Why do you call a machine a computer? Because it allows you to compute. Is that too nerdy?\nThat's a bit",
+      "tps": 23.284287724517107,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.63
+    },
+    {
+      "prompt": "Tell me a joke about food.",
+      "category": "Temp=0.8",
+      "output": " Why did the pizza go to the doctor?\nBecause it was feeling a little crusty. Get it? Like the outside of the pizza is all crispy",
+      "tps": 23.305638418108845,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.6
+    },
+    {
+      "prompt": "Write a short story about a robot.",
+      "category": "Temp=0.6",
+      "output": " The story should include a robot, a human, and a space battle.\nNINE-DASH ONE is a robot designed to fight in space battles. The robot is a part of a team called the",
+      "tps": 21.867884700199472,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 3.48
+    },
+    {
+      "prompt": "Write a short story about a forest.",
+      "category": "Temp=0.6",
+      "output": " Be creative and imaginative.\nThe forest was a place of enchantment, where trees grew taller and the creatures that lived there grew wiser. The village of Willowdale lay nestled at its edge, homes",
+      "tps": 21.863529653009408,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 3.49
+    },
+    {
+      "prompt": "Describe a beautiful sunset.",
+      "category": "Temp=0.7",
+      "output": " This is a common prompt, but it can be a great way to practice descriptive writing. Here's an example of how to describe a sunset in a",
+      "tps": 23.352093097769895,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.48
+    },
+    {
+      "prompt": "Describe a busy city street.",
+      "category": "Temp=0.7",
+      "output": " There are people and cars moving in every direction. The scene is a vibrant example of city life. The street is lined with tall buildings that reflect the",
+      "tps": 23.32080430352056,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.52
+    },
+    {
+      "prompt": "Write a limerick about a cat.",
+      "category": "Temp=0.8",
+      "output": " The limerick should be in a rhyming style, with a bouncy rhythm.\nThere once was a cat, sleek and bright,\nWh",
+      "tps": 23.494681288266566,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 3.25
+    },
+    {
+      "prompt": "def hello():",
+      "category": "Python function",
+      "output": " return \"Hello\"\n\ndef goodbye(): return \"Goodbye\"\n\ndef greet():\n    return hello() + \", \" + goodbye()\n\nprint(greet()) #",
+      "tps": 22.0725255085787,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.85
+    },
+    {
+      "prompt": "function add(a, b) {",
+      "category": "JavaScript function",
+      "output": " return a + b; }var x = 1;var y = 2;var z = add(x, y);var result = add",
+      "tps": 21.99740940607016,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.09
+    },
+    {
+      "prompt": "Write a SQL query to select all:",
+      "category": "SQL",
+      "output": " This query selects all rows from a database table.\n```sql\nSELECT * FROM table_name;\n```\nThis SQL query selects all rows from a database",
+      "tps": 21.846411463347472,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.88
+    },
+    {
+      "prompt": "import numpy as np\narr = np.array([",
+      "category": "NumPy",
+      "output": "1, 2, 3, 4, 5])\nprint(arr)\nprint(arr[0])\nprint(arr[0:2])\nprint",
+      "tps": 21.982921828848383,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.87
+    },
+    {
+      "prompt": "CREATE TABLE users (",
+      "category": "SQL schema",
+      "output": "id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255), email VARCHAR(255));\nCREATE TABLE products (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR",
+      "tps": 22.09827671350043,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.88
+    },
+    {
+      "prompt": "Explain machine learning in simple terms.",
+      "category": "Temp=0.5, long",
+      "output": " How is it used in business?\nMachine learning is a type of technology that enables computers to learn from data and make predictions or decisions based on that data. It is a subset of artificial intelligence that is used to improve the accuracy of computer predictions and make decisions.\nMachine learning is used in business in a",
+      "tps": 23.097847329499125,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 5.92
+    },
+    {
+      "prompt": "What is the history of the internet?",
+      "category": "Temp=0.5, long",
+      "output": " How did it start and how did it grow?\nThe history of the internet is a story of how the internet evolved from a small network of computers to a global network of billions of people.\nThe internet was first developed in the 1960s by the United States Department of Defense's Advanced Research Projects",
+      "tps": 22.96163927825403,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 5.96
+    },
+    {
+      "prompt": "Describe the process of photosynthesis.",
+      "category": "Temp=0.5, long",
+      "output": " (3 points) - PowerPoint Permanent\nPhotosynthesis is the process by which plants, algae, and some bacteria convert light energy into chemical energy. This process occurs in the chloroplasts of plant cells and involves the following steps:\nLight energy is absorbed by pigments such as chlorophyll",
+      "tps": 22.865269242496222,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 5.2
+    },
+    {
+      "prompt": "What are the causes of climate change?",
+      "category": "Temp=0.5, long",
+      "output": " The causes of climate change are many and varied, but they can be broadly categorized into two groups: natural causes and human causes.\nNatural causes of climate change include:\n1. Volcanic eruptions: Large volcanic eruptions can release ash and gas into the atmosphere, which can reflect sunlight and cool",
+      "tps": 22.95560970106192,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 5.97
+    },
+    {
+      "prompt": "Explain how a computer works.",
+      "category": "Temp=0.5, long",
+      "output": " A computer is a machine that can be used to perform a variety of tasks, from simple to complex, such as word processing, spreadsheets, email, and games. A computer works by using a combination of hardware and software.\nHardware is the physical components of a computer, such as the central processing",
+      "tps": 22.84022240452453,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 5.2
+    },
+    {
+      "prompt": "Hi",
+      "category": "Very short",
+      "output": ",\n\nI am trying to create a function that takes a list of integers as input and returns a list of lists where each sublist contains elements that are within",
+      "tps": 22.155562010335334,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.79
+    },
+    {
+      "prompt": "?",
+      "category": "Single char",
+      "output": " (I didn't get a chance to see the movie, but I heard it was pretty good.)\nI also heard that the movie was a huge box",
+      "tps": 21.982609421297745,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.81
+    },
+    {
+      "prompt": "Hello world",
+      "category": "Simple",
+      "output": ", I'm a bit excited to be here. I've been learning about various aspects of the web, and this is my first post. \n\nI",
+      "tps": 22.079216658640128,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.9
+    },
+    {
+      "prompt": "The quick brown fox jumps over the lazy dog. Now write another sentence.",
+      "category": "Medium",
+      "output": " The quick brown fox is very sleepy. The bright sunshine is shining brightly. The big bright tree is swaying slowly. The big bright house is warm",
+      "tps": 21.86049441001269,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 2.89
+    },
+    {
+      "prompt": "中文测试",
+      "category": "Unicode Chinese",
+      "output": "\n1.1.1.1隧道测试\n1.1.1.1隧道测试\n1.1.1",
+      "tps": 22.1247422523914,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.83
+    },
+    {
+      "prompt": "éàüñ",
+      "category": "Unicode accented",
+      "output": " and I are going to be parents! We are having a baby girl!\nWe are beyond thrilled and can't wait to meet our little one. We",
+      "tps": 22.005170955705143,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.9
+    },
+    {
+      "prompt": "",
+      "category": "Empty prompt",
+      "output": "Question:Write a Python function to calculate the sum of all the multiples of 3 or 5 below 1000.\n\n### Multiple of 3",
+      "tps": 22.1966687028323,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.78
+    },
+    {
+      "prompt": "   ",
+      "category": "Whitespace only",
+      "output": " Case 1:20-cv-00040-JT Document 27-1\n                                    1\n                                    1\n                                    1\n",
+      "tps": 22.195320932003277,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.79
+    },
+    {
+      "prompt": "\n\n\n",
+      "category": "Newlines only",
+      "output": "import numpy as np\nimport matplotlib.pyplot as plt\n\n# Create a figure and a set of subplots\nfig, ax = plt.subplots()\n\n#",
+      "tps": 22.107944512144815,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.79
+    },
+    {
+      "prompt": "Test\t\t\ttabs",
+      "category": "Tabs",
+      "output": "\nTest\t\t\tTab\nTest\t\t\ttab\n\nTest\t\t\tTab\nTest\t\t\ttab\nTest\t\t\ttabs\n\nTest\t\t\ttabs\nTest",
+      "tps": 22.07592510036717,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length",
+      "latency_s": 1.89
+    }
+  ]
+}

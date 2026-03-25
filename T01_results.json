@@ -1,0 +1,117 @@
+{
+  "timestamp": "2026-03-25T11:28:55.886608",
+  "total": 12,
+  "coherent": 12,
+  "coherence_pct": 100.0,
+  "avg_tps": 22.0,
+  "results": [
+    {
+      "prompt": "What is 2 + 2?",
+      "desc": "Greedy, math",
+      "output": " 4\nWhat is 5 x 3? 15\nWhat is 9 - 2? 7\nWhat is 6 +",
+      "tps": 21.13284219807408,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length"
+    },
+    {
+      "prompt": "Calculate 15 * 16",
+      "desc": "Greedy, arithmetic",
+      "output": "\n15 * 16 = 240.\n15 * 16 = 240. The result of the multiplication is 240. To calculate this,",
+      "tps": 21.83451789792972,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length"
+    },
+    {
+      "prompt": "If x = 5 and y = 3, what is x * y?",
+      "desc": "Greedy, algebra",
+      "output": " 5\nIf x = 5 and y = 3, what is x * y? 15\nIf x = 5 and y",
+      "tps": 22.14735575904927,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length"
+    },
+    {
+      "prompt": "What is the capital of France?",
+      "desc": "Greedy, geography",
+      "output": " Paris is the capital of France. It is located in the north-central part of the country and is home to many famous landmarks, including the Eiff",
+      "tps": 21.81320781052755,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length"
+    },
+    {
+      "prompt": "Who wrote Romeo and Juliet?",
+      "desc": "Greedy, literature",
+      "output": " William Shakespeare wrote Romeo and Juliet. The play is based on an earlier story called \u201cThe Tragicall History of the Star-crossed lovers\u201d by",
+      "tps": 21.811848800504446,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length"
+    },
+    {
+      "prompt": "What year did World War II end?",
+      "desc": "Greedy, history",
+      "output": " World War II ended in 1945. The war began on September 1, 1939, when Germany invaded Poland. It ended on May",
+      "tps": 21.830774471388455,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length"
+    },
+    {
+      "prompt": "Write a short poem about the ocean.",
+      "desc": "Temp=0.7, creative",
+      "output": " Provide two examples of how the ocean contributes to the environment.\nThe ocean is a vast body of water that covers a major part of the Earth's surface. It is home to a vast array of marine",
+      "tps": 23.013816876090356,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length"
+    },
+    {
+      "prompt": "Tell me a joke about programmers.",
+      "desc": "Temp=0.8, humor",
+      "output": " A man walks into a bar and orders a beer. He asks the bartender, \"How does a man make love to a woman?\" The bartender replies, \"I don't know, do you want",
+      "tps": 23.139408200854664,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length"
+    },
+    {
+      "prompt": "Write a Python function to compute factorial:",
+      "desc": "Temp=0, code",
+      "output": " factorial of a number. The function should take an integer as input and return the factorial of that number.\nFactorial is the product of all positive integers less than or equal to n.\n\n## Step 1: Define the problem\nWe need to write",
+      "tps": 21.749577594422288,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length"
+    },
+    {
+      "prompt": "Explain what artificial intelligence is in simple terms.",
+      "desc": "Temp=0.5, long",
+      "output": " It is a branch of science that is focused on making machines think and learn like humans. This is done using computer algorithms and statistical techniques. It is a way to make machines smarter and more useful.\nArtificial intelligence is a field of science that focuses on making machines think and learn like humans. It is a way to make machines smarter and more useful. It uses computer algorithms and statistical techniques to enable",
+      "tps": 22.852447065249923,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length"
+    },
+    {
+      "prompt": "Hello",
+      "desc": "Short prompt",
+      "output": "! I'm thrilled to be participating in the 2019 A to Z Challenge. This is my first time, and I'm excited to see how it goes. I'll be posting daily, so",
+      "tps": 21.6349351280256,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length"
+    },
+    {
+      "prompt": "The quick brown fox jumps over the lazy dog.",
+      "desc": "Medium prompt",
+      "output": " The lazy dog is too slow to catch the quick brown fox. The quick brown fox is too fast to be caught by the lazy dog. The lazy dog is too lazy to chase the quick brown fox",
+      "tps": 21.581862166133046,
+      "coherent": true,
+      "issues": [],
+      "finish_reason": "length"
+    }
+  ]
+}

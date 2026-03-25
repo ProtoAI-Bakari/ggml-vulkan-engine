@@ -370,9 +370,8 @@ int engine_forward(engine_t *e, int n_tokens,
     }
     ggml_set_name(cur, e->return_hidden ? "hidden" : "logits");
 
-    ggml_build_forward_expand(graph, cur);
-
     ggml_backend_sched_reset(e->sched);
+    ggml_build_forward_expand(graph, cur);
     if (!ggml_backend_sched_alloc_graph(e->sched, graph)) {
         return -2;
     }

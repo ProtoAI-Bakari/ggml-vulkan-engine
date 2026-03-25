@@ -57,6 +57,7 @@ BRAIN_COLORS = {
     "coder": C.CODER,
     "mini":  C.MINI,
     "claude": "\033[38;5;141m",  # Purple for Claude
+    "fast":   "\033[38;5;208m",  # Orange for fast rewrite
 }
 
 BRAIN_LABELS = {
@@ -64,6 +65,7 @@ BRAIN_LABELS = {
     "coder": "Qwen3-Coder",
     "mini":  "MiniMaxM2",
     "claude": "Claude-Opus-4.6",
+    "fast":   "Qwen3B-Fast",
 }
 
 # ── Brain endpoint configuration ────────────────────────────────────────────
@@ -94,6 +96,16 @@ BRAINS = {
         "model": "MiniMaxM2",
         "system": "You are a helpful AI assistant. Be concise and precise.",
         "max_tokens": 2048,
+    },
+    "fast": {
+        "endpoint": "http://localhost:8081/v1/chat/completions",
+        "model": "qwen2.5-3b-instruct-q4_k_m",
+        "system": (
+            "You are a fast file editor. When given a file and instructions, "
+            "output ONLY the changed lines with their line numbers. "
+            "Format: LINE_NUMBER: new_content. Nothing else."
+        ),
+        "max_tokens": 4096,
     },
     "claude": {
         "endpoint": "cli://claude",  # Special: uses 'claude -p' subprocess

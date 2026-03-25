@@ -1,0 +1,100 @@
+{
+  "session_id": "vllm_asahi_vulkan_analysis",
+  "model_key": "Qwen/Qwen2.5-0.5B-Instruct",
+  "vllm_version": "0.17.2.dev1+asahi.gfe1a7ebe4.d20260322",
+  "device_config": "vulkan",
+  "dtype": "float32",
+  "dtype_reason": "Vulkan shader kHalf bridge missing in Packing.cpp",
+  "constraint": "VULKAN ONLY - CPU backend OFF the table (user requirement)",
+  "crash_paths": [
+    "/home/z/GITDEV/vllm_0.17.1/vllm/model_executor/layers/vocab_parallel_embedding.py:75",
+    "/home/z/GITDEV/vllm_0.17.1/vllm/v1/worker/cpu_worker.py:125",
+    "/home/z/GITDEV/vllm_0.17.1/vllm/v1/engine/core.py:275"
+  ],
+  "root_cause": "Worker/Platform architecture mismatch + KV cache over-allocation (174,752 tokens)",
+  "platform_fixes": [
+    {
+      "file": "vllm/platforms/vulkan.py",
+      "issue": "PlatformEnum.GPU does not exist",
+      "fix": "Changed PlatformEnum.GPU to PlatformEnum.VULKAN",
+      "timestamp": "2026-03-22T22:45:00Z",
+      "status": "✅ VERIFIED"
+    },
+    {
+      "file": "vllm/platforms/vulkan.py",
+      "issue": "PyTorch does not recognize 'VULKAN' dispatch key",
+      "fix": "Changed dispatch_key from 'VULKAN' to 'CPU' (fallback)",
+      "timestamp": "2026-03-22T22:47:00Z",
+      "status": "⚠️ CAUSES MISMATCH"
+    },
+    {
+      "file": "vllm/platforms/__init__.py",
+      "issue": "current_platform export via __getattr__",
+      "fix": "Lazy-getter bridge already present and correct",
+      "timestamp": "2026-03-22T23:00:00Z",
+      "status": "✅ VERIFIED"
+    }
+  ],
+  "vulkan_memory_analysis": {
+    "gpu0_device_name": "Apple M1 Max (G13C C0)",
+    "gpu0_driver": "Mesa 25.1.0-asahi20250221 (Honeykrisp)",
+    "gpu0_device_local_memory_gb": 15.58,
+    "gpu0_device_local_memory_bytes": 16734224384,
+    "gpu1_device_name": "llvmpipe (CPU)",
+    "gpu1_total_memory_gb": 31.17,
+    "gpu1_current_usage_gb": 2.44
+  },
+  "memory_analysis": {
+    "vulkan_allocation_limit": "1 GB (patched)",
+    "kv_cache_calculated": "19.1 GB (174,752 tokens) - OVER ALLOCATION",
+    "kv_cache_available_30pct": "3.67 GB",
+    "kv_cache_over_allocation": "5.2× too large",
+    "embedding_layer_size_fp32": "520 MB",
+    "gpu_memory_utilization": 0.3,
+    "max_seq_len": 512,
+    "num_gpu_blocks_limited": 128
+  },
+  "patch_attempts": [
+    {
+      "attempt": 1,
+      "patch_location": "After _initialize_kv_caches()",
+      "result": "❌ Failed - crash happens DURING _initialize_kv_caches()",
+      "timestamp": "2026-03-22T23:20:00Z"
+    },
+    {
+      "attempt": 2,
+      "patch_location": "After _initialize_kv_caches() (duplicate removed)",
+      "result": "❌ Failed - same issue, patch too late",
+      "timestamp": "2026-03-22T23:25:00Z"
+    },
+    {
+      "attempt": 3,
+      "patch_location": "INSIDE _initialize_kv_caches() BEFORE get_kv_cache_configs()",
+      "result": "✅ PATCHED - Memory limit applied at correct location",
+      "timestamp": "2026-03-23T01:00:00Z",
+      "file": "vllm/v1/engine/core.py",
+      "line": 254
+    }
+  ],
+  "error_codes": {
+    "vma_error": -2,
+    "vma_error_name": "VMA_ERROR_OUT_OF_DEVICE_MEMORY"
+  },
+  "missing_operators": [
+    "aten::fill_.Scalar",
+    "aten::index_select",
+    "oneDNN linear",
+    "aten::mm (expected next)",
+    "aten::addmm (expected next)",
+    "aten::softmax (expected next)"
+  ],
+  "architecture_mismatch": {
+    "platform": "Vulkan",
+    "dispatch_key": "CPU",
+    "worker_class": "CPUWorker",
+    "weight_device": "vulkan",
+    "issue": "CPUWorker expects CPU device, but weights are on Vulkan"
+  },
+  "current_status": "✅ Patch applied at correct location. Ready for testing.",
+  "last_updated": "2026-03-23T01:00:00Z"
+}

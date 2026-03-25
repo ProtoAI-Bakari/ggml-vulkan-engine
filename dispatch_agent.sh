@@ -10,4 +10,4 @@ case $TARGET in
   *) echo "Unknown: $TARGET"; exit 1;;
 esac
 
-curl -s -X POST "$URL" -H "Content-Type: application/json"   -d "{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"$TASK\"}],\"max_tokens\":4096,\"temperature\":0.3}"   | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['choices'][0]['message']['content'])" 2>/dev/null
+curl -s -X POST "$URL" -H "Content-Type: application/json"   -d "{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"$TASK\"}],\"max_tokens":16384,\"temperature\":0.3}"   | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['choices'][0]['message']['content'])" 2>/dev/null

@@ -119,7 +119,7 @@ def search_web(query: str) -> str:
 def ask_coder_brain(query: str) -> str:
     print(f"\n{C.MAGENTA}[🧠 Pinging Coder Model at {CODER_IP}...]{C.RESET}")
     try:
-        payload = {"model": "qwen3-coder-next", "messages": [{"role": "user", "content": f"You are a master C++/Python programmer advising an autonomous agent. Provide exact code or logic. Do not use tool tags. We are running vLLM on Asahi Linux with a custom Vulkan backend.\n\nQuery: {query}"}], "max_tokens": 4096, "temperature": 0.2}
+        payload = {"model": "qwen3-coder-next", "messages": [{"role": "user", "content": f"You are a master C++/Python programmer advising an autonomous agent. Provide exact code or logic. Do not use tool tags. We are running vLLM on Asahi Linux with a custom Vulkan backend.\n\nQuery: {query}"}], "max_tokens": 16384, "temperature": 0.2}
         r = requests.post(CODER_URL, json=payload, timeout=300)
         r.raise_for_status()
         return f"[CODER ADVICE]:\n{r.json()['choices'][0]['message']['content']}"
@@ -128,7 +128,7 @@ def ask_coder_brain(query: str) -> str:
 def ask_minimax(query: str) -> str:
     print(f"\n{C.MAGENTA}[🧠 Pinging MiniMax Model at {MINIMAX_IP}...]{C.RESET}")
     try:
-        payload = {"model": "mlx-community/MiniMax-M2-REAP-139B", "messages": [{"role": "user", "content": f"You are a master systems architect advising an autonomous agent. Provide exact logic. Do not use tool tags. We are running vLLM on Asahi Linux with a custom Vulkan backend.\n\nQuery: {query}"}], "max_tokens": 4096, "temperature": 0.2}
+        payload = {"model": "mlx-community/MiniMax-M2-REAP-139B", "messages": [{"role": "user", "content": f"You are a master systems architect advising an autonomous agent. Provide exact logic. Do not use tool tags. We are running vLLM on Asahi Linux with a custom Vulkan backend.\n\nQuery: {query}"}], "max_tokens": 16384, "temperature": 0.2}
         r = requests.post(MINIMAX_URL, json=payload, timeout=300)
         r.raise_for_status()
         return f"[MINIMAX ADVICE]:\n{r.json()['choices'][0]['message']['content']}"
