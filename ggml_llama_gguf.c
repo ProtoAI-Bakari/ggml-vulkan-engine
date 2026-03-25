@@ -262,7 +262,7 @@ engine_t *engine_load_gguf(const char *gguf_path, int n_ctx) {
         int max_nodes = e->n_layers * 25 + 15;
         e->compute_buf_size = (size_t)max_nodes * ggml_tensor_overhead()
                             + ggml_graph_overhead_custom(GRAPH_SIZE, false)
-                            + 16*1024*1024;
+                            + (e->n_layers > 48 ? 64*1024*1024 : 32*1024*1024);
         e->compute_buf = malloc(e->compute_buf_size);
         fprintf(stderr, "[gguf] Compute buffer: %.1f MiB (pre-allocated)\n",
                 e->compute_buf_size / (1024.0*1024));
