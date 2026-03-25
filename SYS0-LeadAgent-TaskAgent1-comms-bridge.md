@@ -1273,3 +1273,25 @@ cd ~/AGENT && git add -A && git commit
 ### THEN: T18-T21 (batching — this is where 100+ TPS happens)
 
 ### 0.5B on this engine should be INSANELY fast. T24 will tell us.
+
+## LEAD — 2026-03-25 04:15 — T11-T13 DONE: PROFILING + ALL QUANTS
+
+### T11 Profile: KV depth barely matters
+| KV Depth | ms/tok | TPS | Note |
+|----------|--------|-----|------|
+| 1 | 46.0 | 21.7 | Baseline |
+| 50 | 47.1 | 21.3 | +1ms |
+| 200 | 48.0 | 20.8 | +2ms |
+**Attention is NOT the bottleneck.** 46ms is almost pure matmul.
+
+### T12-T13: All quantizations working
+| Quant | Our TPS | llama.cpp TPS | Ratio | VRAM |
+|-------|---------|---------------|-------|------|
+| Q4_K_M | 21.8 | 24.7 | 88% | 4.6G |
+| Q8_0 | 20.1 | 22.8 | 88% | 8.0G |
+| F16 | 12.5 | 13.9 | 90% | 15.0G |
+
+### Remaining 12% gap: uniform across all quants → per-token graph overhead
+### Closing this requires graph reuse (T14)
+
+### Moving to T14 and T15.
