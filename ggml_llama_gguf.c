@@ -46,6 +46,7 @@ typedef struct {
     void *compute_buf;
     size_t compute_buf_size;
     struct ggml_context *_persistent_ctx;
+    int return_hidden;  /* If true, skip lm_head and return hidden_states */
 
     layer_t layers[MAX_LAYERS];
     struct ggml_tensor *tok_embd, *output_norm, *output;
@@ -363,8 +364,11 @@ int engine_forward(engine_t *e, int n_tokens,
 
     cur = ggml_rms_norm(ctx, inpL, e->rms_eps);
     cur = ggml_mul(ctx, cur, e->output_norm);
-    cur = ggml_mul_mat(ctx, e->output, cur);
-    ggml_set_name(cur, "logits");
+    /* Skip lm_head if return_hidden flag is set (for vLLM integration) */
+    if (!e->return_hidden) {
+        cur = ggml_mul_mat(ctx, e->output, cur);
+    }
+    ggml_set_name(cur, e->return_hidden ? "hidden" : "logits");
 
     ggml_build_forward_expand(graph, cur);
 
@@ -380,12 +384,17 @@ int engine_forward(engine_t *e, int n_tokens,
         return -3;
     }
 
-    size_t logits_size = (size_t)n_tokens * e->vocab_size * sizeof(float);
-    ggml_backend_tensor_get(cur, logits_out, 0, logits_size);
+    size_t out_dim = e->return_hidden ? e->hidden_dim : e->vocab_size;
+    size_t out_size = (size_t)n_tokens * out_dim * sizeof(float);
+    ggml_backend_tensor_get(cur, logits_out, 0, out_size);
 
     e->kv_used += n_tokens;
     /* Context persists — will be reset on next call via ggml_reset */
     return 0;
+}
+
+void engine_set_return_hidden(engine_t *e, int flag) {
+    e->return_hidden = flag;
 }
 
 void engine_reset_kv(engine_t *e) {
