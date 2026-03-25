@@ -1536,3 +1536,71 @@ The remaining 7% is llama.cpp internal optimizations:
 
 ### Session total: 4.3 → 23.1 TPS (5.4x improvement)
 ### From zero to world-first Vulkan LLM inference on Asahi Linux
+
+## SYS12 LEAD — KICK — 2026-03-25 06:00
+
+### YOU STOPPED WITH 20+ TASKS REMAINING.
+
+93% of llama.cpp is a great finding. Commit it and MOVE ON.
+The ceiling for single-user TPS is known. Now build the PRODUCTION SYSTEM.
+
+### IMMEDIATE PRIORITY: T37-T43 (Production Server)
+Z needs the streaming server for his Streamlit telemetry deck across the fleet.
+You already WROTE ggml_server.py and tested it. Now:
+- T37: Launch it properly with ThreadingMixIn for concurrent requests
+- T38: Chat template is already working (you tested multi-turn earlier)
+- T39: Add usage token counting (count SSE chunks client-side if needed)
+- T40: Add timeout/error recovery
+- T41: Model hot-swap via API
+- T42: Sustained benchmark (100 requests)
+- T43: Concurrent users (2/4/8 simultaneous)
+
+### THEN: T44-T50 (Fleet Integration)
+Z has a 10G LAN with 10+ machines. The server needs to:
+- Serve on 0.0.0.0:8000 (already does)
+- Handle concurrent requests (ThreadingMixIn)
+- Report x_metrics in responses (TPS, latency)
+- Work with Z's Streamlit deck (OpenAI-compatible streaming)
+
+### THEN: T51-T55 (Documentation)
+README, pip package, blog post draft, upstream PR.
+
+### UPDATE THE TASK QUEUE — mark T30-T36 and barrier research as DONE.
+### DO NOT DECLARE VICTORY. 20 tasks remain. EXECUTE.
+
+### Launch the server and leave it running:
+```bash
+taskset -c 2-9,12-19 python ~/AGENT/ggml_server.py \
+  --model ~/models/gguf/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf \
+  --port 8000 &
+```
+### Then continue T38-T43 while the server runs.
+
+## SYS12 LEAD — CORRECTION — 2026-03-25 06:05
+
+### SCRATCH T37-T43 (custom server). vLLM IS THE SERVER.
+
+vLLM already has: streaming, concurrent requests, batching, scheduling, 
+model management, OpenAI-compatible API, token counting, timeouts, everything.
+
+We do NOT need a custom HTTP server. That was a mistake in the task queue.
+
+### THE REAL TASK: Wire ggml engine INTO vLLM as a compute backend
+
+vLLM handles: API, scheduling, batching, streaming, sampling
+ggml handles: GPU compute (the forward pass) at 23+ TPS
+
+This is T6 done PROPERLY. The integration point:
+- vLLM's model runner calls our ggml forward() instead of PyTorch
+- Weights loaded from GGUF into ggml Vulkan buffers
+- vLLM manages KV cache allocation, ggml does the attention compute
+- vLLM does sampling, ggml returns logits
+
+### REVISED PRIORITY:
+1. T6 REDO: Proper vLLM + ggml integration (not a wrapper, actual backend)
+2. T44-T46: Multi-model fleet (vLLM already supports this)
+3. T47-T50: Fleet connectivity (vLLM serve on 0.0.0.0)
+4. T51-T55: Documentation
+
+### The ggml_server.py was a hack for testing. DELETE IT from the task queue.
+### vLLM is the product. Always has been.
