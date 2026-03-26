@@ -909,3 +909,305 @@ void template_invalidation_get_stats(TemplateInvalidationState* state,
     if (last_hash) *last_hash = state->last_valid_hash;
     if (is_valid) *is_valid = state->is_valid;
 }
+
+/* ============================================================================
+ * T14: COMMAND BUFFER INVALIDATION LOGIC
+ * ============================================================================
+ * Detect topology changes and re-record templates when needed
+ */
+
+/* Topology change detection thresholds */
+#define CONTEXT_SIZE_THRESHOLD    512    // Re-record if context changes by this much
+#define BATCH_SIZE_THRESHOLD      4      // Re-record if batch changes by this much
+#define SEQ_LEN_GROWTH_FACTOR     2.0f   // Re-record if seq_len grows beyond this factor
+
+/* Extended graph fingerprint with dynamic parameters */
+typedef struct {
+    /* Static model parameters */
+    uint32_t num_layers;
+    uint32_t hidden_dim;
+    uint32_t intermediate_dim;
+    uint32_t num_heads;
+    uint32_t head_dim;
+    uint32_t vocab_size;
+    
+    /* Dynamic runtime parameters */
+    uint32_t max_context;
+    uint32_t current_context;
+    uint32_t max_batch;
+    uint32_t current_batch;
+    uint32_t max_seq_len;
+    uint32_t current_seq_len;
+    
+    /* MoE parameters */
+    uint32_t moe_experts;
+    uint32_t moe_active_experts;
+    
+    /* Hash for quick comparison */
+    uint64_t hash;
+} ExtendedGraphFingerprint;
+
+/* Compute extended fingerprint hash */
+uint64_t compute_extended_fingerprint_hash(ExtendedGraphFingerprint* fp) {
+    uint64_t hash = 0;
+    
+    /* Static params (critical - always require re-recording) */
+    hash ^= (uint64_t)fp->num_layers << 0;
+    hash ^= (uint64_t)fp->hidden_dim << 8;
+    hash ^= (uint64_t)fp->intermediate_dim << 16;
+    hash ^= (uint64_t)fp->num_heads << 24;
+    hash ^= (uint64_t)fp->head_dim << 32;
+    hash ^= (uint64_t)fp->vocab_size << 40;
+    hash ^= (uint64_t)fp->moe_experts << 48;
+    hash ^= (uint64_t)fp->moe_active_experts << 56;
+    
+    /* Dynamic params (threshold-based re-recording) */
+    hash ^= (uint64_t)fp->max_context << 1;
+    hash ^= (uint64_t)fp->max_batch << 3;
+    hash ^= (uint64_t)fp->max_seq_len << 5;
+    
+    return hash;
+}
+
+/* Check if context size change requires re-recording */
+int check_context_threshold(uint32_t old_context, uint32_t new_context) {
+    uint32_t diff = (new_context > old_context) ? (new_context - old_context) : (old_context - new_context);
+    return diff > CONTEXT_SIZE_THRESHOLD;
+}
+
+/* Check if batch size change requires re-recording */
+int check_batch_threshold(uint32_t old_batch, uint32_t new_batch) {
+    uint32_t diff = (new_batch > old_batch) ? (new_batch - old_batch) : (old_batch - new_batch);
+    return diff > BATCH_SIZE_THRESHOLD;
+}
+
+/* Check if sequence length growth requires re-recording */
+int check_seq_len_growth(uint32_t old_seq_len, uint32_t new_seq_len) {
+    if (old_seq_len == 0) return 1; /* First time */
+    float growth = (float)new_seq_len / (float)old_seq_len;
+    return growth > SEQ_LEN_GROWTH_FACTOR;
+}
+
+/* Comprehensive topology change detector */
+typedef struct {
+    ExtendedGraphFingerprint last_fingerprint;
+    uint64_t last_hash;
+    uint32_t invalidation_count;
+    uint64_t last_invalidation_time;
+    uint32_t context_changes;
+    uint32_t batch_changes;
+    uint32_t seq_len_changes;
+    int is_valid;
+} TopologyChangeDetector;
+
+/* Initialize topology change detector */
+TopologyChangeDetector* topology_detector_create(void) {
+    TopologyChangeDetector* detector = (TopologyChangeDetector*)calloc(1, sizeof(TopologyChangeDetector));
+    if (!detector) return NULL;
+    
+    detector->is_valid = 0; /* Not initialized yet */
+    detector->invalidation_count = 0;
+    detector->context_changes = 0;
+    detector->batch_changes = 0;
+    detector->seq_len_changes = 0;
+    
+    return detector;
+}
+
+/* Destroy topology change detector */
+void topology_detector_destroy(TopologyChangeDetector* detector) {
+    if (detector) {
+        free(detector);
+    }
+}
+
+/* Check if topology has changed and needs re-recording */
+int topology_detector_check(TopologyChangeDetector* detector,
+                           ExtendedGraphFingerprint* new_fp,
+                           int* reason) {
+    if (!detector || !new_fp) return 0;
+    
+    /* First time initialization */
+    if (!detector->is_valid) {
+        detector->last_fingerprint = *new_fp;
+        detector->last_hash = compute_extended_fingerprint_hash(new_fp);
+        detector->is_valid = 1;
+        if (reason) *reason = 0; /* No reason, just initialization */
+        return 0;
+    }
+    
+    /* Check static parameters (always require re-recording) */
+    uint64_t new_hash = compute_extended_fingerprint_hash(new_fp);
+    if (new_hash != detector->last_hash) {
+        detector->invalidation_count++;
+        detector->last_hash = new_hash;
+        detector->last_fingerprint = *new_fp;
+        if (reason) *reason = 1; /* Static params changed */
+        return 1;
+    }
+    
+    /* Check dynamic parameters with thresholds */
+    int context_changed = check_context_threshold(
+        detector->last_fingerprint.max_context,
+        new_fp->max_context);
+    
+    int batch_changed = check_batch_threshold(
+        detector->last_fingerprint.max_batch,
+        new_fp->max_batch);
+    
+    int seq_len_changed = check_seq_len_growth(
+        detector->last_fingerprint.max_seq_len,
+        new_fp->max_seq_len);
+    
+    if (context_changed) {
+        detector->context_changes++;
+        detector->last_fingerprint.max_context = new_fp->max_context;
+        if (reason) *reason = 2; /* Context size threshold exceeded */
+        return 1;
+    }
+    
+    if (batch_changed) {
+        detector->batch_changes++;
+        detector->last_fingerprint.max_batch = new_fp->max_batch;
+        if (reason) *reason = 3; /* Batch size threshold exceeded */
+        return 1;
+    }
+    
+    if (seq_len_changed) {
+        detector->seq_len_changes++;
+        detector->last_fingerprint.max_seq_len = new_fp->max_seq_len;
+        if (reason) *reason = 4; /* Sequence length growth exceeded */
+        return 1;
+    }
+    
+    /* Update current runtime params (no re-recording needed) */
+    detector->last_fingerprint.current_context = new_fp->current_context;
+    detector->last_fingerprint.current_batch = new_fp->current_batch;
+    detector->last_fingerprint.current_seq_len = new_fp->current_seq_len;
+    
+    if (reason) *reason = 0; /* No change */
+    return 0;
+}
+
+/* Get detector statistics */
+void topology_detector_get_stats(TopologyChangeDetector* detector,
+                                uint32_t* invalidation_count,
+                                uint32_t* context_changes,
+                                uint32_t* batch_changes,
+                                uint32_t* seq_len_changes,
+                                int* is_valid) {
+    if (!detector) return;
+    
+    if (invalidation_count) *invalidation_count = detector->invalidation_count;
+    if (context_changes) *context_changes = detector->context_changes;
+    if (batch_changes) *batch_changes = detector->batch_changes;
+    if (seq_len_changes) *seq_len_changes = detector->seq_len_changes;
+    if (is_valid) *is_valid = detector->is_valid;
+}
+
+/* Print detector statistics */
+void topology_detector_print_stats(TopologyChangeDetector* detector) {
+    if (!detector) return;
+    
+    printf("Topology Change Detector Stats:\n");
+    printf("  Valid: %s\n", detector->is_valid ? "yes" : "no");
+    printf("  Total Invalidations: %u\n", detector->invalidation_count);
+    printf("  Context Changes: %u\n", detector->context_changes);
+    printf("  Batch Changes: %u\n", detector->batch_changes);
+    printf("  Seq Len Changes: %u\n", detector->seq_len_changes);
+}
+
+/* ============================================================================
+ * INTEGRATED TEMPLATE MANAGER WITH INVALIDATION
+ * ============================================================================
+ * Combines template pool with topology change detection
+ */
+
+typedef struct {
+    VkTemplatePool* pool;
+    TopologyChangeDetector* detector;
+    void (*re_record_callback)(VkTemplatePool*);
+    uint32_t re_record_count;
+    uint64_t last_re_record_time;
+} TemplateManager;
+
+/* Create template manager */
+TemplateManager* template_manager_create(VkDevice device,
+                                        VkPhysicalDevice phys_dev,
+                                        void (*re_record_callback)(VkTemplatePool*)) {
+    TemplateManager* manager = (TemplateManager*)calloc(1, sizeof(TemplateManager));
+    if (!manager) return NULL;
+    
+    manager->pool = vk_template_pool_create(device, phys_dev);
+    if (!manager->pool) {
+        free(manager);
+        return NULL;
+    }
+    
+    manager->detector = topology_detector_create();
+    if (!manager->detector) {
+        vk_template_pool_destroy(manager->pool);
+        free(manager);
+        return NULL;
+    }
+    
+    manager->re_record_callback = re_record_callback;
+    manager->re_record_count = 0;
+    
+    return manager;
+}
+
+/* Destroy template manager */
+void template_manager_destroy(TemplateManager* manager) {
+    if (!manager) return;
+    
+    if (manager->detector) {
+        topology_detector_destroy(manager->detector);
+    }
+    
+    if (manager->pool) {
+        vk_template_pool_destroy(manager->pool);
+    }
+    
+    free(manager);
+}
+
+/* Check and re-record if needed */
+int template_manager_check_and_re_record(TemplateManager* manager,
+                                        ExtendedGraphFingerprint* new_fp) {
+    if (!manager || !new_fp) return -1;
+    
+    int needs_re_record = 0;
+    int reason = 0;
+    
+    if (topology_detector_check(manager->detector, new_fp, &reason)) {
+        needs_re_record = 1;
+    }
+    
+    if (needs_re_record && manager->re_record_callback) {
+        /* Reset all command pools */
+        vk_template_pool_reset(manager->pool);
+        
+        /* Re-record all templates */
+        manager->re_record_callback(manager->pool);
+        manager->re_record_count++;
+        manager->last_re_record_time = 1; /* TODO: Get timestamp */
+        
+        printf("Template manager: Re-recorded %u templates (reason: %d)\n",
+               manager->pool->template_count, reason);
+    }
+    
+    return needs_re_record;
+}
+
+/* Get template manager statistics */
+void template_manager_get_stats(TemplateManager* manager,
+                               uint32_t* template_count,
+                               uint32_t* re_record_count,
+                               uint32_t* invalidation_count) {
+    if (!manager) return;
+    
+    if (template_count) *template_count = manager->pool->template_count;
+    if (re_record_count) *re_record_count = manager->re_record_count;
+    if (invalidation_count) *invalidation_count = manager->detector->invalidation_count;
+}
