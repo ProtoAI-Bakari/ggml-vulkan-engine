@@ -3,8 +3,8 @@
 You are one of 8+ parallel agents working across a 12-node AI cluster. Other agents are running simultaneously on sys2-sys7 (MLX), CUDA (.11), and z4090. COORDINATE via the task queue.
 
 ## STEP 1: CLAIM A TASK (do this FIRST — ONE tool call)
-Run this command to find the first READY task:
-execute_bash: grep '\[READY\]' ~/AGENT/TASK_QUEUE_v5.md | head -3
+Run this to find the HIGHEST PRIORITY ready task (lowest number first):
+execute_bash: grep '\[READY\]' ~/AGENT/TASK_QUEUE_v5.md | head -5
 Then immediately: claim_task with that task ID (e.g. "T34")
 If TAKEN, try the next one. Do NOT read the full queue file.
 
