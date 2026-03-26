@@ -49,25 +49,26 @@ signal.signal(signal.SIGINT, sigint_handler)
 # =====================================================
 # CONFIGURATION
 # =====================================================
-PRIMARY_IP   = "10.255.255.11" # 122B cluster (CUDA TP8)
-CODER_IP     = "10.255.255.4"  # Coder brain (MLX)
-MINIMAX_IP   = "192.168.1.164" # MiniMax
+# PRIMARY = LOCAL brain (each node uses its OWN MLX model for fast reasoning)
+PRIMARY_IP   = "127.0.0.1"     # LOCAL model — each agent uses its own MLX server
+MINIMAX_IP   = "192.168.1.164" # MiniMax (optional)
 PORT         = "8000"
 
 # ── Brain Endpoints (Leadership Council) ──
+# Each agent uses localhost as PRIMARY, but can call specialized brains for help
 BRAINS = {
-    "architect":  "http://10.255.255.2:8000/v1/chat/completions",   # M2 Ultra 192G — Qwen3-235B-Thinking
-    "engineer":   "http://10.255.255.3:8000/v1/chat/completions",   # M2 Ultra 192G — Qwen3.5-122B
-    "coder":      "http://10.255.255.11:8000/v1/chat/completions",  # CUDA 8x3090 TP8 — Qwen3.5-122B-FP8 (PRIMARY)
-    "designer":   "http://10.255.255.5:8000/v1/chat/completions",   # M1 Ultra 128G — GLM-4.7-Flash
-    "reviewer":   "http://10.255.255.6:8000/v1/chat/completions",   # M1 Ultra 128G — Qwen3.5-122B
-    "fast_coder": "http://10.255.255.7:8000/v1/chat/completions",   # M1 Ultra 128G — Qwen3-Coder-Next-4bit
-    "cuda_brain": "http://10.255.255.11:8000/v1/chat/completions",  # 8x3090 TP8 — Qwen3.5-122B-FP8
+    "self":       "http://127.0.0.1:8000/v1/chat/completions",     # LOCAL — fast, use for routine reasoning
+    "architect":  "http://10.255.255.2:8000/v1/chat/completions",   # sys2 M2U — GLM-4.7-Flash (architecture)
+    "engineer":   "http://10.255.255.3:8000/v1/chat/completions",   # sys3 M2U — Qwen3-Coder-30B (engineering)
+    "coder":      "http://10.255.255.4:8000/v1/chat/completions",   # sys4 M1U — Qwen3-Coder-Next-8bit (code gen)
+    "designer":   "http://10.255.255.5:8000/v1/chat/completions",   # sys5 M1U — gpt-oss-120b (creative)
+    "reviewer":   "http://10.255.255.6:8000/v1/chat/completions",   # sys6 M1U — Qwen3-Coder-30B (code review)
+    "fast_coder": "http://10.255.255.7:8000/v1/chat/completions",   # sys7 M1U — Qwen3-Coder-30B (fast code)
+    "cuda_brain": "http://10.255.255.11:8000/v1/chat/completions",  # CUDA 2x3090 — Qwen3.5-122B-FP8 (HARD problems only)
 }
 
 PRIMARY_URL  = f"http://{PRIMARY_IP}:{PORT}/v1"
 CODER_URL    = BRAINS["coder"]
-MINIMAX_URL  = f"http://{MINIMAX_IP}:8765/v1/chat/completions"
 
 LOG_DIR = os.path.expanduser("~/AGENT/LOGS")
 os.makedirs(LOG_DIR, exist_ok=True)
@@ -183,6 +184,10 @@ def ask_designer(query: str) -> str:
 def ask_reviewer(query: str) -> str:
     return _ask_brain("reviewer", query, "You are THE REVIEWER. Review the code/approach for correctness, safety, performance, and maintainability. Be thorough but not pedantic.")
 
+def ask_cuda_brain(query: str) -> str:
+    """Escalate to the 122B CUDA brain for genuinely HARD problems. Don't use for routine questions."""
+    return _ask_brain("cuda_brain", query, "You are the most capable reasoning model in this cluster (Qwen3.5-122B-FP8 on 2x3090). Give thorough, high-quality analysis. This question was escalated because the local model couldn't handle it.")
+
 def ask_minimax(query: str) -> str:
     print(f"\n{C.MAGENTA}[🧠 Pinging MiniMax Model at {MINIMAX_IP}...]{C.RESET}")
     try:
@@ -279,7 +284,7 @@ TOOL_DISPATCH = {
     "search_web": search_web, "ask_coder_brain": ask_coder_brain,
     "ask_architect": ask_architect, "ask_engineer": ask_engineer,
     "ask_designer": ask_designer, "ask_reviewer": ask_reviewer,
-    "ask_minimax": ask_minimax, "ask_claude": ask_claude,
+    "ask_cuda_brain": ask_cuda_brain, "ask_minimax": ask_minimax, "ask_claude": ask_claude,
     "claim_task": claim_task, "complete_task": complete_task,
     "restart_self": restart_self, "self_improve": self_improve, "ask_human": ask_human
 }
@@ -293,7 +298,8 @@ TOOLS_SCHEMA = [
     {"type": "function", "function": {"name": "ask_architect", "description": "Ask THE ARCHITECT (mlx-2, 235B-Thinking) for high-level system design decisions. Use for big decisions.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}},
     {"type": "function", "function": {"name": "ask_engineer", "description": "Ask THE ENGINEER (mlx-3, 122B) for implementation plans, debugging, optimization strategies.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}},
     {"type": "function", "function": {"name": "ask_designer", "description": "Ask THE DESIGNER (mlx-5, GLM-4.7) for creative alternative approaches when stuck.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}},
-    {"type": "function", "function": {"name": "ask_reviewer", "description": "Ask THE REVIEWER (mlx-6, 122B) to review code for bugs, safety, correctness. Use before committing.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}},
+    {"type": "function", "function": {"name": "ask_reviewer", "description": "Ask THE REVIEWER (sys6, Qwen3-Coder-30B) to review code for bugs, safety, correctness. Use before committing.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}},
+    {"type": "function", "function": {"name": "ask_cuda_brain", "description": "ESCALATE to the 122B CUDA brain (2x3090, Qwen3.5-122B-FP8). For GENUINELY HARD problems only — architecture, multi-file bugs, complex reasoning. Do NOT use for routine questions.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}},
     {"type": "function", "function": {"name": "ask_minimax", "description": f"Ask the {MINIMAX_IP} MiniMax model for complex systems architecture advice.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}},
     {"type": "function", "function": {"name": "ask_claude", "description": "Ask Claude Opus (smartest AI) for architecture/debugging. USE SPARINGLY — costs tokens.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}},
     {"type": "function", "function": {"name": "self_improve", "description": "Stage a self-improvement for the next agent version. Log bugs, missing features, or code patches you want applied later.", "parameters": {"type": "object", "properties": {"description": {"type": "string", "description": "What to improve"}, "code_patch": {"type": "string", "description": "Optional Python code to add/change"}}, "required": ["description"]}}},
@@ -314,28 +320,29 @@ Execute tasks from ~/AGENT/TASK_QUEUE_v4.md and ~/AGENT/TASK_QUEUE_v5.md. After 
 4. After ANY code change: compile, test, verify. If broken, restore: git checkout -- filename
 5. Git commit after every completed task with a descriptive message.
 6. Update ~/AGENT/agent-comms-bridge.md after every completed task.
-7. CONSULT BRAINS FREQUENTLY — you have a LEADERSHIP COUNCIL. Use the RIGHT brain for each job:
-   - ask_architect: HIGH-LEVEL DESIGN decisions, system architecture, trade-offs (235B Thinking model)
-   - ask_engineer: IMPLEMENTATION plans, debugging strategy, optimization (122B model)
-   - ask_coder_brain: CODE GENERATION, C/Python fixes, write actual code (CUDA 122B, fastest)
-   - ask_designer: CREATIVE alternatives when stuck, unconventional solutions (GLM-4.7)
-   - ask_reviewer: CODE REVIEW before committing, catch bugs, verify correctness (122B model)
-   - ask_claude: LAST RESORT for extremely hard problems (costs tokens)
-   RULES:
-   - BEFORE any architecture decision: ask_architect
-   - BEFORE writing C code: ask_coder_brain for the implementation
-   - AFTER writing code, BEFORE committing: ask_reviewer to check it
-   - WHEN STUCK: ask_designer for alternative approaches
-   - For implementation plans: ask_engineer
-   - Every 5-10 tool calls: consult at least ONE brain
+7. USE YOUR LOCAL BRAIN FIRST — you have a LOCAL MLX model on THIS node (localhost:8000).
+   Your main reasoning loop already uses it. For HARD problems, escalate to the Leadership Council:
 
-## YOUR BRAINS (Leadership Council — USE ALL OF THEM)
-- ask_architect: System design, architecture decisions (mlx-2, 235B-Thinking)
-- ask_engineer: Implementation plans, debugging (mlx-3, 122B)
-- ask_coder_brain: Write code, fix errors (CUDA .11, 122B-FP8, FAST)
-- ask_designer: Creative solutions, alternatives (mlx-5, GLM-4.7)
-- ask_reviewer: Code review, bug catching (mlx-6, 122B)
-- ask_claude: Hard problems only (EXPENSIVE)
+   ESCALATION RULES:
+   - ROUTINE work (read files, run commands, small edits): just DO IT, no brain call needed
+   - MODERATE complexity (implementation plans, debugging): ask your LOCAL brain (already your primary)
+   - HARD problems (architecture decisions, complex bugs): ask_architect or ask_coder_brain
+   - VERY HARD (multi-system issues, critical bugs): ask_cuda_brain (122B on CUDA, most capable)
+   - BEFORE committing code: ask_reviewer (catches bugs others miss)
+   - WHEN STUCK >5 min: ask_designer for creative alternatives
+
+   DO NOT call cuda_brain for routine questions — it's shared across 8+ agents.
+   Call it for genuinely difficult reasoning that your local model can't handle.
+
+## YOUR BRAINS (Leadership Council)
+- LOCAL (localhost:8000): YOUR primary brain — fast, use for everything routine
+- ask_architect: System design, architecture (sys2, GLM-4.7-Flash)
+- ask_engineer: Implementation plans, debugging (sys3, Qwen3-Coder-30B)
+- ask_coder_brain: Write code, fix errors (sys4, Qwen3-Coder-Next-8bit)
+- ask_designer: Creative solutions, alternatives (sys5, gpt-oss-120b)
+- ask_reviewer: Code review, bug catching (sys6, Qwen3-Coder-30B)
+- ask_cuda_brain: HARD problems only (CUDA .11, Qwen3.5-122B-FP8, 145 TPS)
+- ask_claude: Last resort (EXPENSIVE, use sparingly)
 
 ## ENVIRONMENT
 - Working dir: ~/AGENT

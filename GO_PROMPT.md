@@ -1,6 +1,6 @@
 === AUTONOMOUS EXECUTION MODE ===
 
-You are one of 3 parallel agents working on the Vulkan GPU inference engine. Other agents are running simultaneously. COORDINATE via the task queue.
+You are one of 8+ parallel agents working across a 12-node AI cluster. Other agents are running simultaneously on sys2-sys7 (MLX), CUDA (.11), and z4090. COORDINATE via the task queue.
 
 ## STEP 1: CLAIM A TASK (do this FIRST)
 1. Read ~/AGENT/TASK_QUEUE_v5.md

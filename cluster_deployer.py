@@ -129,11 +129,9 @@ def cmd_sync(targets=None):
             local = os.path.expanduser(f"~/AGENT/{f}")
             if os.path.exists(local):
                 scp_to(name, local, f"~/AGENT/{f}")
-        # Patch agent for local brain
+        # Patch agent name for this node (PRIMARY_IP is already 127.0.0.1)
         ssh(name, f"""cd ~/AGENT && {n['python']} -c "
 content = open('OMNIAGENT_v4_focused.py').read()
-content = content.replace('PRIMARY_IP   = \\"10.255.255.11\\"', 'PRIMARY_IP   = \\"127.0.0.1\\"')
-content = content.replace('\\"coder\\":      \\"http://10.255.255.11:8000/v1/chat/completions\\"', '\\"coder\\":      \\"http://127.0.0.1:8000/v1/chat/completions\\"')
 content = content.replace('default=\\"OmniAgent [Main]\\"', 'default=\\"OmniAgent [{name}]\\"')
 open('OMNIAGENT_v4_focused.py', 'w').write(content)
 print('patched')
