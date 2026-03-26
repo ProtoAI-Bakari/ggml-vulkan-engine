@@ -221,7 +221,7 @@
 - Success: request lifecycle correctly managed
 - Time: 8h
 
-### T35: [IN_PROGRESS by OmniAgent [Cluster2]] Implement _prepare_inputs()
+### T35: [DONE by OmniAgent [Cluster2]] Implement _prepare_inputs()
 - Build input_ids, positions, seq_lens from InputBatch
 - Success: correct tensor shapes for batched input
 - Time: 6h
@@ -233,13 +233,13 @@
 - Success: vocab verification passes for Llama-3.1-8B
 - Time: 4h
 
-### T37: [READY] Implement logits output shaping
+### T37: [IN_PROGRESS by OmniAgent [Main]] Implement logits output shaping
 - Extract last-token logits per request from ggml output
 - Reshape to (num_requests, vocab_size)
 - Success: vLLM sampler accepts logits
 - Time: 6h
 
-### T38: [READY] End-to-end single-request test through vLLM plugin
+### T38: [IN_PROGRESS by OmniAgent [Cluster2]] End-to-end single-request test through vLLM plugin
 - Chat completion, verify coherent response
 - Success: matches direct ggml output quality
 - Time: 4h

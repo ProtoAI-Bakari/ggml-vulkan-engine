@@ -47,6 +47,7 @@ typedef struct {
     int n_layers, hidden_dim, intermediate;
     int n_heads, n_kv_heads, head_dim;
     int vocab_size, n_ctx;
+    int n_requests;  /* For batched forward: number of concurrent requests */
     float rms_eps, rope_theta;
 
     /* T05: Timing instrumentation */
@@ -57,6 +58,10 @@ typedef struct {
     /* Pre-allocated compute buffer (avoids malloc per token) */
     void *compute_buf;
     size_t compute_buf_size;
+    int32_t *batch_tokens;  /* [total_tokens] flattened tokens from all requests */
+    int32_t *batch_positions;  /* [total_tokens] flattened positions */
+    int32_t *batch_seq_lens;  /* [n_requests] sequence length per request */
+    int32_t *batch_block_tables;  /* [n_requests * max_blocks] paged KV block tables */
     struct ggml_context *_persistent_ctx;
     int return_hidden;  /* If true, skip lm_head and return hidden_states */
 
@@ -304,6 +309,10 @@ engine_t *engine_load_gguf(const char *gguf_path, int n_ctx) {
 
 /* Forward declaration */
 int engine_forward(engine_t *e, int n_tokens, const int32_t *tokens, const int32_t *positions, float *logits_out);
+
+/* Batched forward pass for vLLM integration (T37) */
+int engine_forward_batch(engine_t *e, int n_tokens, const int32_t *tokens, const int32_t *positions,
+                         const int32_t *seq_lens, const int32_t *block_tables, float *logits_out);
 
 /* Warmup: run multiple forward passes to fully prime scheduler buffers.
  * The first pass is slow (allocation), subsequent passes reuse buffers. */
@@ -554,6 +563,10 @@ void engine_reset_kv(engine_t *e) {
 void engine_free(engine_t *e) {
     if (e->_persistent_ctx) ggml_free(e->_persistent_ctx);
     if (e->compute_buf) free(e->compute_buf);
+    if (e->batch_tokens) free(e->batch_tokens);
+    if (e->batch_positions) free(e->batch_positions);
+    if (e->batch_seq_lens) free(e->batch_seq_lens);
+    if (e->batch_block_tables) free(e->batch_block_tables);
     if (e->w_buf) ggml_backend_buffer_free(e->w_buf);
     if (e->w_ctx) ggml_free(e->w_ctx);
     ggml_backend_buffer_free(e->kv_buf[0]);
