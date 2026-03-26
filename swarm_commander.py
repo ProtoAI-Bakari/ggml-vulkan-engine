@@ -604,6 +604,7 @@ def show_help():
   [bold]reconcile[/bold]          — Sync task queue with git (mark committed tasks DONE)
   [bold]council[/bold] <question>  — Ask architect+engineer+designer
   [bold]logs[/bold] <node>        — Tail node's MLX log (Ctrl+C to stop)
+  [bold]redirect[/bold] <agent> <task> — Redirect agent to different task (issue #20)
   [bold]tasks[/bold]              — Show task queue summary
   [bold]tmux[/bold]               — List active tmux sessions
   [bold]attach[/bold] <1-6>       — Attach to agent tmux session
@@ -748,6 +749,33 @@ def main():
                         pass
             else:
                 console.print("[red]Usage: logs <node>[/red]")
+        elif action == "redirect":
+            # Issue #20: Redirect agent to a different task
+            rparts = arg.split(maxsplit=1)
+            if len(rparts) < 2:
+                console.print("[red]Usage: redirect <agent_name_or_number> <task_id>[/red]")
+                console.print("[dim]  e.g.: redirect 1 T55  or  redirect 'OmniAgent [Main]' T55[/dim]")
+            else:
+                r_agent_arg, r_task = rparts[0], rparts[1].strip().split()[0]
+                # Resolve agent number to name
+                if r_agent_arg.isdigit():
+                    agent_info = AGENTS.get(f"agent{r_agent_arg}")
+                    r_agent_name = agent_info["name"] if agent_info else r_agent_arg
+                else:
+                    r_agent_name = r_agent_arg
+                import requests as _req
+                try:
+                    resp = _req.post("http://10.255.255.128:9091/redirect",
+                                     data=f"agent={r_agent_name}&new_task={r_task}&reason=commander redirect",
+                                     headers={"Content-Type": "application/x-www-form-urlencoded"},
+                                     timeout=5)
+                    d = resp.json()
+                    if d.get("ok"):
+                        console.print(f"[green]Redirected: {d.get('msg')}[/green]")
+                    else:
+                        console.print(f"[red]Redirect failed: {d.get('msg')}[/red]")
+                except Exception as e:
+                    console.print(f"[red]Redirect error: {e}[/red]")
         elif action == "tasks":
             done, progress, ready, in_progress_list = count_tasks()
             console.print(f"  [green]Done:[/green] {done}  [yellow]Active:[/yellow] {progress}  [white]Ready:[/white] {ready}")
