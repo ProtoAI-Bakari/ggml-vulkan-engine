@@ -225,20 +225,33 @@ def _agent_count(ip, auth):
     except ValueError: return 0
 
 def _agent_task(ip, auth):
-    """Get current task ID + turn count from agent log."""
-    out = ssh_cmd(ip, "tail -c 15000 ~/AGENT/LOGS/agent_trace.log 2>/dev/null | grep -oE 'CLAIMED T[0-9]+' | tail -1", auth, timeout=5)
-    task = out.replace("CLAIMED ", "") if out else ""
-    turns = ssh_cmd(ip, "tail -c 15000 ~/AGENT/LOGS/agent_trace.log 2>/dev/null | grep -c 'Turn'", auth, timeout=5)
-    try: turns = int(turns.strip())
-    except: turns = 0
-    pushes = ssh_cmd(ip, "tail -c 15000 ~/AGENT/LOGS/agent_trace.log 2>/dev/null | grep -c 'PUSH'", auth, timeout=5)
-    try: pushes = int(pushes.strip())
-    except: pushes = 0
-    parts = []
-    if task: parts.append(f"[{M.YELLOW}]{task}[/]")
-    if turns > 0: parts.append(f"t{turns}")
-    if pushes > 0: parts.append(f"[{M.GREEN}]p{pushes}[/]")
-    return " ".join(parts) if parts else f"[{M.OVERLAY}]-[/]"
+    """Get task from central API (source of truth) by matching agent name to IP."""
+    # Map IP to agent name for lookup
+    ip_to_agent = {
+        "10.255.255.2": "sys2", "10.255.255.3": "sys3", "10.255.255.4": "sys4",
+        "10.255.255.5": "sys5", "10.255.255.6": "sys6", "10.255.255.7": "sys7",
+    }
+    agent_label = ip_to_agent.get(ip, "")
+    if not agent_label:
+        return f"[{M.OVERLAY}]-[/]"
+    try:
+        import urllib.request, json as _json
+        with urllib.request.urlopen("http://127.0.0.1:9091/tasks", timeout=2) as r:
+            content = r.read().decode()
+        # Find IN_PROGRESS tasks for this agent
+        import re as _re
+        m = _re.search(rf'### (T\d+):.*?\[IN_PROGRESS by [^\]]*{agent_label}[^\]]*\|?\s*(\d+)%', content)
+        if m:
+            tid = m.group(1)
+            pct = m.group(2)
+            return f"[{M.YELLOW}]{tid}[/] {pct}%"
+        # Check without progress %
+        m2 = _re.search(rf'### (T\d+):.*?\[IN_PROGRESS by [^\]]*{agent_label}', content)
+        if m2:
+            return f"[{M.YELLOW}]{m2.group(1)}[/]"
+    except Exception:
+        pass
+    return f"[{M.OVERLAY}]-[/]"
 
 def _req_count(ip, auth):
     # Search MLX logs, vLLM logs, and ggml server logs for completed POST requests
@@ -247,9 +260,11 @@ def _req_count(ip, auth):
     except (ValueError, AttributeError): return 0
 
 def _tps_recent(ip, auth):
-    out = ssh_cmd(ip, r"""grep -ohE '(tps|tokens/s|tok/s)[":= ]+[0-9]+\.?[0-9]*' ~/AGENT/LOGS/*_mlx.log 2>/dev/null | tail -5 | grep -oE '[0-9]+\.[0-9]+'""", auth, timeout=5)
+    # Parse "TPS:47.9" from MLX server logs (last 5 entries, average)
+    out = ssh_cmd(ip, "grep -ohE 'TPS:[0-9]+\\.?[0-9]*' ~/AGENT/LOGS/*_mlx.log 2>/dev/null | tail -5 | grep -oE '[0-9]+\\.[0-9]+'", auth, timeout=5)
     if not out:
-        out = ssh_cmd(ip, r"""grep -ohE '"tps"[: ]+[0-9]+\.?[0-9]*' ~/AGENT/LOGS/*_mlx.log 2>/dev/null | tail -5 | grep -oE '[0-9]+\.[0-9]+'""", auth, timeout=5)
+        # Fallback: try other TPS formats
+        out = ssh_cmd(ip, "grep -ohE 'tps.*[0-9]+\\.[0-9]+' ~/AGENT/LOGS/*_mlx.log 2>/dev/null | tail -5 | grep -oE '[0-9]+\\.[0-9]+'", auth, timeout=5)
     if not out: return 0.0
     try:
         vals = [float(x) for x in out.strip().split("\n") if x.strip()]

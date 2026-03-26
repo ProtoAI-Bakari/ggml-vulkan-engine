@@ -266,6 +266,18 @@ def complete_task(task_id: str) -> str:
     print(f"{C.GREEN}[✅ {out}]{C.RESET}")
     return out
 
+def update_progress(task_id: str, pct: str, note: str = "") -> str:
+    """Update task progress (0-100%) via central API. Call periodically to show progress."""
+    import subprocess
+    try:
+        cmd = f'curl -s --max-time 3 -X POST http://10.255.255.128:9091/progress -d "task={task_id}&agent={_AGENT_NAME}&pct={pct}&note={note}"'
+        r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=5)
+        out = r.stdout.strip()
+        print(f"{C.CYAN}[📊 {task_id}: {pct}%]{C.RESET}")
+        return out
+    except Exception as e:
+        return f"Progress update failed: {e}"
+
 def push_changes(files: str, message: str = "Agent work") -> str:
     """Push changed files back to sys1 (the git host). Files = comma-separated paths relative to ~/AGENT."""
     import subprocess
@@ -323,7 +335,7 @@ TOOL_DISPATCH = {
     "ask_architect": ask_architect, "ask_engineer": ask_engineer,
     "ask_designer": ask_designer, "ask_reviewer": ask_reviewer,
     "ask_cuda_brain": ask_cuda_brain, "ask_minimax": ask_minimax, "ask_claude": ask_claude,
-    "claim_task": claim_task, "complete_task": complete_task, "push_changes": push_changes,
+    "claim_task": claim_task, "complete_task": complete_task, "update_progress": update_progress, "push_changes": push_changes,
     "restart_self": restart_self, "self_improve": self_improve, "ask_human": ask_human
 }
 
@@ -343,6 +355,7 @@ TOOLS_SCHEMA = [
     {"type": "function", "function": {"name": "self_improve", "description": "Stage a self-improvement for the next agent version. Log bugs, missing features, or code patches you want applied later.", "parameters": {"type": "object", "properties": {"description": {"type": "string", "description": "What to improve"}, "code_patch": {"type": "string", "description": "Optional Python code to add/change"}}, "required": ["description"]}}},
     {"type": "function", "function": {"name": "claim_task", "description": "BEFORE starting any task: claim it so other agents don't work on it. Returns CLAIMED or TAKEN.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string", "description": "Task ID like T07, T08"}}, "required": ["task_id"]}}},
     {"type": "function", "function": {"name": "complete_task", "description": "AFTER finishing a task: mark it DONE in the queue.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string", "description": "Task ID like T07"}}, "required": ["task_id"]}}},
+    {"type": "function", "function": {"name": "update_progress", "description": "Update task progress percentage. Call every few steps: update_progress('T57', '30', 'shader compiled')", "parameters": {"type": "object", "properties": {"task_id": {"type": "string"}, "pct": {"type": "string", "description": "0-100"}, "note": {"type": "string"}}, "required": ["task_id", "pct"]}}},
     {"type": "function", "function": {"name": "push_changes", "description": "AFTER making code changes: push modified files back to sys1 (git host) so they get committed. Files = comma-separated paths relative to ~/AGENT.", "parameters": {"type": "object", "properties": {"files": {"type": "string", "description": "Comma-separated file paths, e.g. 'ggml_llama_gguf.c,ggml_vllm_backend.py'"}, "message": {"type": "string", "description": "Description of what changed"}}, "required": ["files"]}}},
     {"type": "function", "function": {"name": "ask_human", "description": "Ask the human for help. LAST RESORT only.", "parameters": {"type": "object", "properties": {"question": {"type": "string"}}, "required": ["question"]}}}
 ]

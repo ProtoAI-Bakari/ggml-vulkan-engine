@@ -95,10 +95,11 @@ def atomic_claim(task_id, agent_name):
                 tid = existing_task.group(1) if existing_task else "unknown"
                 return False, f"BLOCKED — {agent_name} already has {tid}"
 
-            # Claim it: replace [READY] with [IN_PROGRESS by agent]
+            # Claim it: replace [READY] with [IN_PROGRESS by agent | 0% | started:timestamp]
+            ts = datetime.now().strftime("%Y-%m-%dT%H:%M")
             new_content = re.sub(
                 pattern,
-                rf"\g<1>[IN_PROGRESS by {agent_name}]",
+                rf"\g<1>[IN_PROGRESS by {agent_name} | 0% | started:{ts}]",
                 content,
                 count=1,
             )
@@ -127,9 +128,10 @@ def atomic_complete(task_id, agent_name):
                     return False, "ALREADY_DONE"
                 return False, "NOT_IN_PROGRESS"
 
+            ts = datetime.now().strftime("%Y-%m-%dT%H:%M")
             new_content = re.sub(
                 pattern,
-                rf"\g<1>[DONE by {agent_name}]",
+                rf"\g<1>[DONE by {agent_name} | completed:{ts}]",
                 content,
                 count=1,
             )
@@ -138,6 +140,31 @@ def atomic_complete(task_id, agent_name):
             f.write(new_content)
             f.truncate()
             return True, f"COMPLETED {task_id} by {agent_name}"
+        finally:
+            fcntl.flock(f, fcntl.LOCK_UN)
+
+
+def atomic_progress(task_id, agent_name, pct, note=""):
+    """Atomically update progress on an IN_PROGRESS task."""
+    with open(QUEUE_PATH, "r+") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        try:
+            content = f.read()
+            # Match: [IN_PROGRESS by AGENT | XX% | started:TS] or [IN_PROGRESS by AGENT | XX% | started:TS | note]
+            pattern = rf"(### {re.escape(task_id)}:.*?)\[IN_PROGRESS by {re.escape(agent_name)}[^\]]*\](\]*)"
+            match = re.search(pattern, content)
+            if not match:
+                return False, "NOT_YOUR_TASK"
+            # Extract original started timestamp
+            started_match = re.search(r"started:(\S+)", match.group(0))
+            started = started_match.group(1) if started_match else datetime.now().strftime("%Y-%m-%dT%H:%M")
+            note_str = f" | {note}" if note else ""
+            new_tag = f"[IN_PROGRESS by {agent_name} | {pct}% | started:{started}{note_str}]"
+            new_content = re.sub(pattern, rf"\g<1>{new_tag}", content, count=1)
+            f.seek(0)
+            f.write(new_content)
+            f.truncate()
+            return True, f"PROGRESS {task_id} -> {pct}%"
         finally:
             fcntl.flock(f, fcntl.LOCK_UN)
 
@@ -191,6 +218,19 @@ class TaskHandler(BaseHTTPRequestHandler):
                 return
             ok, msg = atomic_claim(task_id, agent)
             log(f"CLAIM {task_id} by {agent} -> {'OK' if ok else 'FAIL'}: {msg}")
+            code = 200 if ok else 409
+            self._respond(code, json.dumps({"ok": ok, "msg": msg}), "application/json")
+
+        elif self.path == "/progress":
+            task_id = params.get("task", [None])[0]
+            agent = params.get("agent", [None])[0]
+            pct = params.get("pct", ["0"])[0]
+            note = params.get("note", [""])[0]
+            if not task_id or not agent:
+                self._respond(400, "Missing task or agent param")
+                return
+            ok, msg = atomic_progress(task_id, agent, pct, note)
+            log(f"PROGRESS {task_id} by {agent} -> {pct}%: {msg}")
             code = 200 if ok else 409
             self._respond(code, json.dumps({"ok": ok, "msg": msg}), "application/json")
 
