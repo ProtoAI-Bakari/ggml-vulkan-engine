@@ -297,3 +297,11 @@ Added Mixture-of-Experts (MoE) feed-forward network support to ggml_llama_gguf.c
 4. Profile expert weight loading and routing overhead
 
 ---
+
+## [Wed Mar 25 07:06:30 PM PDT 2026] T17 COMPLETE
+- **Task**: Test flash attention scalar path on Honeykrisp
+- **Result**: Flash attention already ACTIVE via ggml_flash_attn_ext() at line 407
+- **Path**: FA_SCALAR (Honeykrisp lacks cooperative matrix support)
+- **TPS**: 21.6 TPS on 8B Q4_K_M
+- **Status**: PASSED - No code changes needed
+

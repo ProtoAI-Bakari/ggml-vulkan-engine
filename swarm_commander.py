@@ -37,10 +37,11 @@ NODES = {
     "sys5":  {"ip": "10.255.255.5",    "port": 8000, "role": "DESIGNER",    "chip": "M1 Ultra",  "ram": "128G", "os": "macOS"},
     "sys6":  {"ip": "10.255.255.6",    "port": 8000, "role": "REVIEWER",    "chip": "M1 Ultra",  "ram": "128G", "os": "macOS"},
     "sys7":  {"ip": "10.255.255.7",    "port": 8000, "role": "FAST-CODER",  "chip": "M1 Ultra",  "ram": "128G", "os": "macOS"},
-    "cluster1": {"ip": "10.255.255.11", "port": 8000, "role": "CUDA-HEAD",   "chip": "2x3090",  "ram": "256G",  "os": "Linux"},
-    "cluster2": {"ip": "10.255.255.12", "port": 0,    "role": "CUDA-NODE",   "chip": "2x3090",  "ram": "128G",  "os": "Linux"},
-    "cluster3": {"ip": "10.255.255.13", "port": 0,    "role": "CUDA-NODE",   "chip": "2x3090",  "ram": "64G",  "os": "Linux"},
-    "cluster4": {"ip": "10.255.255.14", "port": 0,    "role": "CUDA-NODE",   "chip": "2x3090",  "ram": "64G",  "os": "Linux"},
+    "cuda-head": {"ip": "10.255.255.11", "port": 8000, "role": "CUDA-ARCH",   "chip": "2x3090",  "ram": "256G",  "os": "Linux"},
+    "cuda-2":    {"ip": "10.255.255.12", "port": 0,    "role": "CUDA-WORK",   "chip": "2x3090",  "ram": "128G",  "os": "Linux"},
+    "cuda-3":    {"ip": "10.255.255.13", "port": 0,    "role": "CUDA-WORK",   "chip": "2x3090",  "ram": "64G",   "os": "Linux"},
+    "cuda-4":    {"ip": "10.255.255.14", "port": 0,    "role": "CUDA-WORK",   "chip": "2x3090",  "ram": "64G",   "os": "Linux"},
+    "fast-gpu":  {"ip": "10.255.255.10", "port": 8000, "role": "HYPER-CODER", "chip": "1x4090",  "ram": "64G",   "os": "Linux"},
 }
 
 AGENTS = {
@@ -182,43 +183,78 @@ def agent_activity():
     import re
     console.print("\n[bold cyan]━━━ AGENT ACTIVITY ━━━[/bold cyan]")
     logs = {
-        "Agent 1 (Main)":     "LOGS/main_trace.log",
-        "Agent 2 (Sys4)":     "LOGS/sys4_trace.log",
-        "Agent 3 (Cluster2)": "LOGS/cluster2_trace.log",
-        "Agent 4 (Worker4)":  "LOGS/agent4_trace.log",
-        "Agent 5 (Worker5)":  "LOGS/agent5_trace.log",
-        "Agent 6 (Worker6)":  "LOGS/agent6_trace.log",
+        "A1 Main":     "LOGS/main_trace.log",
+        "A2 Sys4":     "LOGS/sys4_trace.log",
+        "A3 Clust":    "LOGS/cluster2_trace.log",
+        "A4 Work4":    "LOGS/agent4_trace.log",
+        "A5 Work5":    "LOGS/agent5_trace.log",
+        "A6 Work6":    "LOGS/agent6_trace.log",
     }
+
+    # Also get task assignments from queue
+    queue_path = os.path.expanduser("~/AGENT/TASK_QUEUE_v5.md")
+    agent_tasks = {}
+    try:
+        for line in open(queue_path):
+            m = re.search(r'(T\d+):.*\[IN_PROGRESS by ([^\]]+)\]', line)
+            if m:
+                task_id, agent_name = m.group(1), m.group(2)
+                # Map agent names to our short names
+                for short, pattern in [("A1 Main", "Main"), ("A2 Sys4", "Sys4"), ("A3 Clust", "Cluster"),
+                                       ("A4 Work4", "Worker4"), ("A5 Work5", "Worker5"), ("A6 Work6", "Worker6")]:
+                    if pattern in agent_name:
+                        agent_tasks[short] = task_id
+    except FileNotFoundError:
+        pass
+
+    term_width = os.get_terminal_size().columns if hasattr(os, 'get_terminal_size') else 160
+
     for name, logfile in logs.items():
         path = os.path.expanduser(f"~/AGENT/{logfile}")
+        task = agent_tasks.get(name, "?")
         try:
             with open(path, "rb") as f:
-                # Read last 500 bytes
                 f.seek(0, 2)
                 size = f.tell()
-                f.seek(max(0, size - 500))
-                tail = f.read().decode("utf-8", errors="replace")
-            # Strip ANSI codes
-            clean = re.sub(r'\x1b\[[0-9;]*m', '', tail)
-            # Find last meaningful line
-            lines = [l.strip() for l in clean.split("\n") if l.strip() and not l.strip().startswith("[")]
-            last = lines[-1][:100] if lines else "(idle)"
-            # Check for task claims
-            task_match = re.search(r'(T\d+)', clean)
-            task = task_match.group(1) if task_match else "?"
+                # Read last 4KB to find task claims deeper in log
+                f.seek(max(0, size - 4096))
+                chunk = f.read().decode("utf-8", errors="replace")
+            clean = re.sub(r'\x1b\[[0-9;]*m', '', chunk)
+
+            # Find task from log if not in queue (look for CLAIMED or claim_task)
+            if task == "?":
+                claims = re.findall(r'CLAIMED (T\d+)', clean)
+                if claims:
+                    task = claims[-1]  # Most recent claim
+                else:
+                    # Try finding any T## reference
+                    trefs = re.findall(r'\b(T\d{2,})\b', clean)
+                    if trefs:
+                        task = trefs[-1]
+
+            # Last meaningful line (skip empty, ANSI leftovers)
+            lines = [l.strip() for l in clean.split("\n") if l.strip() and len(l.strip()) > 5]
+            last = lines[-1] if lines else "(idle)"
+            # Truncate to fit terminal
+            max_last = term_width - 35
+            if len(last) > max_last:
+                last = last[:max_last]
+
             mtime = os.path.getmtime(path)
             age = int(time.time() - mtime)
             if age < 60:
-                status = "[green]ACTIVE[/green]"
+                status = "[green]ACT[/green]"
             elif age < 300:
-                status = "[yellow]SLOW[/yellow]"
+                status = "[yellow]SLW[/yellow]"
             else:
-                status = "[red]STALE[/red]"
-            console.print(f"  {status} {name} | Task {task} | {last[:80]}")
+                status = "[red]OLD[/red]"
+
+            task_str = f"[bold yellow]{task}[/bold yellow]" if task != "?" else "[dim]?[/dim]"
+            console.print(f"  {status} {name} [{task_str}] {last}")
         except FileNotFoundError:
-            console.print(f"  [red]DEAD[/red]  {name} | No log file")
+            console.print(f"  [red]DEAD[/red] {name} [--] No log file")
         except Exception as e:
-            console.print(f"  [red]ERR[/red]   {name} | {e}")
+            console.print(f"  [red]ERR[/red]  {name} [--] {e}")
 
 def check_agents():
     """Check which agents are running on sys0."""
@@ -487,9 +523,22 @@ def main():
     show_dashboard()
     show_help()
 
+    # Enable readline for up-arrow history
+    try:
+        import readline
+        histfile = os.path.expanduser("~/AGENT/.commander_history")
+        try:
+            readline.read_history_file(histfile)
+        except FileNotFoundError:
+            pass
+        import atexit
+        atexit.register(readline.write_history_file, histfile)
+    except ImportError:
+        pass
+
     while True:
         try:
-            cmd = console.input("\n[bold blue]commander>[/bold blue] ").strip()
+            cmd = input("\ncommander> ").strip()
         except (EOFError, KeyboardInterrupt):
             console.print("\n[dim]Exiting commander.[/dim]")
             break
@@ -594,7 +643,7 @@ def main():
                         console.print(f"  {line.strip()}")
             except FileNotFoundError:
                 pass
-        elif action == "help":
+        elif action in ("help", "?", "h"):
             show_help()
         else:
             console.print(f"[red]Unknown command: {action}[/red]. Type 'help' for commands.")

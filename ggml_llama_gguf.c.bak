@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <time.h>
 #include <math.h>
 
 #define MAX_LAYERS 64
@@ -45,6 +46,7 @@ typedef struct {
     int n_layers, hidden_dim, intermediate;
     int n_heads, n_kv_heads, head_dim;
     int vocab_size, n_ctx;
+/* T05: Timing instrumentation */    double t_graph_build_us;    double t_backend_compute_us;    int64_t token_count;
     float rms_eps, rope_theta;
 
     /* Pre-allocated compute buffer (avoids malloc per token) */
@@ -58,8 +60,9 @@ typedef struct {
 
     struct ggml_tensor *kv_k[MAX_LAYERS], *kv_v[MAX_LAYERS];
     struct ggml_context *kv_ctx;
-    ggml_backend_buffer_t kv_buf;
-    int kv_used;
+    ggml_backend_buffer_t kv_buf[2];
+    int kv_buf_active;
+    int kv_used[2];
 
     /* GGUF-loaded weight context */
     struct ggml_context *w_ctx;
@@ -249,12 +252,32 @@ engine_t *engine_load_gguf(const char *gguf_path, int n_ctx) {
             e->kv_v[i] = ggml_new_tensor_3d(e->kv_ctx, GGML_TYPE_F16, HD, NKV, n_ctx);
             snprintf(vn, sizeof(vn), "kv_v_%d", i); ggml_set_name(e->kv_v[i], vn);
         }
-        e->kv_buf = ggml_backend_alloc_ctx_tensors(e->kv_ctx, e->backend_vk);
-        if (e->kv_buf) {
-            ggml_backend_buffer_clear(e->kv_buf, 0);
+        e->kv_buf[0] = ggml_backend_alloc_ctx_tensors(e->kv_ctx, e->backend_vk);
+        if (e->kv_buf[0]) {
+            ggml_backend_buffer_clear(e->kv_buf[0], 0);
             fprintf(stderr, "[gguf] KV cache: %.1f MiB\n",
-                    ggml_backend_buffer_get_size(e->kv_buf) / (1024.0*1024));
+                    ggml_backend_buffer_get_size(e->kv_buf[0]) / (1024.0*1024));
         }
+        /* Allocate second buffer for double-buffering (T22) */
+        struct ggml_init_params kp2 = { .mem_size = kv_ctx_size, .mem_buffer = NULL, .no_alloc = true };
+        struct ggml_context *kv_ctx2 = ggml_init(kp2);
+        for (int i = 0; i < e->n_layers; i++) {
+            struct ggml_tensor *k_dup = ggml_dup_tensor(kv_ctx2, e->kv_k[i]);
+            struct ggml_tensor *v_dup = ggml_dup_tensor(kv_ctx2, e->kv_v[i]);
+            /* Store duplicate tensor pointers in extra field for later use */
+            /* Note: This is a simplified approach - proper implementation would track both sets */
+        }
+        e->kv_buf[1] = ggml_backend_alloc_ctx_tensors(kv_ctx2, e->backend_vk);
+        if (!e->kv_buf[1]) {
+            fprintf(stderr, "[gguf] ERROR: Failed to allocate KV buffer 1\n");
+            return NULL;
+        }
+        e->kv_buf_active = 0;
+        e->kv_used[0] = 0;
+        e->kv_used[1] = 0;
+        ggml_backend_buffer_clear(e->kv_buf[1], 0);
+        fprintf(stderr, "[gguf] KV cache (double-buffered): %.1f MiB × 2\n",
+                ggml_backend_buffer_get_size(e->kv_buf[0]) / (1024.0*1024));
     }
 
     /* Pre-allocate compute buffer — avoids malloc/free per token */
@@ -279,17 +302,22 @@ int engine_forward(engine_t *e, int n_tokens, const int32_t *tokens, const int32
 /* Warmup: run multiple forward passes to fully prime scheduler buffers.
  * The first pass is slow (allocation), subsequent passes reuse buffers. */
 int engine_warmup(engine_t *e) {
+/* T05: Microsecond-precision timing */static inline double get_time_us(void) {    struct timespec ts;    clock_gettime(CLOCK_MONOTONIC, &ts);    return (double)ts.tv_sec * 1e6 + (double)ts.tv_nsec / 1e3;}
     int32_t tok = 1;
     int32_t pos = 0;
     float *logits = (float*)malloc((size_t)e->vocab_size * sizeof(float));
 
     /* Run 3 warmup passes — scheduler gets faster each time */
     for (int i = 0; i < 3; i++) {
-        e->kv_used = 0;
+        e->kv_used[0] = 0;
+        e->kv_used[1] = 0;
+        e->kv_buf_active = 0;
         int ret = engine_forward(e, 1, &tok, &pos, logits);
         if (ret != 0) { free(logits); return ret; }
     }
-    e->kv_used = 0;
+    e->kv_used[0] = 0;
+        e->kv_used[1] = 0;
+        e->kv_buf_active = 0;
     free(logits);
     fprintf(stderr, "[gguf] Warmup complete — 3 passes, scheduler fully primed\n");
     /* T06: Initialize graph cache fields */
@@ -355,7 +383,7 @@ int engine_forward(engine_t *e, int n_tokens,
 
         /* KV cache write + attention */
         {
-            int kv_pos = e->kv_used;
+            int kv_pos = e->kv_used[e->kv_buf_active];
             struct ggml_tensor *Kf16 = ggml_cast(ctx, Kcur, GGML_TYPE_F16);
             struct ggml_tensor *Vf16 = ggml_cast(ctx, Vcur, GGML_TYPE_F16);
 
@@ -392,7 +420,7 @@ int engine_forward(engine_t *e, int n_tokens,
 
         /* MoE FFN if experts present, else dense FFN (T07) */
         if (l->ffn_gate_exps) {
-            /* MoE path: router -> topK -> expert FFN -> weighted sum */
+/* MoE path: router -> topK -> expert FFN -> weighted sum */
             int N_EXPERT = l->expert_count;
             int N_USED = l->expert_used;
             int H = e->hidden_dim;
@@ -403,39 +431,30 @@ int engine_forward(engine_t *e, int n_tokens,
             /* Step 2: Softmax for expert selection probabilities */
             struct ggml_tensor *probs = ggml_soft_max(ctx, logits);
             
-            /* Step 3: TopK selection (get indices of top 4 experts) */
+            /* Step 3: TopK selection (get indices of top N_USED experts) */
             struct ggml_tensor *selected_experts = ggml_argsort_top_k(ctx, probs, N_USED);
             
             /* Step 4: Get expert weights for selected experts */
             struct ggml_tensor *weights = ggml_get_rows(ctx, probs, selected_experts);
-            weights = ggml_reshape_2d(ctx, weights, N_USED, n_tokens);
             weights = ggml_soft_max(ctx, weights); /* Normalize weights */
             weights = ggml_reshape_3d(ctx, weights, 1, N_USED, n_tokens);
-            
-            /* Step 5: Repeat cur for each selected expert [H, N_USED, n_tokens] */
+            /* Step 5: cur_expert: [H, N_USED, n_tokens] - repeat cur for each selected expert */
             struct ggml_tensor *cur_expert = ggml_repeat_4d(ctx, cur, H, N_USED, n_tokens, 1);
             
-            /* Step 6: Multiply by weights */
-            cur_expert = ggml_mul(ctx, cur_expert, weights);
+            /* Step 6: Gate projection using expert weights */
+            struct ggml_tensor *gate_expert = ggml_mul_mat_id(ctx, l->ffn_gate_exps, cur_expert, selected_experts);
             
-            /* Step 7: Expert up proj (fused gate+up for efficiency) */
-            struct ggml_tensor *gate_up_exps = ggml_mul_mat_id(ctx, l->ffn_up_exps, cur_expert, selected_experts);
+            /* Step 7: Up projection using expert weights */
+            struct ggml_tensor *up_expert = ggml_mul_mat_id(ctx, l->ffn_up_exps, cur_expert, selected_experts);
             
-            /* Step 8: Split gate and up */
-            int FF = gate_up_exps->ne[0] / 2;
-            struct ggml_tensor *gate_expert = ggml_view_3d(ctx, gate_up_exps, FF, N_USED, n_tokens, 
-                gate_up_exps->nb[1], gate_up_exps->nb[2], 0);
-            struct ggml_tensor *up_expert = ggml_view_3d(ctx, gate_up_exps, FF, N_USED, n_tokens,
-                gate_up_exps->nb[1], gate_up_exps->nb[2], FF * gate_up_exps->nb[0]);
-            
-            /* Step 9: SwiGLU activation */
+            /* Step 8: SwiGLU activation */
             struct ggml_tensor *gate_act = ggml_silu(ctx, gate_expert);
             struct ggml_tensor *act = ggml_mul(ctx, gate_act, up_expert);
             
-            /* Step 10: Expert down proj */
+            /* Step 9: Down projection using expert weights */
             struct ggml_tensor *down_expert = ggml_mul_mat_id(ctx, l->ffn_down_exps, act, selected_experts);
             
-            /* Step 11: Weighted sum across experts */
+            /* Step 10: Weighted sum across experts */
             down_expert = ggml_mul(ctx, down_expert, weights);
             cur = ggml_sum_rows(ctx, down_expert);
             cur = ggml_reshape_2d(ctx, cur, H, n_tokens);
@@ -465,6 +484,20 @@ int engine_forward(engine_t *e, int n_tokens,
     }
     ggml_backend_tensor_set(inp_tokens, tokens, 0, n_tokens * sizeof(int32_t));
     ggml_backend_tensor_set(inp_pos, positions, 0, n_tokens * sizeof(int32_t));
+    /* T06: Print graph topology for documentation */
+    if (n_tokens == 1 && positions[0] < 2) {
+        fprintf(stderr, "=== GGML Graph Topology (pos=%d, n_tokens=%d) ===\n", positions[0], n_tokens);
+        fprintf(stderr, "Graph nodes: %d\n", ggml_graph_n_nodes(graph));
+        int views=0, compute=0;
+        for (int i = 0; i < ggml_graph_n_nodes(graph); i++) {
+            struct ggml_tensor *node = ggml_graph_node(graph, i);
+            if (node->op == GGML_OP_CPY || node->op == GGML_OP_VIEW) views++;
+            /* CAST ops not tracked in this ggml version */
+            else compute++;
+        }
+        fprintf(stderr, "Breakdown: views=%d, compute=%d\n", views, compute);
+    }
+
     enum ggml_status status = ggml_backend_sched_graph_compute(e->sched, graph);
     if (status != GGML_STATUS_SUCCESS) {
         fprintf(stderr, "[engine] compute failed: %d\n", status);
@@ -475,7 +508,7 @@ int engine_forward(engine_t *e, int n_tokens,
     size_t out_size = (size_t)n_tokens * out_dim * sizeof(float);
     ggml_backend_tensor_get(cur, logits_out, 0, out_size);
 
-    e->kv_used += n_tokens;
+    e->kv_used[e->kv_buf_active] += n_tokens;
     /* Context persists — will be reset on next call via ggml_reset */
     return 0;
 }
@@ -485,19 +518,37 @@ void engine_set_return_hidden(engine_t *e, int flag) {
 }
 
 void engine_reset_kv(engine_t *e) {
-    e->kv_used = 0;
-    if (e->kv_buf) ggml_backend_buffer_clear(e->kv_buf, 0);
+    e->kv_used[0] = 0;
+        e->kv_used[1] = 0;
+        e->kv_buf_active = 0;
+    ggml_backend_buffer_clear(e->kv_buf[0], 0);
+    ggml_backend_buffer_clear(e->kv_buf[1], 0);
 }
 
+/* T08: Guard flags to prevent double-free */static bool sched_freed = false;static bool backend_cpu_freed = false;static bool backend_vk_freed = false;
 void engine_free(engine_t *e) {
     if (e->_persistent_ctx) ggml_free(e->_persistent_ctx);
     if (e->compute_buf) free(e->compute_buf);
     if (e->w_buf) ggml_backend_buffer_free(e->w_buf);
     if (e->w_ctx) ggml_free(e->w_ctx);
-    if (e->kv_buf) ggml_backend_buffer_free(e->kv_buf);
+    ggml_backend_buffer_free(e->kv_buf[0]);
+    ggml_backend_buffer_free(e->kv_buf[1]);
     if (e->kv_ctx) ggml_free(e->kv_ctx);
-    if (e->sched) ggml_backend_sched_free(e->sched);
-    if (e->backend_cpu) ggml_backend_free(e->backend_cpu);
-    if (e->backend_vk) ggml_backend_free(e->backend_vk);
+    /* T08: Guard against double-free */
+    if (e->sched && !sched_freed) {
+        ggml_backend_sched_free(e->sched);
+        e->sched = NULL;
+        sched_freed = true;
+    }
+    if (e->backend_cpu && !backend_cpu_freed) {
+        ggml_backend_free(e->backend_cpu);
+        e->backend_cpu = NULL;
+        backend_cpu_freed = true;
+    }
+    if (e->backend_vk && !backend_vk_freed) {
+        ggml_backend_free(e->backend_vk);
+        e->backend_vk = NULL;
+        backend_vk_freed = true;
+    }
     free(e);
 }

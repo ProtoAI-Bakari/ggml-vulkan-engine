@@ -14,6 +14,7 @@
  *     -Wl,-rpath,/home/z/GITDEV/llama.cpp/build-lib/bin
  */
 #include <ggml.h>
+#include <ggml-alloc.h>
 #include <ggml-backend.h>
 #include <ggml-vulkan.h>
 #include <ggml-cpu.h>
@@ -41,11 +42,17 @@ typedef struct {
     ggml_backend_t backend_vk;
     ggml_backend_t backend_cpu;
     ggml_backend_sched_t sched;
+    ggml_gallocr_t alloc;  // Graph buffer allocator (T12)
 
     int n_layers, hidden_dim, intermediate;
     int n_heads, n_kv_heads, head_dim;
     int vocab_size, n_ctx;
     float rms_eps, rope_theta;
+
+    /* T05: Timing instrumentation */
+    double t_graph_build_us;
+    double t_backend_compute_us;
+    int64_t token_count;
 
     /* Pre-allocated compute buffer (avoids malloc per token) */
     void *compute_buf;
@@ -87,6 +94,7 @@ engine_t *engine_load_gguf(const char *gguf_path, int n_ctx) {
     e->backend_cpu = ggml_backend_cpu_init();
     ggml_backend_t backends[2] = { e->backend_vk, e->backend_cpu };
     e->sched = ggml_backend_sched_new(backends, NULL, 2, GRAPH_SIZE, false, false);
+    e->alloc = ggml_gallocr_new(ggml_backend_vk_buffer_type(0));  // T12: Graph allocator
     e->n_ctx = n_ctx;
 
     /* Read GGUF metadata + tensor info (no data yet) */
@@ -332,6 +340,8 @@ int engine_forward(engine_t *e, int n_tokens,
                    float *logits_out) {
     int H = e->hidden_dim, I = e->intermediate;
     int NH = e->n_heads, NKV = e->n_kv_heads, HD = e->head_dim;
+    double t_start = ggml_time_us();
+    e->token_count++;
 
     /* Reuse persistent context — ggml_reset is MUCH faster than init/free */
     if (!e->_persistent_ctx) {
@@ -347,6 +357,7 @@ int engine_forward(engine_t *e, int n_tokens,
     struct ggml_context *ctx = e->_persistent_ctx;
     if (!ctx) return -1;
 
+    double t_graph_start = ggml_time_us();
     struct ggml_cgraph *graph = ggml_new_graph_custom(ctx, GRAPH_SIZE, false);
 
     struct ggml_tensor *inp_tokens = ggml_new_tensor_1d(ctx, GGML_TYPE_I32, n_tokens);
@@ -477,8 +488,11 @@ int engine_forward(engine_t *e, int n_tokens,
     ggml_backend_sched_reset(e->sched);
     ggml_build_forward_expand(graph, cur);
     if (!ggml_backend_sched_alloc_graph(e->sched, graph)) {
+        e->t_graph_build_us = ggml_time_us() - t_graph_start;
+        e->t_backend_compute_us = 0;
         return -2;
     }
+    e->t_graph_build_us = ggml_time_us() - t_graph_start;
     ggml_backend_tensor_set(inp_tokens, tokens, 0, n_tokens * sizeof(int32_t));
     ggml_backend_tensor_set(inp_pos, positions, 0, n_tokens * sizeof(int32_t));
     /* T06: Print graph topology for documentation */
@@ -495,7 +509,21 @@ int engine_forward(engine_t *e, int n_tokens,
         fprintf(stderr, "Breakdown: views=%d, compute=%d\n", views, compute);
     }
 
+    double t_compute_start = ggml_time_us();
     enum ggml_status status = ggml_backend_sched_graph_compute(e->sched, graph);
+    e->t_backend_compute_us = ggml_time_us() - t_compute_start;
+    double t_total = ggml_time_us() - t_start;
+    
+    /* Print timing every 10 tokens */
+    if (e->token_count % 10 == 0) {
+        fprintf(stderr, "[Timing @ %ld tokens] Graph: %.1f\u03bcs, Compute: %.1f\u03bcs, Total: %.1f\u03bcs (%.1f TPS)\n",
+                (long)e->token_count,
+                e->t_graph_build_us,
+                e->t_backend_compute_us,
+                t_total,
+                1e6 / t_total);
+    }
+    
     if (status != GGML_STATUS_SUCCESS) {
         fprintf(stderr, "[engine] compute failed: %d\n", status);
         return -3;

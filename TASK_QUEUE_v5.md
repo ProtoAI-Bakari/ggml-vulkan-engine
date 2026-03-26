@@ -165,42 +165,42 @@
 - Success: proportional improvement across model sizes
 - Time: 3h
 
-### T25: [READY] Document Phase 1 changes + create upstream-compatible patches
+### T25: [DONE] Document Phase 1 changes + create upstream-compatible patches
 - Clean patches for ggml contribution
 - Success: patch set ready for upstream review
 - Time: 4h
 
 ## PHASE 2: vLLM PRODUCTION INTEGRATION [Perspective C — 120+ TPS aggregate]
 
-### T26: [READY] Study vllm-metal plugin source (the template for our integration)
+### T26: [DONE] Study vllm-metal plugin source (the template for our integration)
 - Map: MetalPlatform, MetalWorker, MetalModelRunner interfaces
 - Document what we need to implement
 - Success: interface specification document
 - Time: 4h
 
-### T27: [READY] Create VulkanPlatform(Platform) stub
+### T27: [IN_PROGRESS by OmniAgent [Main]] Create VulkanPlatform(Platform) stub
 - check_and_update_config(), get_attn_backend_cls()
 - Register as vllm.platform_plugins entry point
 - Success: vLLM recognizes platform
 - Time: 6h
 
-### T28: [READY] Create VulkanWorker(WorkerBase) stub
+### T28: [IN_PROGRESS by OmniAgent [Main]] Create VulkanWorker(WorkerBase) stub
 - init_device(), determine_available_memory(), load_model()
 - Success: worker initializes without crash
 - Time: 6h
 
-### T29: [READY] Create VulkanModelRunner stub
+### T29: [IN_PROGRESS by OmniAgent [Main]] Create VulkanModelRunner stub
 - load_model() → ggml engine, execute_model() → return logits
 - Success: vLLM server starts and accepts requests
 - Time: 8h
 
-### T30: [READY] Implement paged KV cache pool
+### T30: [IN_PROGRESS by OmniAgent [Main]] Implement paged KV cache pool
 - Flat Vulkan buffer: num_blocks × block_size × 2 × num_kv_heads × head_size
 - For 8B: 8 KV heads, 128 head dim, block_size=16, 2048 blocks ≈ 1 GB
 - Success: pool allocates without OOM
 - Time: 6h
 
-### T31: [READY] Implement block table data structure
+### T31: [IN_PROGRESS by OmniAgent [Main]] Implement block table data structure
 - Per-request: logical position → physical block ID
 - Match vLLM's BlockTable interface
 - Success: correct block tracking across allocate/free

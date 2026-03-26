@@ -66,6 +66,7 @@ BRAIN_COLORS = {
     "designer":  "\033[38;5;51m",   # Cyan — creative
     "reviewer":  "\033[38;5;118m",  # Bright green — quality
     "coder2":    "\033[38;5;213m",  # Pink — fast code
+    "hyper":     "\033[38;5;196m",  # Bright red — hyper fast
 }
 
 BRAIN_LABELS = {
@@ -79,6 +80,7 @@ BRAIN_LABELS = {
     "designer":  "GLM-4.7-DESIGNER",
     "reviewer":  "Qwen3.5-122B-REVIEWER",
     "coder2":    "Qwen3-Coder-FAST",
+    "hyper":     "4090-HYPER-CODER",
 }
 
 # ── Brain endpoint configuration ────────────────────────────────────────────
@@ -159,6 +161,12 @@ BRAINS = {
         "endpoint": "http://10.255.255.7:8000/v1/chat/completions",
         "model": "mlx-community/Qwen3-Coder-Next-4bit",
         "system": "You are a fast code generator. Write working code immediately. No preamble.",
+        "max_tokens": 4096,
+    },
+    "hyper": {
+        "endpoint": "http://10.255.255.10:8000/v1/chat/completions",
+        "model": "hyper-coder-4090",
+        "system": "You are a hyper-fast code generator on a 4090 GPU. Write working code. No fluff. Maximum speed.",
         "max_tokens": 4096,
     },
 }
