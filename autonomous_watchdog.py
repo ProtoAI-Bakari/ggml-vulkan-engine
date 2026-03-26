@@ -625,8 +625,11 @@ def fix_restart_agent(name, node, reason="watchdog auto-restart"):
             # Running on sys1 — direct SCP
             scp_to(ip, os.path.expanduser(f"~/AGENT/{f}"), f"~/AGENT/{f}", auth)
 
-    # Step 2: Ensure requests module available
-    ssh(ip, "python3 -c 'import requests' 2>/dev/null || pip3 install requests 2>/dev/null", auth, timeout=30)
+    # Step 2: Ensure all required Python packages are available
+    ssh(ip, (
+        "python3 -c 'import requests, openai, numpy' 2>/dev/null || "
+        "pip3 install requests openai numpy 2>/dev/null"
+    ), auth, timeout=60)
 
     # Step 3: Launch agent — use nohup directly (tmux has quoting issues through SSH layers)
     ssh(ip, (

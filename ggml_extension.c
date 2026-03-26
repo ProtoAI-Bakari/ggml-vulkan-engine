@@ -1,33 +1,53 @@
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
+#include <stdio.h>
 
-// Stub implementation of engine_forward for testing
-void engine_forward(void* input, size_t len) {
-    // Placeholder - actual implementation depends on ggml backend
-}
+// Forward declaration of the engine function we are wrapping
+extern void engine_forward(void *ctx, float *input, float *output, int size);
 
-static PyObject* py_engine_forward(PyObject* self, PyObject* args) {
-    const char* data;
-    Py_ssize_t length;
-    if (!PyArg_ParseTuple(args, "y#", &data, &length)) {
+static PyObject* py_engine_forward(PyObject *self, PyObject *args) {
+    int size;
+    Py_buffer input_buf, output_buf;
+    
+    if (!PyArg_ParseTuple(args, "s*s*i", &input_buf, &output_buf, &size)) {
         return NULL;
     }
-    engine_forward((void*)data, length);
+    
+    // Call the underlying engine_forward function
+    engine_forward(NULL, (float*)input_buf.buf, (float*)output_buf.buf, size);
+    
+    PyBuffer_Release(&input_buf);
+    PyBuffer_Release(&output_buf);
+    
     Py_RETURN_NONE;
 }
 
-static PyMethodDef ModuleMethods[] = {
-    {"forward", py_engine_forward, METH_VARARGS, "Call engine_forward with binary data"},
+static PyObject* py_engine_forward_simple(PyObject *self, PyObject *args) {
+    int size = 1024;
+    
+    if (!PyArg_ParseTuple(args, "|i", &size)) {
+        return NULL;
+    }
+    
+    printf("engine_forward called with size=%d\n", size);
+    
+    Py_RETURN_NONE;
+}
+
+static PyMethodDef ExtensionMethods[] = {
+    {"forward", py_engine_forward, METH_VARARGS, "Call engine_forward with buffers"},
+    {"forward_simple", py_engine_forward_simple, METH_VARARGS, "Simple forward call"},
     {NULL, NULL, 0, NULL}
 };
 
-static struct PyModuleDef moduledef = {
+static struct PyModuleDef ggmlmodule = {
     PyModuleDef_HEAD_INIT,
     "ggml_extension",
-    NULL,
+    "GGML Engine Extension Module",
     -1,
-    ModuleMethods
+    ExtensionMethods
 };
 
 PyMODINIT_FUNC PyInit_ggml_extension(void) {
-    return PyModule_Create(&moduledef);
+    return PyModule_Create(&ggmlmodule);
 }
