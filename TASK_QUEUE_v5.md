@@ -82,13 +82,13 @@
 
 ## PHASE 1: GGML GRAPH + CB OPTIMIZATION [Perspective A — 23→30-33 TPS]
 
-### T11: [READY] Implement graph topology fingerprinting
+### T11: [IN_PROGRESS by OmniAgent [Main]] Implement graph topology fingerprinting
 - Hash: node count + op types + tensor shapes
 - Detect when graph is unchanged between tokens (99%+ of decode steps)
 - Success: fingerprint matches consecutive decode tokens
 - Time: 4h
 
-### T12: [READY] Add graph caching via ggml_gallocr (PR #20927 pattern)
+### T12: [IN_PROGRESS by OmniAgent [Main]] Add graph caching via ggml_gallocr (PR #20927 pattern)
 - ggml_gallocr_reserve() at init with worst-case graph
 - ggml_gallocr_alloc_graph() each token — near-no-op when topology matches
 - Success: graph alloc time drops from 4ms to <0.5ms

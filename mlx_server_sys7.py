@@ -1,6 +1,6 @@
 """
 MLX Server — Sys7 (M1 Ultra 128GB)
-Model: Qwen3-235B-A22B-8bit — MoE reasoning brain (22B active)
+Model: GLM-4.5-4bit — General reasoning brain
   /v1/chat/completions  — OpenAI-compatible (stream or not)
   /health               — liveness probe
 """
@@ -24,7 +24,7 @@ from mlx_lm.sample_utils import make_sampler, make_logits_processors
 from pydantic import BaseModel
 
 # ── Config ─────────────────────────────────────────────────────────────────────
-MODEL_ID        = "mlx-community/Qwen3-235B-A22B-8bit"
+MODEL_ID        = "mlx-community/gpt-oss-120b-MXFP4-Q8"
 HOST            = "0.0.0.0"
 PORT            = 8000
 MAX_TOKENS      = 32000

@@ -24,7 +24,7 @@ from mlx_lm.sample_utils import make_sampler, make_logits_processors
 from pydantic import BaseModel
 
 # ── Config ─────────────────────────────────────────────────────────────────────
-MODEL_ID        = "mlx-community/GLM-4.5-4bit"
+MODEL_ID        = "mlx-community/gpt-oss-120b-MXFP4-Q8"
 HOST            = "0.0.0.0"
 PORT            = 8000
 MAX_TOKENS      = 32000

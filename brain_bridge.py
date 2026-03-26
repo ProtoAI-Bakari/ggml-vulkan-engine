@@ -9,6 +9,9 @@ Brains:
   brain  — Qwen3.5-122B on 10.255.255.11:8000 (reasoning/architecture)
   coder  — Qwen3-Coder-Next on 10.255.255.4:8000 (code generation)
   mini   — MiniMaxM2 on 192.168.1.164:8765 (fast/light tasks)
+  sys5   — gpt-oss-120b on 10.255.255.5:8000 (reasoning/code)
+  sys6   — gpt-oss-120b on 10.255.255.6:8000 (reasoning/code)
+  sys7   — gpt-oss-120b on 10.255.255.7:8000 (reasoning/code)
 
 Usage:
   python brain_bridge.py "how do I tile a matmul in Vulkan compute?"
@@ -58,6 +61,9 @@ BRAIN_COLORS = {
     "mini":  C.MINI,
     "claude": "\033[38;5;141m",  # Purple for Claude
     "fast":   "\033[38;5;208m",  # Orange for fast rewrite
+    "sys5":   "\033[38;5;203m",  # Red for sys5
+    "sys6":   "\033[38;5;226m",  # Yellow for sys6
+    "sys7":   "\033[38;5;51m",   # Cyan for sys7
 }
 
 BRAIN_LABELS = {
@@ -66,6 +72,9 @@ BRAIN_LABELS = {
     "mini":  "MiniMaxM2",
     "claude": "Claude-Opus-4.6",
     "fast":   "Qwen3B-Fast",
+    "sys5":   "gpt-oss-120b-sys5",
+    "sys6":   "gpt-oss-120b-sys6",
+    "sys7":   "gpt-oss-120b-sys7",
 }
 
 # ── Brain endpoint configuration ────────────────────────────────────────────
@@ -117,6 +126,36 @@ BRAINS = {
             "Be direct, give code when asked, no fluff."
         ),
         "max_tokens": 16384,
+    },
+    "sys5": {
+        "endpoint": "http://10.255.255.5:8000/v1/chat/completions",
+        "model": "mlx-community/gpt-oss-120b-MXFP4-Q8",
+        "system": (
+            "You are gpt-oss-120b running on sys5, part of a multi-agent swarm. "
+            "Expert in code generation, reasoning, and systems engineering. "
+            "Be precise and actionable."
+        ),
+        "max_tokens": 4096,
+    },
+    "sys6": {
+        "endpoint": "http://10.255.255.6:8000/v1/chat/completions",
+        "model": "mlx-community/gpt-oss-120b-MXFP4-Q8",
+        "system": (
+            "You are gpt-oss-120b running on sys6, part of a multi-agent swarm. "
+            "Expert in code generation, reasoning, and systems engineering. "
+            "Be precise and actionable."
+        ),
+        "max_tokens": 4096,
+    },
+    "sys7": {
+        "endpoint": "http://10.255.255.7:8000/v1/chat/completions",
+        "model": "mlx-community/gpt-oss-120b-MXFP4-Q8",
+        "system": (
+            "You are gpt-oss-120b running on sys7, part of a multi-agent swarm. "
+            "Expert in code generation, reasoning, and systems engineering. "
+            "Be precise and actionable."
+        ),
+        "max_tokens": 4096,
     },
 }
 
