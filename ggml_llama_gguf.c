@@ -487,7 +487,7 @@ int engine_forward(engine_t *e, int n_tokens,
 
     ggml_backend_sched_reset(e->sched);
     ggml_build_forward_expand(graph, cur);
-    if (!ggml_backend_sched_alloc_graph(e->sched, graph)) {
+    if (!ggml_gallocr_alloc_graph(e->alloc, graph)) {
         e->t_graph_build_us = ggml_time_us() - t_graph_start;
         e->t_backend_compute_us = 0;
         return -2;
@@ -560,6 +560,10 @@ void engine_free(engine_t *e) {
     ggml_backend_buffer_free(e->kv_buf[1]);
     if (e->kv_ctx) ggml_free(e->kv_ctx);
     /* T08: Guard against double-free */
+    if (e->alloc) {
+        ggml_gallocr_free(e->alloc);
+        e->alloc = NULL;
+    }
     if (e->sched && !sched_freed) {
         ggml_backend_sched_free(e->sched);
         e->sched = NULL;

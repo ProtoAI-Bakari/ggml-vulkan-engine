@@ -30,18 +30,21 @@ PASSFILE = os.path.expanduser("~/DEV/authpass")
 SSH_OPTS = "-o StrictHostKeyChecking=no -o ConnectTimeout=3"
 
 NODES = {
-    "sys0":  {"ip": "127.0.0.1",      "port": 8081, "role": "AGENT-HOST",  "chip": "M1 Ultra",  "ram": "128G", "os": "Asahi Linux"},
-    "sys2":  {"ip": "10.255.255.2",    "port": 8000, "role": "ARCHITECT",   "chip": "M2 Ultra",  "ram": "192G", "os": "macOS"},
-    "sys3":  {"ip": "10.255.255.3",    "port": 8000, "role": "ENGINEER",    "chip": "M2 Ultra",  "ram": "192G", "os": "macOS"},
-    "sys4":  {"ip": "10.255.255.4",    "port": 8000, "role": "CODER",       "chip": "M1 Ultra",  "ram": "128G", "os": "macOS"},
-    "sys5":  {"ip": "10.255.255.5",    "port": 8000, "role": "DESIGNER",    "chip": "M1 Ultra",  "ram": "128G", "os": "macOS"},
-    "sys6":  {"ip": "10.255.255.6",    "port": 8000, "role": "REVIEWER",    "chip": "M1 Ultra",  "ram": "128G", "os": "macOS"},
-    "sys7":  {"ip": "10.255.255.7",    "port": 8000, "role": "FAST-CODER",  "chip": "M1 Ultra",  "ram": "128G", "os": "macOS"},
-    "cuda-head": {"ip": "10.255.255.11", "port": 8000, "role": "CUDA-ARCH",   "chip": "2x3090",  "ram": "256G",  "os": "Linux"},
-    "cuda-2":    {"ip": "10.255.255.12", "port": 0,    "role": "CUDA-WORK",   "chip": "2x3090",  "ram": "128G",  "os": "Linux"},
-    "cuda-3":    {"ip": "10.255.255.13", "port": 0,    "role": "CUDA-WORK",   "chip": "2x3090",  "ram": "64G",   "os": "Linux"},
-    "cuda-4":    {"ip": "10.255.255.14", "port": 0,    "role": "CUDA-WORK",   "chip": "2x3090",  "ram": "64G",   "os": "Linux"},
-    "fast-gpu":  {"ip": "10.255.255.10", "port": 8000, "role": "HYPER-CODER", "chip": "1x4090",  "ram": "64G",   "os": "Linux"},
+    # ── Apple Silicon MLX Fleet ──
+    "mlx-0":  {"ip": "127.0.0.1",      "port": 8081, "role": "AGENT-HOST",  "chip": "M1 Ultra",  "ram": "128G", "os": "Asahi"},
+    "mlx-2":  {"ip": "10.255.255.2",    "port": 8000, "role": "ARCHITECT",   "chip": "M2 Ultra",  "ram": "192G", "os": "macOS"},
+    "mlx-3":  {"ip": "10.255.255.3",    "port": 8000, "role": "ENGINEER",    "chip": "M2 Ultra",  "ram": "192G", "os": "macOS"},
+    "mlx-4":  {"ip": "10.255.255.4",    "port": 8000, "role": "CODER",       "chip": "M1 Ultra",  "ram": "128G", "os": "macOS"},
+    "mlx-5":  {"ip": "10.255.255.5",    "port": 8000, "role": "DESIGNER",    "chip": "M1 Ultra",  "ram": "128G", "os": "macOS"},
+    "mlx-6":  {"ip": "10.255.255.6",    "port": 8000, "role": "REVIEWER",    "chip": "M1 Ultra",  "ram": "128G", "os": "macOS"},
+    "mlx-7":  {"ip": "10.255.255.7",    "port": 8000, "role": "FAST-CODER",  "chip": "M1 Ultra",  "ram": "128G", "os": "macOS"},
+    # ── CUDA Cluster (8x3090 TP8 over 100G RoCEv2) ──
+    "cuda-1": {"ip": "10.255.255.11", "port": 8000, "role": "CUDA-BRAIN",   "chip": "2x3090",  "ram": "256G", "os": "Linux"},
+    "cuda-2": {"ip": "10.255.255.12", "port": 0,    "role": "CUDA-WORK",    "chip": "2x3090",  "ram": "128G", "os": "Linux"},
+    "cuda-3": {"ip": "10.255.255.13", "port": 0,    "role": "CUDA-WORK",    "chip": "2x3090",  "ram": "64G",  "os": "Linux"},
+    "cuda-4": {"ip": "10.255.255.14", "port": 0,    "role": "CUDA-WORK",    "chip": "2x3090",  "ram": "64G",  "os": "Linux"},
+    # ── Standalone GPU ──
+    "gpu-10": {"ip": "10.255.255.10", "port": 8000, "role": "HYPER-CODER",  "chip": "1x4090",  "ram": "64G",  "os": "Linux"},
 }
 
 AGENTS = {
@@ -287,26 +290,34 @@ def poll_fleet():
                 status[name] = {"status": "ERR", "model": "-", "role": NODES[name]["role"], "active": 0}
     return status
 
+# Map commander node names to actual server file names
+NODE_TO_SERVER = {
+    "mlx-2": "sys2", "mlx-3": "sys3", "mlx-4": "sys4",
+    "mlx-5": "sys5", "mlx-6": "sys6", "mlx-7": "sys7",
+}
+
 def launch_brain(name):
     """Start MLX server on a remote node."""
     node = NODES.get(name)
-    if not node or name in ("sys0", "cluster"):
-        console.print(f"[red]Cannot launch brain on {name}[/red]")
+    if not node or name in ("mlx-0",) or name.startswith("cuda"):
+        console.print(f"[red]Cannot launch brain on {name} (use manually)[/red]")
         return
     ip = node["ip"]
+    port = node.get("port", 8000)
     console.print(f"[yellow]Starting brain on {name} ({ip})...[/yellow]")
     # Check if already running — don't kill existing foreground servers
     import requests
     try:
-        r = requests.get(f"http://{ip}:{node['port']}/health", timeout=2)
+        r = requests.get(f"http://{ip}:{port}/health", timeout=2)
         if r.status_code == 200:
             console.print(f"[green]{name}: already running (skipped)[/green]")
             return
     except Exception:
         pass
+    server_name = NODE_TO_SERVER.get(name, name)
     ssh_cmd(ip, f"cd ~/AGENT && "
-               f"nohup ~/.pyenv/versions/3.12.10/bin/python3 mlx_server_{name}.py "
-               f"> LOGS/{name}_mlx.log 2>&1 &", timeout=10)
+               f"nohup ~/.pyenv/versions/3.12.10/bin/python3 mlx_server_{server_name}.py "
+               f"> LOGS/{server_name}_mlx.log 2>&1 &", timeout=10)
     console.print(f"[green]{name}: brain launching[/green]")
 
 def stop_brain(name):
@@ -355,7 +366,7 @@ def goal_all():
     console.print("[bold magenta]━━━ GOAL: LAUNCHING ENTIRE SWARM ━━━[/bold magenta]")
     # Launch all brains in parallel (skips already-running ones)
     with ThreadPoolExecutor(max_workers=6) as pool:
-        for name in ["sys2", "sys3", "sys4", "sys5", "sys6", "sys7"]:
+        for name in ["mlx-2", "mlx-3", "mlx-4", "mlx-5", "mlx-6", "mlx-7"]:
             pool.submit(launch_brain, name)
     console.print("[yellow]Brains checked. Launching agents with AUTO-GO...[/yellow]")
     # Launch ALL agents with auto-go (reads GO_PROMPT.md immediately)
@@ -370,7 +381,7 @@ def stop_all():
     """Stop all brains and agents."""
     console.print("[bold red]━━━ STOPPING ENTIRE SWARM ━━━[/bold red]")
     for name in NODES:
-        if name not in ("sys0", "cluster", "sys4"):
+        if name.startswith("mlx-") and name != "mlx-0":
             stop_brain(name)
     for aid in AGENTS:
         stop_agent(aid)
@@ -432,7 +443,7 @@ def build_dashboard(fleet_status):
         st = fleet_status.get(name, {})
         status = st.get("status", "?")
         model = st.get("model", "-")
-        role = st.get("role", node["role"])
+        role = node["role"]  # Always use OUR role, not server's
         active = st.get("active", 0)
 
         if status == "UP":
@@ -447,7 +458,8 @@ def build_dashboard(fleet_status):
         role_colors = {
             "ARCHITECT": "red", "ENGINEER": "yellow", "CODER": "green",
             "DESIGNER": "cyan", "REVIEWER": "bright_green", "FAST-CODER": "magenta",
-            "AGENT-HOST": "blue", "GPU-CLUSTER": "bright_red",
+            "AGENT-HOST": "blue", "CUDA-BRAIN": "bright_red", "CUDA-WORK": "red",
+            "HYPER-CODER": "bright_magenta",
         }
         rc = role_colors.get(role, "white")
 
@@ -620,7 +632,8 @@ def main():
                 if node and arg != "sys0":
                     console.print(f"[dim]Tailing {arg} logs (Ctrl+C to stop)...[/dim]")
                     try:
-                        os.system(f"sshpass -f {PASSFILE} ssh {SSH_OPTS} z@{node['ip']} 'tail -f ~/AGENT/LOGS/{arg}_mlx.log'")
+                        sname = NODE_TO_SERVER.get(arg, arg)
+                        os.system(f"sshpass -f {PASSFILE} ssh {SSH_OPTS} z@{node['ip']} 'tail -f ~/AGENT/LOGS/{sname}_mlx.log'")
                     except KeyboardInterrupt:
                         pass
                 elif arg == "sys0":

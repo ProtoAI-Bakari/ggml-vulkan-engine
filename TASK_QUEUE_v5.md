@@ -206,7 +206,7 @@
 - Success: correct block tracking across allocate/free
 - Time: 6h
 
-### T32: [READY] Implement reshape_and_cache
+### T32: [IN_PROGRESS by OmniAgent [Main]] Implement reshape_and_cache
 - Write KV pairs to paged cache using slot_mapping from scheduler
 - Success: KV data lands in correct physical blocks
 - Time: 8h
