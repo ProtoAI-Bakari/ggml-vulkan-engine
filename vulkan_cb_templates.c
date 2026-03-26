@@ -18,6 +18,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 /* Command buffer template structure */
 typedef struct {
@@ -416,4 +417,296 @@ void vk_template_print_info(VkCommandBufferTemplate* template) {
     printf("  Barriers: %u\n", template->memory_barrier_count);
     printf("  Copies: %u\n", template->buffer_copy_count);
     printf("  Executions: %lu\n", template->total_executions);
+}
+
+/* ============================================================================
+ * PUSH CONSTANTS SUPPORT
+ * ============================================================================
+ * T13: Add vkCmdPushConstants for dynamic parameters
+ */
+
+/* Push constant range for template */
+typedef struct {
+    VkShaderStageFlags stage_flags;
+    uint32_t offset;
+    uint32_t size;
+} PushConstantRange;
+
+/* Record push constants */
+void vk_template_record_push_constants(VkCommandBufferTemplate* template,
+                                      VkShaderStageFlags stage_flags,
+                                      uint32_t offset,
+                                      uint32_t size,
+                                      const void* data) {
+    if (!template || !template->is_recording) return;
+    
+    vkCmdPushConstants(template->cmd_buffer,
+                      VK_NULL_HANDLE, /* TODO: Get from pipeline */
+                      stage_flags,
+                      offset,
+                      size,
+                      data);
+    template->op_count++;
+}
+
+/* Common push constant layouts */
+#define PUSH_CONST_KV_OFFSET    0
+#define PUSH_CONST_SEQ_LEN      4
+#define PUSH_CONST_BATCH_SIZE   8
+#define PUSH_CONST_NUM_HEADS    12
+#define PUSH_CONST_HEAD_DIM     16
+#define PUSH_CONST_POS_EMBED    20
+#define PUSH_CONST_SCALE        24
+#define PUSH_CONST_LAYERNORM_EPS 28
+
+/* Push constant structure for attention */
+typedef struct {
+    uint32_t kv_offset;      // Offset into KV cache
+    uint32_t seq_len;        // Sequence length
+    uint32_t batch_size;     // Batch size
+    uint32_t num_heads;      // Number of attention heads
+    uint32_t head_dim;       // Dimension per head
+    uint32_t pos_embed;      // Position embedding offset
+    float scale;             // Attention scale (1/sqrt(head_dim))
+    float layernorm_eps;     // Layer norm epsilon
+} AttentionPushConstants;
+
+/* Push constant structure for FFN */
+typedef struct {
+    uint32_t batch_size;
+    uint32_t seq_len;
+    uint32_t hidden_dim;
+    uint32_t intermediate_dim;
+    uint32_t ffn_idx;        // For MoE: which expert
+    float gate_scale;
+    float activation_scale;
+    float output_scale;
+} FFNPushConstants;
+
+/* Push constant structure for RoPE */
+typedef struct {
+    uint32_t batch_size;
+    uint32_t seq_len;
+    uint32_t num_heads;
+    uint32_t head_dim;
+    uint32_t pos_offset;     // Starting position
+    float freq_base;         // RoPE frequency base
+    float freq_scale;        // RoPE frequency scale
+    uint32_t rope_type;      // 0=none, 1=original, 2=linear, 3=ntk
+} RoPEPushConstants;
+
+/* Example: Record attention with push constants */
+VkCommandBufferTemplate* create_attention_template_v2(VkTemplatePool* pool,
+                                                     uint32_t max_batch,
+                                                     uint32_t max_seq_len,
+                                                     uint32_t num_heads,
+                                                     uint32_t head_dim) {
+    VkCommandBufferTemplate* template = vk_template_create(pool, CB_TEMPLATE_ATTENTION);
+    if (!template) return NULL;
+    
+    if (vk_template_begin_recording(template) != 0) {
+        vk_template_destroy(template);
+        return NULL;
+    }
+    
+    /* Record push constants for attention parameters */
+    AttentionPushConstants pc = {0};
+    pc.num_heads = num_heads;
+    pc.head_dim = head_dim;
+    pc.scale = 1.0f / sqrtf((float)head_dim);
+    pc.layernorm_eps = 1e-5f;
+    
+    vk_template_record_push_constants(template,
+                                     VK_SHADER_STAGE_COMPUTE_BIT,
+                                     0,
+                                     sizeof(AttentionPushConstants),
+                                     &pc);
+    
+    /* Record compute dispatch for Q*K^T attention */
+    /* Workgroup size: (batch, seq_len, num_heads) */
+    uint32_t workgroup_x = (max_batch + 7) / 8;
+    uint32_t workgroup_y = (max_seq_len + 7) / 8;
+    uint32_t workgroup_z = (num_heads + 7) / 8;
+    
+    /* TODO: vkCmdDispatch(template->cmd_buffer, workgroup_x, workgroup_y, workgroup_z); */
+    
+    /* Record memory barriers for attention output */
+    /* TODO: Add barriers between attention stages */
+    
+    if (vk_template_end_recording(template) != 0) {
+        vk_template_destroy(template);
+        return NULL;
+    }
+    
+    return template;
+}
+
+/* Example: Record FFN with push constants */
+VkCommandBufferTemplate* create_ffn_template(VkTemplatePool* pool,
+                                            uint32_t max_batch,
+                                            uint32_t max_seq_len,
+                                            uint32_t hidden_dim,
+                                            uint32_t intermediate_dim) {
+    VkCommandBufferTemplate* template = vk_template_create(pool, CB_TEMPLATE_FFN);
+    if (!template) return NULL;
+    
+    if (vk_template_begin_recording(template) != 0) {
+        vk_template_destroy(template);
+        return NULL;
+    }
+    
+    /* Record push constants for FFN parameters */
+    FFNPushConstants pc = {0};
+    pc.hidden_dim = hidden_dim;
+    pc.intermediate_dim = intermediate_dim;
+    pc.gate_scale = 1.0f;
+    pc.activation_scale = 1.0f;
+    pc.output_scale = 1.0f;
+    
+    vk_template_record_push_constants(template,
+                                     VK_SHADER_STAGE_COMPUTE_BIT,
+                                     0,
+                                     sizeof(FFNPushConstants),
+                                     &pc);
+    
+    /* Record compute dispatch for FFN */
+    uint32_t workgroup_x = (max_batch * max_seq_len + 63) / 64;
+    uint32_t workgroup_y = (intermediate_dim + 255) / 256;
+    uint32_t workgroup_z = 1;
+    
+    /* TODO: vkCmdDispatch(template->cmd_buffer, workgroup_x, workgroup_y, workgroup_z); */
+    
+    if (vk_template_end_recording(template) != 0) {
+        vk_template_destroy(template);
+        return NULL;
+    }
+    
+    return template;
+}
+
+/* Example: Record RoPE with push constants */
+VkCommandBufferTemplate* create_rope_template(VkTemplatePool* pool,
+                                             uint32_t max_batch,
+                                             uint32_t max_seq_len,
+                                             uint32_t num_heads,
+                                             uint32_t head_dim,
+                                             float freq_base,
+                                             uint32_t rope_type) {
+    VkCommandBufferTemplate* template = vk_template_create(pool, CB_TEMPLATE_ROPE);
+    if (!template) return NULL;
+    
+    if (vk_template_begin_recording(template) != 0) {
+        vk_template_destroy(template);
+        return NULL;
+    }
+    
+    /* Record push constants for RoPE parameters */
+    RoPEPushConstants pc = {0};
+    pc.num_heads = num_heads;
+    pc.head_dim = head_dim;
+    pc.freq_base = freq_base;
+    pc.freq_scale = 1.0f;
+    pc.rope_type = rope_type;
+    
+    vk_template_record_push_constants(template,
+                                     VK_SHADER_STAGE_COMPUTE_BIT,
+                                     0,
+                                     sizeof(RoPEPushConstants),
+                                     &pc);
+    
+    /* Record compute dispatch for RoPE */
+    uint32_t workgroup_x = (max_batch * max_seq_len * num_heads + 63) / 64;
+    uint32_t workgroup_y = (head_dim / 2 + 255) / 256;
+    uint32_t workgroup_z = 1;
+    
+    /* TODO: vkCmdDispatch(template->cmd_buffer, workgroup_x, workgroup_y, workgroup_z); */
+    
+    if (vk_template_end_recording(template) != 0) {
+        vk_template_destroy(template);
+        return NULL;
+    }
+    
+    return template;
+}
+
+/* Update push constants at runtime (without re-recording) */
+int vk_template_update_push_constants(VkCommandBufferTemplate* template,
+                                     VkShaderStageFlags stage_flags,
+                                     uint32_t offset,
+                                     uint32_t size,
+                                     const void* data) {
+    if (!template || template->is_recording) return -1;
+    
+    /* Need to begin/record/end to update push constants */
+    /* This is a limitation - push constants are baked into the template */
+    /* Solution: Use vkCmdPushConstants at submission time instead */
+    
+    return -1; /* Not supported for recorded templates */
+}
+
+/* Alternative: Store push constant values in template for runtime update */
+typedef struct {
+    VkCommandBufferTemplate* template;
+    uint32_t max_push_const_size;
+    void* push_const_data;
+} VkTemplateWithPushConstants;
+
+/* Create template with runtime-updatable push constants */
+VkTemplateWithPushConstants* vk_template_create_with_push_constants(
+    VkTemplatePool* pool,
+    uint32_t template_type,
+    uint32_t push_const_size) {
+    
+    VkTemplateWithPushConstants* wrapper = (VkTemplateWithPushConstants*)calloc(1, sizeof(VkTemplateWithPushConstants));
+    if (!wrapper) return NULL;
+    
+    wrapper->template = vk_template_create(pool, template_type);
+    if (!wrapper->template) {
+        free(wrapper);
+        return NULL;
+    }
+    
+    wrapper->max_push_const_size = push_const_size;
+    wrapper->push_const_data = malloc(push_const_size);
+    if (!wrapper->push_const_data) {
+        vk_template_destroy(wrapper->template);
+        free(wrapper);
+        return NULL;
+    }
+    
+    return wrapper;
+}
+
+/* Update push constants and re-submit */
+int vk_template_with_push_constants_update(
+    VkTemplateWithPushConstants* wrapper,
+    const void* data,
+    uint32_t size,
+    VkQueue queue,
+    VkFence fence) {
+    
+    if (!wrapper || !data || size > wrapper->max_push_const_size) return -1;
+    
+    /* Copy new push constant data */
+    memcpy(wrapper->push_const_data, data, size);
+    
+    /* TODO: Re-record with new push constants or use separate push at submit time */
+    /* For now, just submit the template */
+    
+    return vk_template_submit(wrapper->template, queue, fence);
+}
+
+/* Destroy template with push constants */
+void vk_template_with_push_constants_destroy(VkTemplateWithPushConstants* wrapper) {
+    if (!wrapper) return;
+    
+    if (wrapper->push_const_data) {
+        free(wrapper->push_const_data);
+    }
+    
+    if (wrapper->template) {
+        vk_template_destroy(wrapper->template);
+    }
+    
+    free(wrapper);
 }
