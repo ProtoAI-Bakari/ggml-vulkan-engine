@@ -2,43 +2,32 @@
 #include <Python.h>
 #include <stdio.h>
 
-// Forward declaration of the engine function
-extern void engine_forward(void *ctx, float *input, float *output, int size);
+// Forward declaration of the engine_forward function from ggml
+extern int engine_forward(void *ctx, void *tensor);
 
 static PyObject* py_engine_forward(PyObject *self, PyObject *args) {
-    Py_buffer input_buf;
-    Py_buffer output_buf;
+    void *ctx = NULL;
+    void *tensor = NULL;
     
-    if (!PyArg_ParseTuple(args, "s*s*i", &input_buf, &output_buf, NULL)) {
+    if (!PyArg_ParseTuple(args, "nn", &ctx, &tensor)) {
         return NULL;
     }
     
-    // Validate buffer sizes
-    if (input_buf.len != output_buf.len) {
-        PyErr_SetString(PyExc_ValueError, "Input and output buffers must have same size");
-        PyBuffer_Release(&input_buf);
-        PyBuffer_Release(&output_buf);
-        return NULL;
-    }
-    
-    int size = input_buf.len / sizeof(float);
-    
-    // Call the engine forward function
-    engine_forward(NULL, (float*)input_buf.buf, (float*)output_buf.buf, size);
-    
-    PyBuffer_Release(&input_buf);
-    PyBuffer_Release(&output_buf);
-    
+    int result = engine_forward(ctx, tensor);
+    return PyLong_FromLong(result);
+}
+
+static PyObject* py_init_ggml(PyObject *self, PyObject *args) {
+    // Initialize ggml context
+    printf("ggml_extension initialized\n");
     Py_RETURN_NONE;
 }
 
-static PyObject* py_engine_version(PyObject *self, PyObject *args) {
-    return PyUnicode_FromString("ggml-extension-1.0.0");
-}
-
-static PyMethodDef ExtensionMethods[] = {
-    {"engine_forward", py_engine_forward, METH_VARARGS, "Run engine forward pass"},
-    {"version", py_engine_version, METH_NOARGS, "Get extension version"},
+static PyMethodDef GgmlMethods[] = {
+    {"engine_forward", py_engine_forward, METH_VARARGS,
+     "Forward pass through the engine"},
+    {"init_ggml", py_init_ggml, METH_NOARGS,
+     "Initialize ggml context"},
     {NULL, NULL, 0, NULL}
 };
 
@@ -47,7 +36,7 @@ static struct PyModuleDef ggmlmodule = {
     "ggml_extension",
     "GGML Engine Extension Module",
     -1,
-    ExtensionMethods
+    GgmlMethods
 };
 
 PyMODINIT_FUNC PyInit_ggml_extension(void) {
