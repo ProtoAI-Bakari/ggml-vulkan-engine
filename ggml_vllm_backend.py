@@ -210,9 +210,6 @@ class GgmlLLM:
                     print(f"[tokenizer] {model_id} has vocab={tok_vocab}")
                     
                     # For Qwen, we need vocab=128256 to match GGUF
-                    if detected_family == "qwen" and tok_vocab != 128256:
-                        print(f"[tokenizer] Skipping {model_id} - vocab mismatch")
-                        continue
                     
                     # Save tokenizer to a temp location
                     import tempfile

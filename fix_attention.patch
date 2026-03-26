@@ -1,0 +1,49 @@
+--- a/ggml_llama_gguf.c
++++ b/ggml_llama_gguf.c
+@@ -407,20 +407,25 @@ int engine_forward(engine_t *e, int n_tokens,
+         Qcur = ggml_rope_ext(ctx, Qcur, inp_pos, NULL,
+                              HD, 0, 0, e->rope_theta, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f);
+         Kcur = ggml_rope_ext(ctx, Kcur, inp_pos, NULL,
+                              HD, 0, 0, e->rope_theta, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f);
+ 
+         /* KV cache write + attention */
+         {
+             int kv_pos = e->kv_used[e->kv_buf_active];
++            int kv_len = e->kv_len[e->kv_buf_active];
+             struct ggml_tensor *Kf16 = ggml_cast(ctx, Kcur, GGML_TYPE_F16);
+             struct ggml_tensor *Vf16 = ggml_cast(ctx, Vcur, GGML_TYPE_F16);
+ 
+             size_t k_off = (size_t)kv_pos * NKV * HD * ggml_type_size(GGML_TYPE_F16);
+             struct ggml_tensor *k_dst = ggml_view_3d(ctx, e->kv_k[il], HD, NKV, n_tokens,
+                 e->kv_k[il]->nb[1], e->kv_k[il]->nb[2], k_off);
+             ggml_build_forward_expand(graph, ggml_cpy(ctx, Kf16, k_dst));
+ 
+             size_t v_off = (size_t)kv_pos * NKV * HD * ggml_type_size(GGML_TYPE_F16);
+             struct ggml_tensor *v_dst = ggml_view_3d(ctx, e->kv_v[il], HD, NKV, n_tokens,
+                 e->kv_v[il]->nb[1], e->kv_v[il]->nb[2], v_off);
+             ggml_build_forward_expand(graph, ggml_cpy(ctx, Vf16, v_dst));
+ 
+-            int kv_len = kv_pos + n_tokens;
+             struct ggml_tensor *K_cached = ggml_view_3d(ctx, e->kv_k[il], HD, NKV, kv_len,
+                 e->kv_k[il]->nb[1], e->kv_k[il]->nb[2], 0);
+             struct ggml_tensor *V_cached = ggml_view_3d(ctx, e->kv_v[il], HD, NKV, kv_len,
+                 e->kv_v[il]->nb[1], e->kv_v[il]->nb[2], 0);
+ 
+-            struct ggml_tensor *q_p = ggml_permute(ctx, Qcur, 0, 2, 1, 3);
+-            struct ggml_tensor *k_p = ggml_permute(ctx, K_cached, 0, 2, 1, 3);
+-            struct ggml_tensor *v_p = ggml_permute(ctx, V_cached, 0, 2, 1, 3);
+-
+-            cur = ggml_flash_attn_ext(ctx, q_p, k_p, v_p, NULL, kq_scale, 0.0f, 0.0f);
++            /* Permute for flash attention: [head_dim, n_heads, n_tokens] -> [n_tokens, n_heads, head_dim] */
++            struct ggml_tensor *q_p = ggml_permute(ctx, Qcur, 2, 1, 0, 0);
++            struct ggml_tensor *k_p = ggml_permute(ctx, K_cached, 2, 1, 0, 0);
++            struct ggml_tensor *v_p = ggml_permute(ctx, V_cached, 2, 1, 0, 0);
++
++            /* Create causal attention mask */
++            struct ggml_tensor *attn_mask = ggml_diag_mask_inf(ctx,
++                ggml_new_tensor_2d(ctx, GGML_TYPE_F32, kv_len, n_tokens), kv_pos);
++
++            cur = ggml_flash_attn_ext(ctx, q_p, k_p, v_p, attn_mask, kq_scale, 0.0f, 0.0f);
+         }
+ 
+         cur = ggml_reshape_2d(ctx, cur, NH * HD, n_tokens);

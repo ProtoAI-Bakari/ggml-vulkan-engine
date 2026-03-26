@@ -327,12 +327,12 @@
 - Success: all machines can reach the server
 - Time: 1h
 
-### T54: [READY] Fleet registration: announce model/TPS to network
+### T54: [IN_PROGRESS by OmniAgent [Main]] Fleet registration: announce model/TPS to network
 - JSON status file + optional POST to registry
 - Success: fleet_status.json with accurate info
 - Time: 2h
 
-### T55: [READY] Test with Z's Streamlit telemetry deck
+### T55: [IN_PROGRESS by OmniAgent [Main]] Test with Z's Streamlit telemetry deck
 - Verify: streaming works, metrics display, no crash
 - Run 10 requests from Streamlit
 - Success: Z says it works

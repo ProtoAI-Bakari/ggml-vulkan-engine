@@ -138,7 +138,14 @@ engine_t *engine_load_gguf(const char *gguf_path, int n_ctx) {
     FIND_KEY_U32(n_kv_heads,   "attention.head_count_kv",              8);
     FIND_KEY_F32(rms_eps,      "attention.layer_norm_rms_epsilon", 1e-5f);
     FIND_KEY_F32(rope_theta,   "rope.freq_base",               500000.0f);
-    FIND_KEY_U32(vocab_size,     "llama.vocab_size",           128256);
+    // Custom vocab_size detection: try llama.vocab_size, then tokenizer.ggml.tokens array count
+    e->vocab_size = 128256;  // default fallback
+    key = gguf_find_key(gguf, "llama.vocab_size");
+    if (key >= 0) { e->vocab_size = gguf_get_val_u32(gguf, key); }
+    else {
+        key = gguf_find_key(gguf, "tokenizer.ggml.tokens");
+        if (key >= 0) { e->vocab_size = gguf_get_arr_n(gguf, key); }
+    }
     e->head_dim = e->hidden_dim / e->n_heads;
 
     fprintf(stderr, "[gguf] Model: %d layers, %d hidden, %d intermediate, %d heads, %d kv_heads\n",
