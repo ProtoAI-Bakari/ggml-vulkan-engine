@@ -60,8 +60,13 @@ signal.signal(signal.SIGTERM, sigterm_handler)
 # CONFIGURATION
 # =====================================================
 # PRIMARY = LOCAL brain (each node uses its OWN MLX model for fast reasoning)
-PRIMARY_IP   = "127.0.0.1"     # LOCAL model — each agent uses its own MLX server
-MINIMAX_IP   = "192.168.1.164" # MiniMax (optional)
+# Auto-detect: sys1 (Linux/Asahi) has no MLX, uses CUDA brain; macOS nodes use local MLX
+import platform as _plat
+if _plat.system() == "Linux":
+    PRIMARY_IP = "10.255.255.11"  # CUDA brain for sys1
+else:
+    PRIMARY_IP = "127.0.0.1"     # LOCAL MLX server for macOS nodes
+MINIMAX_IP   = "192.168.1.164"
 PORT         = "8000"
 
 # ── Brain Endpoints (Leadership Council) ──
