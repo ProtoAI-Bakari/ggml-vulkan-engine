@@ -216,7 +216,7 @@
 - Success: attention correct with paged cache
 - Time: 12h
 
-### T34: [IN_PROGRESS by OmniAgent [sys3] | 0% | started:2026-03-26T02:18] Wire _update_states()
+### T34: [READY] | 0% | started:2026-03-26T02:18] Wire _update_states()
 - Parse SchedulerOutput: add/remove/reorder requests
 - Success: request lifecycle correctly managed
 - Time: 8h
@@ -239,17 +239,17 @@
 - Success: vLLM sampler accepts logits
 - Time: 6h
 
-### T38: [IN_PROGRESS by OmniAgent [sys1-Main] | 0% | started:2026-03-26T02:24] End-to-end single-request test through vLLM plugin
+### T38: [READY] | 0% | started:2026-03-26T02:24] End-to-end single-request test through vLLM plugin
 - Chat completion, verify coherent response
 - Success: matches direct ggml output quality
 - Time: 4h
 
-### T39: [IN_PROGRESS by OmniAgent [sys1-Main] | 0% | started:2026-03-26T02:24] Enable max_num_seqs=2: two concurrent requests
+### T39: [READY] | 0% | started:2026-03-26T02:24] Enable max_num_seqs=2: two concurrent requests
 - Paged KV isolates requests
 - Success: both requests correct and independent
 - Time: 6h
 
-### T40: [IN_PROGRESS by OmniAgent [sys2] | 0% | started:2026-03-26T02:18] Implement KV cache block freeing + prevent memory leak
+### T40: [READY] | 0% | started:2026-03-26T02:18] Implement KV cache block freeing + prevent memory leak
 - Release blocks on request completion, return to free pool
 - Success: stable memory after 100+ requests
 - Time: 4h
@@ -260,7 +260,7 @@
 - Success: repeated prompts reuse KV blocks
 - Time: 8h
 
-### T42: [IN_PROGRESS by OmniAgent [sys1-Main] | 0% | started:2026-03-26T02:26] Handle chunked prefill
+### T42: [READY] | 0% | started:2026-03-26T02:26] Handle chunked prefill
 - Process partial prompts across multiple engine steps
 - Accumulate KV in correct blocks
 - Success: long prompts (>512 tokens) served correctly
@@ -277,7 +277,7 @@
 - Success: zero crashes, <1% error rate
 - Time: 4h
 
-### T45: [IN_PROGRESS by OmniAgent [sys1-Main] | 0% | started:2026-03-26T02:29] Benchmark max_num_seqs=4 aggregate throughput
+### T45: [READY] | 0% | started:2026-03-26T02:29] Benchmark max_num_seqs=4 aggregate throughput
 - Compare vs single-stream
 - Success: aggregate TPS > 2x single-stream
 - Time: 3h
@@ -300,12 +300,12 @@
 
 ## PHASE 3: 120B MODEL + FLEET [from Sys12 task queue]
 
-### T49: [IN_PROGRESS by OmniAgent [sys6] | 0% | started:2026-03-26T02:19] Merge 120B GGUF shards
+### T49: [READY] | 0% | started:2026-03-26T02:19] Merge 120B GGUF shards
 - llama-gguf-split --merge
 - Success: single merged GGUF file
 - Time: 30min (I/O bound)
 
-### T50: [IN_PROGRESS by OmniAgent [sys4] | 0% | started:2026-03-26T02:18] Test 120B on standalone ggml engine
+### T50: [IN_PROGRESS by OmniAgent [sys4] | 0% | started:2026-03-26T02:50] | 0% | started:2026-03-26T02:18] Test 120B on standalone ggml engine
 - Verify coherent output
 - Measure TPS
 - Success: coherent text at any TPS
@@ -316,7 +316,7 @@
 - Success: comparison table
 - Time: 2h
 
-### T52: [IN_PROGRESS by OmniAgent [sys5] | 0% | started:2026-03-26T02:32] Test 120B via standalone streaming server
+### T52: [READY] | 0% | started:2026-03-26T02:32] Test 120B via standalone streaming server
 - Verify streaming works for large model
 - Test long generation (200+ tokens)
 - Success: stable, coherent, streaming
@@ -332,7 +332,7 @@
 - Success: fleet_status.json with accurate info
 - Time: 2h
 
-### T55: [IN_PROGRESS by OmniAgent [sys7] | 0% | started:2026-03-26T02:39] Test with Z's Streamlit telemetry deck
+### T55: [READY] | 0% | started:2026-03-26T02:39] Test with Z's Streamlit telemetry deck
 - Verify: streaming works, metrics display, no crash
 - Run 10 requests from Streamlit
 - Success: Z says it works
@@ -341,22 +341,22 @@
 ## PHASE 4: PURE VULKAN ENGINE [Perspective B — speculative, 35-45 TPS]
 
 ### T56: [DONE]] Implement GGUF weight loader in C (parse header, map weights to VkBuffer)
-### T57: [IN_PROGRESS by OmniAgent [sys6] | 0% | started:2026-03-26T02:19] Write Q4_K_M dequant+GEMV SPIR-V shader (subgroup shuffle, SIMD 32)
+### T57: [READY] | 0% | started:2026-03-26T02:19] Write Q4_K_M dequant+GEMV SPIR-V shader (subgroup shuffle, SIMD 32)
 ### T58: [IN_PROGRESS by OmniAgent | 0% | started:2026-03-26T02:38] Benchmark T57 vs ggml GEMV
-### T59: [IN_PROGRESS by OmniAgent [sys1-Main] | 0% | started:2026-03-26T02:40] Write RMSNorm, RoPE, softmax, SiLU SPIR-V shaders
-### T60: [IN_PROGRESS by OmniAgent [sys5] | 0% | started:2026-03-26T02:43] Implement static CB recording for one transformer layer
-### T61: [READY] Full model: chain all layers + embedding + output projection
-### T62: [READY]] Push-constant-only token stepping (no CB re-recording)
-### T63: [IN_PROGRESS by OmniAgent [sys5] | 0% | started:2026-03-26T02:18] Benchmark pure engine vs ggml at batch=1
-### T64: [READY] Paged KV cache in pure engine
-### T65: [READY] Flash attention SPIR-V shader (tiled, scalar, 2-pass online softmax)
+### T59: [READY] | 0% | started:2026-03-26T02:40] Write RMSNorm, RoPE, softmax, SiLU SPIR-V shaders
+### T60: [READY] | 0% | started:2026-03-26T02:43] Implement static CB recording for one transformer layer
+### T61: [READY] | 0% | started:2026-03-26T02:45] Full model: chain all layers + embedding + output projection
+### T62: [READY] | 0% | started:2026-03-26T02:46] Push-constant-only token stepping (no CB re-recording)
+### T63: [READY] | 0% | started:2026-03-26T02:18] Benchmark pure engine vs ggml at batch=1
+### T64: [READY] | 0% | started:2026-03-26T02:48] Paged KV cache in pure engine
+### T65: [READY] | 0% | started:2026-03-26T02:48] Flash attention SPIR-V shader (tiled, scalar, 2-pass online softmax)
 
 ## PHASE 5: VALIDATION + PRODUCTION HARDENING
 
-### T66: [READY] Numerical accuracy: logits comparison ggml vs llama.cpp for 1000 tokens
-### T67: [READY] Memory leak testing: 10,000 requests, monitor RSS + Vulkan memory
-### T68: [READY] Edge case testing: empty, max-length, special tokens, unicode
-### T69: [IN_PROGRESS by OmniAgent [sys3] | 0% | started:2026-03-26T02:18] M1 Max (32GB) validation: run all benchmarks on Sys12
+### T66: [READY] | 0% | started:2026-03-26T02:49] Numerical accuracy: logits comparison ggml vs llama.cpp for 1000 tokens
+### T67: [READY] | 0% | started:2026-03-26T02:49] Memory leak testing: 10,000 requests, monitor RSS + Vulkan memory
+### T68: [READY] | 0% | started:2026-03-26T02:50] Edge case testing: empty, max-length, special tokens, unicode
+### T69: [IN_PROGRESS by OmniAgent [sys7] | 0% | started:2026-03-26T02:50] | 0% | started:2026-03-26T02:18] M1 Max (32GB) validation: run all benchmarks on Sys12
 ### T70: [READY] Deployment documentation: hardware reqs, install, config, troubleshoot
 
 ## PHASE 6: DOCUMENTATION + UPSTREAM
@@ -371,7 +371,7 @@
 ## PHASE 7: ADVANCED OPTIMIZATION
 
 ### T77: [READY] Study ThunderMittens findings: register-direct loads beat shared memory on UMA
-### T78: [IN_PROGRESS by OmniAgent [sys5] | 0% | started:2026-03-26T02:18] Profile register pressure per kernel (occupancy analysis)
+### T78: [READY] | 0% | started:2026-03-26T02:18] Profile register pressure per kernel (occupancy analysis)
 ### T79: [READY] Test VK_EXT_memory_budget on Honeykrisp
 ### T80: [READY] Investigate ggml_backend_sched optimization for single-backend (skip routing)
 

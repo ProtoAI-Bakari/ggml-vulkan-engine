@@ -465,20 +465,24 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
                 if not user_input:
                     user_input = "Read ~/AGENT/TASK_QUEUE_v5.md, claim the next [READY] task, execute it."
             elif no_tty:
-                # Subsequent turns: tell agent exactly what task they have
+                # Subsequent turns: find agent's FIRST claimed task and force focus
                 my_task = ""
+                my_task_desc = ""
                 try:
                     import urllib.request
                     with urllib.request.urlopen("http://10.255.255.128:9091/tasks", timeout=2) as _r:
                         _q = _r.read().decode()
-                    _m = re.search(rf'### (T\d+):.*?\[IN_PROGRESS by [^\]]*{re.escape(_AGENT_NAME)}', _q)
-                    if _m: my_task = _m.group(1)
+                    # Find FIRST IN_PROGRESS task for this agent
+                    _m = re.search(rf'### (T\d+): \[IN_PROGRESS by [^\]]*{re.escape(_AGENT_NAME)}[^\]]*\]\s*(.*?)(?=\n###|\Z)', _q, re.DOTALL)
+                    if _m:
+                        my_task = _m.group(1)
+                        my_task_desc = _m.group(2).strip()[:200]
                 except Exception:
                     pass
                 if my_task:
-                    user_input = f"You are working on {my_task}. Continue executing it. Use execute_bash and read_file. When done: push_changes, complete_task('{my_task}'), then claim_task for next READY task."
+                    user_input = f"FOCUS: You are on {my_task}. DO NOT read the task queue again. DO NOT claim more tasks. EXECUTE code for {my_task} NOW using execute_bash. Description: {my_task_desc}"
                 else:
-                    user_input = "You have no task claimed. Read ~/AGENT/TASK_QUEUE_v5.md, find a [READY] task, and claim_task it."
+                    user_input = "claim_task for the next [READY] task in ~/AGENT/TASK_QUEUE_v5.md. Only claim ONE task."
             else:
                 user_input = get_multiline_input()
 
