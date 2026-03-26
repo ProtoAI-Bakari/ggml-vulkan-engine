@@ -356,11 +356,17 @@ def claim_task(task_id: str) -> str:
 
 def complete_task(task_id: str) -> str:
     """Mark a task as DONE. Saves agent state for resume."""
-    # Check if files were pushed before completing
-    if hasattr(run_agent if 'run_agent' in dir() else type('', (), {}), '_files_written'):
-        fw = getattr(run_agent, '_files_written', [])
-        if fw:
-            print(f"{C.YELLOW}[WARN] {len(fw)} files written but not pushed. Call push_changes first!{C.RESET}")
+    # Auto-push if agent never called push_changes this session
+    if not getattr(run_agent, '_pushed_this_session', False):
+        print(f"{C.YELLOW}[AUTO-PUSH] Agent never pushed this session. Auto-pushing .py and .c files...{C.RESET}")
+        import glob as _glob
+        agent_dir = os.path.expanduser("~/AGENT")
+        py_files = [os.path.relpath(f, agent_dir) for f in _glob.glob(os.path.join(agent_dir, "*.py"))]
+        c_files = [os.path.relpath(f, agent_dir) for f in _glob.glob(os.path.join(agent_dir, "*.c"))]
+        all_files = py_files + c_files
+        if all_files:
+            push_result = push_changes(",".join(all_files), f"Auto-push before completing {task_id}")
+            print(f"{C.GREEN}[AUTO-PUSH RESULT]: {push_result}{C.RESET}")
     # Save current task to state file for resume capability
     try:
         json.dump({"agent": _AGENT_NAME, "task": task_id, "time": time.time(), "action": "completed"}, 
@@ -412,6 +418,10 @@ def push_changes(files: str, message: str = "Agent work") -> str:
             results.append(f"{f}: FAILED ({e})")
     out = "\n".join(results)
     print(f"{C.GREEN}[📤 PUSH]\n{out}{C.RESET}")
+    # Track that push happened this session
+    if any("PUSHED" in r for r in results):
+        if 'run_agent' in dir() or True:
+            run_agent._pushed_this_session = True
     if any("PUSHED" in r for r in results):
         return out + "\n\n⚠️ IMPORTANT: Files pushed. Now call complete_task(task_id) to mark your task DONE. Do NOT claim a new task until you call complete_task."
     return out
@@ -1073,11 +1083,14 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
                             run_agent._files_written = []
                         run_agent._files_written.append(tc.get('arguments', {}).get('path', '?'))
                 
-                # After 20 tool calls with file writes, inject push reminder
-                if hasattr(run_agent, '_files_written') and len(run_agent._files_written) >= 3:
-                    files_list = ','.join(run_agent._files_written[-5:])
-                    results_msg += '\n[SYSTEM]: ' + str(len(run_agent._files_written)) + ' files written. Call ask_reviewer to check your code, then push_changes("' + files_list + '").\n'
-                    run_agent._files_written = []  # Reset after reminder
+                # After 20 successful tool calls with ANY file write/heredoc, FORCE push reminder
+                if run_agent._tool_count >= 20 and hasattr(run_agent, '_files_written') and run_agent._files_written and not getattr(run_agent, '_pushed_this_session', False):
+                    files_list = ','.join(run_agent._files_written[-10:])
+                    results_msg += '\n[SYSTEM]: You have made changes. Run push_changes("' + files_list + '") NOW or your work will be lost.\n'
+
+                # After 30 successful tool calls total, FORCE complete_task reminder
+                if run_agent._tool_count >= 30:
+                    results_msg += '\n[SYSTEM]: Call complete_task for your current task NOW, then claim the next one.\n'
                 
                 # Auto-progress: update every 10 tool calls
                 if not hasattr(run_agent, '_tool_count'):
