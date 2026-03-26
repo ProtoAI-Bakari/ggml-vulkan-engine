@@ -305,6 +305,23 @@ def claim_task(task_id: str) -> str:
     global _claim_block_count
     import subprocess
 
+    # Issue #2: Pre-check task status via API — reject DONE/IN_PROGRESS before round-trip
+    try:
+        import urllib.request
+        with urllib.request.urlopen("http://10.255.255.128:9091/tasks", timeout=2) as _r:
+            _q = _r.read().decode()
+        for _line in _q.split("\n"):
+            if f"### {task_id}:" in _line:
+                if "[DONE" in _line:
+                    return f"ALREADY_DONE — {task_id} is finished. Pick a READY task instead. Run: execute_bash with grep READY ~/AGENT/TASK_QUEUE_v5.md | head -5"
+                if "[IN_PROGRESS" in _line and _AGENT_NAME not in _line:
+                    taken_by = re.search(r'IN_PROGRESS by ([^\]|]+)', _line)
+                    who = taken_by.group(1).strip() if taken_by else "another agent"
+                    return f"TAKEN — {task_id} is already claimed by {who}. Pick a different READY task."
+                break
+    except Exception:
+        pass  # API unreachable — fall through to normal claim path
+
     # If we've been blocked 3+ times, refuse to even try
     if _claim_block_count >= 3:
         try:
@@ -539,19 +556,51 @@ def _try_parse_tool_json(raw):
         except (json.JSONDecodeError, ValueError, TypeError, AttributeError):
             continue
 
-    # 4. Last resort: try to extract command value with regex
+    # 4. Try stripping control characters that break JSON (issue #1: embedded newlines/tabs/CR)
+    stripped = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', cleaned)
+    if stripped != cleaned:
+        try:
+            tc = json.loads(stripped)
+            if isinstance(tc.get("arguments"), dict) and "arguments" in tc["arguments"]:
+                tc["arguments"] = tc["arguments"]["arguments"]
+            if tc.get("name") in TOOL_DISPATCH:
+                return tc, None
+        except (json.JSONDecodeError, ValueError, TypeError, AttributeError):
+            pass
+        # Also try with newline escaping on the stripped version
+        try:
+            tc = json.loads(_escape_newlines_in_json_strings(stripped))
+            if isinstance(tc.get("arguments"), dict) and "arguments" in tc["arguments"]:
+                tc["arguments"] = tc["arguments"]["arguments"]
+            if tc.get("name") in TOOL_DISPATCH:
+                return tc, None
+        except (json.JSONDecodeError, ValueError, TypeError, AttributeError):
+            pass
+
+    # 5. Last resort: nuclear fallback — extract fields with regex
     name_m = re.search(r'"name"\s*:\s*"(\w+)"', raw)
-    cmd_m = re.search(r'"command"\s*:\s*"((?:[^"\\]|\\.)*)"', raw, re.DOTALL)
+    cmd_m = re.search(r'"command"\s*:\s*"((?:[^"\\]|\\.|\n)*)"', raw, re.DOTALL)
     if name_m and name_m.group(1) in TOOL_DISPATCH:
         name = name_m.group(1)
+        print(f"[PARSE] Nuclear fallback fired for tool={name} | raw={raw[:120]}")
         if name == "execute_bash" and cmd_m:
             return {"name": name, "arguments": {"command": cmd_m.group(1).replace("\\n", "\n").replace('\\"', '"')}}, None
-        # For other tools, try to extract all key-value pairs
+        # For other tools, extract all key-value pairs (string, numeric, bool)
         args = {}
-        for km in re.finditer(r'"(\w+)"\s*:\s*"((?:[^"\\]|\\.)*)"', raw):
+        for km in re.finditer(r'"(\w+)"\s*:\s*"((?:[^"\\]|\\.|\n)*)"', raw, re.DOTALL):
             k, v = km.group(1), km.group(2)
             if k not in ("name", "type"):
                 args[k] = v.replace("\\n", "\n").replace('\\"', '"')
+        # Numeric values (int/float)
+        for km in re.finditer(r'"(\w+)"\s*:\s*(-?\d+(?:\.\d+)?)\s*[,}\]]', raw):
+            k, v = km.group(1), km.group(2)
+            if k not in ("name", "type") and k not in args:
+                args[k] = float(v) if '.' in v else int(v)
+        # Boolean / null values
+        for km in re.finditer(r'"(\w+)"\s*:\s*(true|false|null)\s*[,}\]]', raw):
+            k, v = km.group(1), km.group(2)
+            if k not in ("name", "type") and k not in args:
+                args[k] = {"true": True, "false": False, "null": None}[v]
         if args:
             return {"name": name, "arguments": args}, None
 
@@ -803,13 +852,35 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
             history.append({"role": "user", "content": user_input})
             
             while True: 
-                # --- PERFECT CONTEXT MANAGEMENT ---
+                # --- PERFECT CONTEXT MANAGEMENT (issue #5: preserve task across trim) ---
                 if sum(len(str(m.get("content", ""))) for m in history) > 15000:
                     sys_prompt = history[0]
                     new_tail = history[-10:]
                     while new_tail and new_tail[0]["role"] != "user":
                         new_tail.pop(0)
-                    history = [sys_prompt] + new_tail
+                    # Issue #5: Re-inject current task info so agent doesn't lose track
+                    _current_task = ""
+                    _current_task_desc = ""
+                    try:
+                        import urllib.request as _ur5
+                        with _ur5.urlopen("http://10.255.255.128:9091/tasks", timeout=2) as _r5:
+                            _q5 = _r5.read().decode()
+                        for _line5 in _q5.split("\n"):
+                            if "IN_PROGRESS" in _line5 and _AGENT_NAME in _line5:
+                                _tm5 = re.match(r'###\s+(T\d+):', _line5)
+                                if _tm5:
+                                    _current_task = _tm5.group(1)
+                                    _idx5 = _q5.find(_line5)
+                                    _rest5 = _q5[_idx5 + len(_line5):_idx5 + len(_line5) + 300]
+                                    _current_task_desc = _rest5.strip().split("\n")[0][:200]
+                                    break
+                    except Exception:
+                        pass
+                    if _current_task:
+                        task_reminder = {"role": "user", "content": f"[CONTEXT TRIMMED] Your current task is {_current_task}: {_current_task_desc}. Continue working on it using execute_bash or write_file."}
+                        history = [sys_prompt, task_reminder] + new_tail
+                    else:
+                        history = [sys_prompt] + new_tail
                 # --------------------------------------
 
                 print(f"\n{C.DIM}[Thinking...]{C.RESET}", end="", flush=True)
