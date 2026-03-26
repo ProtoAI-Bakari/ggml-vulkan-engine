@@ -1,6 +1,6 @@
 # CLUSTER ISSUES TRACKER v1
 # 100 issues to fix — prioritized
-# Updated: 2026-03-26T09:09
+# Updated: 2026-03-26T09:15
 
 ## P0: CRITICAL (agents broken/looping)
 
@@ -9,17 +9,17 @@
 3. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:08] BLOCKED response now tells agent to WORK on existing task
 4. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:08] Context overflow — trim history on 400 error
 5. [IN_PROGRESS by LEAD_CLAUDE | 70% | started:2026-03-26T04:08] Agents lose task after context trim — PARTIAL: nudge queries API
-6. [OPEN] Remote agents cant compile/test — agent0 test runner deployed on sys1
+6. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] Remote agents cant compile/test — agent0 test runner deployed on sys1
 7. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:08] GO_PROMPT grep READY head -3 instead of full read
 8. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:08] Tool schema 18→10 tools (55% smaller, 525 tokens)
 9. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:08] Central task API with flock prevents double-claim
-10. [IN_PROGRESS by LEAD_CLAUDE | 30% | started:2026-03-26T04:08] Stream errors — 1s retry, context trim on 400
+10. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] Stream errors — 1s retry, context trim on 400
 
 ## P1: HIGH (agents inefficient)
 
 11. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:08] grep READY | head -3 in GO_PROMPT
 12. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Agents re-read files they already read
-13. [OPEN — next] No file cache between turns
+13. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No file cache between turns
 14. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] push_changes tool deployed, agents dont always call it
 15. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Agent writes code but never calls complete_task
 16. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:15] Agent calls ask_cuda_brain for simple questions
@@ -149,47 +149,47 @@
 101. [OPEN] Agents should write tests for code they produce
 102. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] No diff review before push_changes — blind SCP
 103. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Agent should verify compilation succeeds before calling complete_task
-104. [OPEN] No rollback mechanism if agent breaks something
+104. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No rollback mechanism if agent breaks something
 105. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] task_server has no authentication — any node can claim/complete
 106. [OPEN] Deployer sync uses SCP per-file — should rsync (faster, atomic)
-107. [OPEN] No model version pinning — HF cache auto-updates could break
+107. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No model version pinning — HF cache auto-updates could break
 108. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Dashboard refresh blocks on slow SSH — should be async
-109. [OPEN] No alert when agent produces gibberish output
+109. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No alert when agent produces gibberish output
 110. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Agent doesn't check if its MLX server is healthy before working
 111. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] No rate limit on task claims per minute
-112. [OPEN] Complete_task doesn't verify files were pushed first
-113. [OPEN] No way to see agent's current conversation context size
-114. [OPEN] Agent should report estimated time remaining for current task
-115. [OPEN] No cross-agent code review (agent A reviews agent B's output)
-116. [OPEN] Orchestrator on z4090 not running any agents — wasted capacity
+112. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] Complete_task doesn't verify files were pushed first
+113. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No way to see agent's current conversation context size
+114. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] Agent should report estimated time remaining for current task
+115. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No cross-agent code review (agent A reviews agent B's output)
+116. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] Orchestrator on z4090 not running any agents — wasted capacity
 117. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Dashboard should show agent uptime (time since last restart)
-118. [OPEN] No way to pause an agent without killing it
+118. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No way to pause an agent without killing it
 119. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Agent should detect when its model server crashes and alert
 120. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] No centralized error log aggregating all agent errors
 121. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Task queue file getting corrupted with duplicate brackets ]]]]
 122. [OPEN] No visualization of task completion over time
-123. [OPEN] Agent should batch small file operations instead of one per turn
-124. [OPEN] No way to set max_tokens dynamically per task complexity
+123. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] Agent should batch small file operations instead of one per turn
+124. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No way to set max_tokens dynamically per task complexity
 125. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] CUDA brain at 42K context but agents rarely need >4K
-126. [OPEN] Watchdog and fleet_health_check overlap in functionality
-127. [OPEN] No way to see total tokens generated across all agents
+126. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] Watchdog and fleet_health_check overlap in functionality
+127. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No way to see total tokens generated across all agents
 128. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Agent0 test runner doesn't report results to dashboard
 129. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] No integration test that verifies full claim→work→push→complete cycle
 130. [OPEN] Dashboard doesn't show which phase each agent is working on
 131. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] No alert when disk drops below threshold on any node
 132. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Agent should minimize context by summarizing completed work
 133. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] No way to share findings between agents (KB not synced to remotes)
-134. [OPEN] Task server should reject claims for tasks with unmet dependencies
+134. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] Task server should reject claims for tasks with unmet dependencies
 135. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] No health endpoint for the agent process itself
-136. [OPEN] Dashboard arch column truncates model info with ellipsis
+136. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] Dashboard arch column truncates model info with ellipsis
 137. [OPEN] No way to see agent error rate over time
 138. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Agent should use sed for small edits instead of rewriting files
-139. [OPEN] No git branch per agent — all work on master
-140. [OPEN] Push_changes doesn't handle merge conflicts
-141. [OPEN] No way to compare agent productivity across different models
+139. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No git branch per agent — all work on master
+140. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] Push_changes doesn't handle merge conflicts
+141. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No way to compare agent productivity across different models
 142. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Agent TTFT spikes when conversation history grows
 143. [OPEN] No way to tell an agent to focus on code quality over speed
-144. [OPEN] Dashboard should auto-refresh without manual restart
+144. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] Dashboard should auto-refresh without manual restart
 145. [OPEN] No webhook/Slack notification when task completes
 146. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Agent should validate JSON tool calls before outputting them
 147. [OPEN] No way to see which tools each agent uses most
