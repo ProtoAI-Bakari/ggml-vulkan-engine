@@ -267,3 +267,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# Agent0 TEST task routing
+# Tasks tagged [TEST] can only be claimed by agents with "agent0" or "test" in their name
+# Other agents see them as NOT_AVAILABLE
