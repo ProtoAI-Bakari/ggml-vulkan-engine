@@ -331,10 +331,19 @@ def poll_node(name, node):
                 data["reqs"] = int(sum(float(x) for x in req_matches))
         except Exception:
             pass
-    if data["tps"] == 0.0:
-        data["tps"] = _tps_recent(ip, auth)
-    if data["reqs"] == 0:
-        data["reqs"] = _req_count(ip, auth)
+    if data['tps'] == 0.0:
+        data['tps'] = _tps_recent(ip, auth)
+    if data['tps'] == 0.0 and ip in ('127.0.0.1', 'localhost'):
+        # sys1: parse ggml_server timing logs
+        import subprocess as _sp
+        try:
+            r = _sp.run('strings ~/AGENT/LOGS/ggml_server.log 2>/dev/null | grep -oE "[0-9]+\.[0-9]+ TPS" | tail -5 | grep -oE "[0-9]+\.[0-9]+"',
+                shell=True, capture_output=True, text=True, timeout=5)
+            vals = [float(x) for x in r.stdout.strip().split() if x]
+            if vals: data['tps'] = round(sum(vals)/len(vals), 1)
+        except: pass
+    if data['reqs'] == 0:
+        data['reqs'] = _req_count(ip, auth)
     if name.startswith("sys") and name != "sys1":
         data["task"] = _agent_task(ip, auth)
 

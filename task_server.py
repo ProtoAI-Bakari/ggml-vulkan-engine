@@ -96,6 +96,13 @@ def atomic_claim(task_id, agent_name):
                 tid = existing_task.group(1) if existing_task else "unknown"
                 return False, f"BLOCKED — {agent_name} already has {tid}"
 
+            # Clean any stale timestamps before claiming
+            new_content = re.sub(r'\| 0% \| started:[^\]]+', '', content)
+            content = new_content
+            # Re-match after cleaning
+            match = re.search(pattern, content)
+            if not match:
+                return False, 'CLEAN_FAILED'
             # Claim it: replace [READY] with [IN_PROGRESS by agent | 0% | started:timestamp]
             ts = datetime.now().strftime("%Y-%m-%dT%H:%M")
             new_content = re.sub(

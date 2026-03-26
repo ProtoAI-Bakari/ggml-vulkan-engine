@@ -331,6 +331,8 @@ def push_changes(files: str, message: str = "Agent work") -> str:
             results.append(f"{f}: FAILED ({e})")
     out = "\n".join(results)
     print(f"{C.GREEN}[📤 PUSH]\n{out}{C.RESET}")
+    if any("PUSHED" in r for r in results):
+        return out + "\n\n⚠️ IMPORTANT: Files pushed. Now call complete_task(task_id) to mark your task DONE. Do NOT claim a new task until you call complete_task."
     return out
 
 def restart_self(reason: str = "update") -> str:
@@ -434,27 +436,104 @@ def _escape_newlines_in_json_strings(raw):
     return ''.join(result)
 
 def _try_parse_tool_json(raw):
-    """Try to parse a raw string as a tool call JSON, with common fixups."""
-    raw = re.sub(r',\s*([}\]])', r'\1', raw)  # remove trailing commas
-    raw = raw.replace("\u2018", '"').replace("\u2019", '"')  # curly single quotes
-    raw = raw.replace("\u201c", '"').replace("\u201d", '"')  # curly double quotes
-    raw = raw.replace("'", '"')  # single to double quotes
-    # Fix missing closing quote before colon: "arguments: { → "arguments": {
-    # Pattern: "key<space or nothing>: (without closing quote before colon)
-    raw = re.sub(r'"(name|arguments|command|path|query|task_id|pct|note|content|files|message|description|code_patch|question|offset|limit):\s', r'"\1": ', raw)
-    # Try: as-is, then with newlines escaped inside strings only
-    for attempt in [raw, _escape_newlines_in_json_strings(raw)]:
+    """Try to parse a raw string as a tool call JSON, with progressive fixups."""
+    # Remove trailing commas
+    cleaned = re.sub(r',\s*([}\]])', r'\1', raw)
+    # Replace curly quotes
+    cleaned = cleaned.replace("\u2018", "'").replace("\u2019", "'")
+    cleaned = cleaned.replace("\u201c", '"').replace("\u201d", '"')
+
+    # Fix missing colon after key names: "arguments { → "arguments": {
+    cleaned = re.sub(
+        r'"(name|arguments|command|path|query|task_id|pct|note|content|files|message|description|code_patch|question|offset|limit)"?\s*:\s',
+        r'"\1": ', cleaned)
+
+    # Progressive attempts — try least-destructive fixups first
+    attempts = [
+        cleaned,                                           # 1. minimal cleanup
+        _escape_newlines_in_json_strings(cleaned),         # 2. escape newlines in strings
+    ]
+
+    # 3. If the JSON uses single quotes for keys (not in string values),
+    #    carefully replace only structural single quotes (not those inside strings)
+    sq_fixed = _fix_single_quoted_json(cleaned)
+    if sq_fixed != cleaned:
+        attempts.append(sq_fixed)
+        attempts.append(_escape_newlines_in_json_strings(sq_fixed))
+
+    for attempt in attempts:
         try:
             tc = json.loads(attempt)
-            if "arguments" in tc.get("arguments", {}):
+            if isinstance(tc.get("arguments"), dict) and "arguments" in tc["arguments"]:
                 tc["arguments"] = tc["arguments"]["arguments"]
             if tc.get("name") in TOOL_DISPATCH:
                 return tc, None
             else:
                 return None, f"Tool '{tc.get('name')}' does not exist."
-        except (json.JSONDecodeError, ValueError):
+        except (json.JSONDecodeError, ValueError, TypeError, AttributeError):
             continue
-    return None, f"Malformed JSON in tool call: {raw}"
+
+    # 4. Last resort: try to extract command value with regex
+    name_m = re.search(r'"name"\s*:\s*"(\w+)"', raw)
+    cmd_m = re.search(r'"command"\s*:\s*"((?:[^"\\]|\\.)*)"', raw, re.DOTALL)
+    if name_m and name_m.group(1) in TOOL_DISPATCH:
+        name = name_m.group(1)
+        if name == "execute_bash" and cmd_m:
+            return {"name": name, "arguments": {"command": cmd_m.group(1).replace("\\n", "\n").replace('\\"', '"')}}, None
+        # For other tools, try to extract all key-value pairs
+        args = {}
+        for km in re.finditer(r'"(\w+)"\s*:\s*"((?:[^"\\]|\\.)*)"', raw):
+            k, v = km.group(1), km.group(2)
+            if k not in ("name", "type"):
+                args[k] = v.replace("\\n", "\n").replace('\\"', '"')
+        if args:
+            return {"name": name, "arguments": args}, None
+
+    return None, f"Malformed JSON in tool call: {raw[:200]}"
+
+
+def _fix_single_quoted_json(raw):
+    """Replace single quotes used as JSON delimiters, preserving single quotes inside string values."""
+    # Only replace ' with " if the string looks like it uses ' for JSON structure
+    # e.g. {'name': 'execute_bash', 'arguments': {'command': 'ls'}}
+    if not re.search(r"'\w+':\s*'", raw):
+        return raw  # doesn't look like single-quoted JSON
+
+    result = []
+    in_string = False
+    string_char = None
+    i = 0
+    while i < len(raw):
+        ch = raw[i]
+        if not in_string:
+            if ch == "'":
+                # Check if this is a JSON structural quote (before : or after { [ , :)
+                result.append('"')
+                in_string = True
+                string_char = "'"
+            elif ch == '"':
+                result.append(ch)
+                in_string = True
+                string_char = '"'
+            else:
+                result.append(ch)
+        else:
+            if ch == '\\' and i + 1 < len(raw):
+                result.append(ch)
+                result.append(raw[i + 1])
+                i += 2
+                continue
+            if ch == string_char:
+                result.append('"' if string_char == "'" else ch)
+                in_string = False
+                string_char = None
+            elif ch == '"' and string_char == "'":
+                # Double quote inside single-quoted string — escape it
+                result.append('\\"')
+            else:
+                result.append(ch)
+        i += 1
+    return ''.join(result)
 
 def extract_tool_calls(text):
     calls = []
@@ -516,6 +595,9 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
     # Detect non-interactive (detached/nohup/screen) session — no TTY on stdin
     import sys as _sys
     no_tty = not _sys.stdin.isatty()
+    # Strip ANSI colors when not on a TTY (fixes #36: clean log files)
+    if no_tty:
+        C.BLUE = C.CYAN = C.GREEN = C.YELLOW = C.MAGENTA = C.RED = C.DIM = C.RESET = C.BOLD = ''
 
     while True:
         try:
@@ -551,6 +633,7 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
                     user_input = (
                         f"Your assigned task is {my_task}. You MUST work on it now.\n"
                         f"Description: {my_task_desc}\n\n"
+                        f"Call update_progress('{my_task}', 'XX') periodically to report progress.\n"
                         f"RESPOND WITH ONLY ONE TOOL CALL. Use execute_bash or write_file to make progress on {my_task}.\n"
                         f"DO NOT call claim_task. DO NOT call read_file on TASK_QUEUE. Just write code or run commands for {my_task}."
                     )
@@ -563,6 +646,16 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
                 user_input = get_multiline_input()
 
             first_turn = False
+            # Log rotation: truncate if >1MB
+            try:
+                log_path = os.path.expanduser(f'~/AGENT/LOGS/agent_trace.log')
+                if os.path.exists(log_path) and os.path.getsize(log_path) > 1_000_000:
+                    with open(log_path, 'r') as f:
+                        f.seek(max(0, os.path.getsize(log_path) - 500_000))
+                        tail = f.read()
+                    with open(log_path, 'w') as f:
+                        f.write(tail)
+            except: pass
             if not user_input: continue
             if user_input.lower() in ['exit', 'quit']: break
 
