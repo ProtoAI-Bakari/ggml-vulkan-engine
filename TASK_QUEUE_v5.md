@@ -322,7 +322,7 @@
 - Success: comparison table
 - Time: 2h
 
-### T52: [READY] | completed:2026-03-26T02:39] | 0% | started:2026-03-26T02:37] Fleet connectivity: test from Sys12, Sys10, CUDA cluster
+### T52: [IN_PROGRESS by OmniAgent [sys3] Fleet connectivity: test from Sys12, Sys10, CUDA cluster
 - curl from 10.255.255.30, .64, .11 to Sys0:8080
 - Success: all machines can reach the server
 - Time: 1h
@@ -339,7 +339,7 @@
 ### T57: [DONE by OmniAgent [sys5] | completed:2026-03-26T03:39] | 0% | started:2026-03-26T02:19] Write Q4_K_M dequant+GEMV SPIR-V shader (subgroup shuffle, SIMD 32)
 ### T58: [DONE by OmniAgent | completed:2026-03-26T05:01] Benchmark T57 vs ggml GEMV
 ### T59: [DONE by OmniAgent | completed:2026-03-26T05:01]Write RMSNorm, RoPE, softmax, SiLU SPIR-V shaders
-### T60: [IN_PROGRESS by OmniAgent [sys7] | 20% | started:2026-03-26T05:02 | t10]Full model: chain all layers + embedding + output projection
+### T60: [IN_PROGRESS by OmniAgent [sys7] | 40% | started:2026-03-26T05:02 | t20]Full model: chain all layers + embedding + output projection
 ### T62: [READY]Benchmark pure engine vs ggml at batch=1
 ### T64: [READY]Flash attention SPIR-V shader (tiled, scalar, 2-pass online softmax)
 

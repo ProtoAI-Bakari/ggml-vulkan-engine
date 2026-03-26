@@ -935,9 +935,7 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
                 # After 20 tool calls with file writes, inject push reminder
                 if hasattr(run_agent, '_files_written') and len(run_agent._files_written) >= 3:
                     files_list = ','.join(run_agent._files_written[-5:])
-                    results_msg += f'
-[SYSTEM REMINDER]: You have written {len(run_agent._files_written)} files. Call push_changes("{files_list}") NOW to save your work to sys1.
-'
+                    results_msg += '\n[SYSTEM REMINDER]: You have written ' + str(len(run_agent._files_written)) + ' files. Call push_changes("' + files_list + '") NOW.\n'
                     run_agent._files_written = []  # Reset after reminder
                 
                 # Auto-progress: update every 10 tool calls
