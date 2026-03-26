@@ -95,6 +95,14 @@ client = OpenAI(base_url=PRIMARY_URL, api_key="sk-local", timeout=600.0)
 # TOOLS
 # =====================================================
 def execute_bash(command: str, timeout: int = 30) -> str:
+    # Audit: log destructive commands
+    destructive = any(x in command for x in ["rm -rf", "pkill", "kill -9", "rmdir", "dd if"])
+    if destructive:
+        try:
+            with open(os.path.expanduser("~/AGENT/LOGS/audit.log"), "a") as af:
+                af.write(f"{time.strftime('%Y-%m-%dT%H:%M:%S')}|{_AGENT_NAME}|DESTRUCTIVE|{command[:200]}
+")
+        except: pass
     try:
         cmd_str = command.strip()
         # Fix Linux→macOS path for remote agents
@@ -618,6 +626,12 @@ def _load_saved_task():
 
 def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
     global _AGENT_NAME
+    # Check for name override file (set by deployer instead of sed patching)
+    name_file = os.path.expanduser("~/AGENT/.agent_name")
+    if os.path.exists(name_file):
+        try:
+            agent_name = open(name_file).read().strip()
+        except: pass
     _AGENT_NAME = agent_name
 
     # Log rotation at startup (fixes #35: unbounded log growth)
@@ -657,10 +671,16 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
         try:
             # Auto-go: load GO_PROMPT only FIRST turn. After that, nudge to continue.
             if first_turn and (auto_go or no_tty):
-                print(f"{C.BOLD}{C.MAGENTA}[AUTO-GO] Loading GO_PROMPT.md{C.RESET}")
-                user_input = load_go_prompt()
-                if not user_input:
-                    user_input = "Read ~/AGENT/TASK_QUEUE_v5.md, claim the next [READY] task, execute it."
+                # Check for saved state from previous session
+                saved_task = _load_saved_task()
+                if saved_task:
+                    print(f"{C.BOLD}{C.GREEN}[RESUME] Found saved task: {saved_task}{C.RESET}")
+                    user_input = f"RESUME: You were working on {saved_task} before restart. Continue it NOW using execute_bash."
+                else:
+                    print(f"{C.BOLD}{C.MAGENTA}[AUTO-GO] Loading GO_PROMPT.md{C.RESET}")
+                    user_input = load_go_prompt()
+                    if not user_input:
+                        user_input = "grep READY ~/AGENT/TASK_QUEUE_v5.md | head -3 then claim_task the first one."
             elif no_tty:
                 # Subsequent turns: find agent's FIRST claimed task and force focus
                 my_task = ""

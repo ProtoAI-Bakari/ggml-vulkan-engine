@@ -70,6 +70,11 @@ def check_node(name, node):
     if blocked >= 3:
         issues.append(f"BLOCKED LOOP x{blocked} — agent has task but keeps trying to claim")
     
+    # DETECT: Many turns but no write_file or push_changes (unproductive)
+    writes = raw.count('write_file') + raw.count('push_changes') + raw.count('Created')
+    if turns > 20 and writes == 0:
+        issues.append(f'NO PRODUCTIVE OUTPUT: {turns} turns but no file writes or pushes')
+    
     # DETECT: Same tool called repeatedly (stuck)
     tool_calls = re.findall(r'EXECUTING\]: (\w+)', raw)
     if len(tool_calls) >= 5:

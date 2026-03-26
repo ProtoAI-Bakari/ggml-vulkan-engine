@@ -31,27 +31,29 @@ SSH_OPTS = "-o StrictHostKeyChecking=no -o ConnectTimeout=3"
 
 NODES = {
     # ── Apple Silicon MLX Fleet ──
-    "mlx-0":  {"ip": "127.0.0.1",      "port": 8081, "role": "AGENT-HOST",  "chip": "M1 Ultra",  "ram": "128G", "os": "Asahi"},
-    "mlx-2":  {"ip": "10.255.255.2",    "port": 8000, "role": "ARCHITECT",   "chip": "M2 Ultra",  "ram": "192G", "os": "macOS"},
-    "mlx-3":  {"ip": "10.255.255.3",    "port": 8000, "role": "ENGINEER",    "chip": "M2 Ultra",  "ram": "192G", "os": "macOS"},
-    "mlx-4":  {"ip": "10.255.255.4",    "port": 8000, "role": "CODER",       "chip": "M1 Ultra",  "ram": "128G", "os": "macOS"},
-    "mlx-5":  {"ip": "10.255.255.5",    "port": 8000, "role": "DESIGNER",    "chip": "M1 Ultra",  "ram": "128G", "os": "macOS"},
-    "mlx-6":  {"ip": "10.255.255.6",    "port": 8000, "role": "REVIEWER",    "chip": "M1 Ultra",  "ram": "128G", "os": "macOS"},
-    "mlx-7":  {"ip": "10.255.255.7",    "port": 8000, "role": "FAST-CODER",  "chip": "M1 Ultra",  "ram": "128G", "os": "macOS"},
+    "sys1":      {"ip": "127.0.0.1",      "port": 8081, "role": "AGENT-HOST",  "chip": "M1 Ultra",  "ram": "128G", "os": "Asahi"},
+    "sys2":      {"ip": "10.255.255.2",    "port": 8000, "role": "ARCHITECT",   "chip": "M2 Ultra",  "ram": "192G", "os": "macOS"},
+    "sys3":      {"ip": "10.255.255.3",    "port": 8000, "role": "ENGINEER",    "chip": "M2 Ultra",  "ram": "192G", "os": "macOS"},
+    "sys4":      {"ip": "10.255.255.4",    "port": 8000, "role": "CODER",       "chip": "M1 Ultra",  "ram": "128G", "os": "macOS"},
+    "sys5":      {"ip": "10.255.255.5",    "port": 8000, "role": "DESIGNER",    "chip": "M1 Ultra",  "ram": "128G", "os": "macOS"},
+    "sys6":      {"ip": "10.255.255.6",    "port": 8000, "role": "REVIEWER",    "chip": "M1 Ultra",  "ram": "128G", "os": "macOS"},
+    "sys7":      {"ip": "10.255.255.7",    "port": 8000, "role": "FAST-CODER",  "chip": "M1 Ultra",  "ram": "128G", "os": "macOS"},
     # ── CUDA Cluster (8x3090 TP8 over 100G RoCEv2) ──
-    "cuda-1": {"ip": "10.255.255.11", "port": 8000, "role": "CUDA-BRAIN",   "chip": "2x3090",  "ram": "256G", "os": "Linux"},
-    "cuda-2": {"ip": "10.255.255.12", "port": 0,    "role": "CUDA-WORK",    "chip": "2x3090",  "ram": "128G", "os": "Linux"},
-    "cuda-3": {"ip": "10.255.255.13", "port": 0,    "role": "CUDA-WORK",    "chip": "2x3090",  "ram": "64G",  "os": "Linux"},
-    "cuda-4": {"ip": "10.255.255.14", "port": 0,    "role": "CUDA-WORK",    "chip": "2x3090",  "ram": "64G",  "os": "Linux"},
+    "cuda-sys1": {"ip": "10.255.255.11", "port": 8000, "role": "CUDA-BRAIN",   "chip": "2x3090",  "ram": "256G", "os": "Linux"},
+    "cuda-sys2": {"ip": "10.255.255.12", "port": 0,    "role": "CUDA-WORK",    "chip": "2x3090",  "ram": "128G", "os": "Linux"},
+    "cuda-sys3": {"ip": "10.255.255.13", "port": 0,    "role": "CUDA-WORK",    "chip": "2x3090",  "ram": "64G",  "os": "Linux"},
+    "cuda-sys4": {"ip": "10.255.255.14", "port": 0,    "role": "CUDA-WORK",    "chip": "2x3090",  "ram": "64G",  "os": "Linux"},
     # ── Standalone GPU ──
-    "gpu-10": {"ip": "10.255.255.10", "port": 8000, "role": "HYPER-CODER",  "chip": "1x4090",  "ram": "64G",  "os": "Linux"},
+    "gpu-10":    {"ip": "10.255.255.10", "port": 8000, "role": "HYPER-CODER",  "chip": "1x4090",  "ram": "64G",  "os": "Linux"},
 }
-# Aliases so both "sys3" and "mlx-3" work
+# Aliases so old names still work
 NODE_ALIASES = {
-    "sys1": "mlx-0", "sys0": "mlx-0",
-    "sys2": "mlx-2", "sys3": "mlx-3", "sys4": "mlx-4",
-    "sys5": "mlx-5", "sys6": "mlx-6", "sys7": "mlx-7",
-    "cuda-sys1": "cuda-1", "z4090": "gpu-10",
+    "mlx-0": "sys1", "mlx-1": "sys1", "sys0": "sys1",
+    "mlx-2": "sys2", "mlx-3": "sys3", "mlx-4": "sys4",
+    "mlx-5": "sys5", "mlx-6": "sys6", "mlx-7": "sys7",
+    "cuda-1": "cuda-sys1", "cuda-2": "cuda-sys2",
+    "cuda-3": "cuda-sys3", "cuda-4": "cuda-sys4",
+    "z4090": "gpu-10",
 }
 
 AGENTS = {
