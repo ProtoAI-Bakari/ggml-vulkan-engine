@@ -818,7 +818,10 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
 
                 try:
                     t_turn_start = time.time()
-                    stream = client.chat.completions.create(model=MODEL_NAME, messages=history, stream=True, max_tokens=1500, temperature=0.3, extra_body={"repetition_penalty": 1.1})
+                    extra = {"repetition_penalty": 1.1}
+                    if "Qwen3" in MODEL_NAME or "122B" in MODEL_NAME:
+                        extra["chat_template_kwargs"] = {"enable_thinking": False}
+                    stream = client.chat.completions.create(model=MODEL_NAME, messages=history, stream=True, max_tokens=1200, temperature=0.3, extra_body=extra)
                     t_first_token = None
                     t_last_chunk = time.time()
                     CHUNK_TIMEOUT = 120  # max seconds between chunks before assuming stream dead
@@ -955,7 +958,7 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
                 # After 20 tool calls with file writes, inject push reminder
                 if hasattr(run_agent, '_files_written') and len(run_agent._files_written) >= 3:
                     files_list = ','.join(run_agent._files_written[-5:])
-                    results_msg += '\n[SYSTEM REMINDER]: You have written ' + str(len(run_agent._files_written)) + ' files. Call push_changes("' + files_list + '") NOW.\n'
+                    results_msg += '\n[SYSTEM]: ' + str(len(run_agent._files_written)) + ' files written. Call ask_reviewer to check your code, then push_changes("' + files_list + '").\n'
                     run_agent._files_written = []  # Reset after reminder
                 
                 # Auto-progress: update every 10 tool calls

@@ -251,7 +251,21 @@ def _agent_task(ip, auth):
             content = r.read().decode()
         m = _re.search(rf'### (T\d+):.*?\[IN_PROGRESS by [^\]]*{agent_label}[^\]]*\|?\s*(\d+)%', content)
         if m:
-            return f"[{M.YELLOW}]{m.group(1)}[/] {m.group(2)}%"
+            tid, pct = m.group(1), int(m.group(2))
+            # Calculate ETA from started timestamp
+            started_match = _re.search(rf'started:([\dT:-]+)', m.group(0))
+            eta = ""
+            if started_match and pct > 0:
+                try:
+                    from datetime import datetime as _dt
+                    started = _dt.fromisoformat(started_match.group(1))
+                    elapsed = (_dt.now() - started).total_seconds() / 60
+                    total_est = elapsed / (pct / 100)
+                    remaining = total_est - elapsed
+                    if remaining > 0:
+                        eta = f" ~{int(remaining)}m"
+                except: pass
+            return f"[{M.YELLOW}]{tid}[/] {pct}%{eta}" 
         m2 = _re.search(rf'### (T\d+):.*?\[IN_PROGRESS by [^\]]*{agent_label}', content)
         if m2:
             return f"[{M.YELLOW}]{m2.group(1)}[/]"

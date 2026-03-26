@@ -162,7 +162,12 @@ def main():
         for r in ranked[:5]:
             print(f"    {r['node']}: {r['tps']} t/s, {r['turns']} turns, task={r['task']}")
     
+    # Total tokens across fleet
+    total_tokens = sum(r.get('total_tokens', 0) for r in results if isinstance(r.get('total_tokens'), (int, float)))
+    
     print(f"  {len(results) - sick}/{len(results)} healthy | {sick} need attention")
+    if total_tokens > 0:
+        print(f"  Total tokens generated: {total_tokens:,}")
     print(f"{'='*70}")
     
     if "--json" in sys.argv:
