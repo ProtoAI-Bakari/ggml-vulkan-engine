@@ -311,7 +311,7 @@
 
 ## PHASE 3: 120B MODEL + FLEET [from Sys12 task queue]
 
-### T49: [IN_PROGRESS by OmniAgent [sys6] | 90% | started:2026-03-26T05:03 | t2080]Test 120B on standalone ggml engine
+### T49: [IN_PROGRESS by OmniAgent [sys6] | 90% | started:2026-03-26T05:03 | t2090]Test 120B on standalone ggml engine
 - Verify coherent output
 - Measure TPS
 - Success: coherent text at any TPS
@@ -350,7 +350,7 @@
 ### T57: [DONE by OmniAgent [sys5] | completed:2026-03-26T03:39] | 0% | started:2026-03-26T02:19] Write Q4_K_M dequant+GEMV SPIR-V shader (subgroup shuffle, SIMD 32)
 ### T58: [DONE by OmniAgent | completed:2026-03-26T05:01] Benchmark T57 vs ggml GEMV
 ### T59: [DONE by OmniAgent | completed:2026-03-26T05:01]Write RMSNorm, RoPE, softmax, SiLU SPIR-V shaders
-### T60: [IN_PROGRESS by OmniAgent [sys7] | 90% | started:2026-03-26T05:02 | t2640]Full model: chain all layers + embedding + output projection
+### T60: [IN_PROGRESS by OmniAgent [sys7] | 90% | started:2026-03-26T05:02 | t2650]Full model: chain all layers + embedding + output projection
 ### T62: [IN_PROGRESS by OmniAgent [sys6]Push-constant-only token stepping (no CB re-recording)
 ### T63: [DONE by OmniAgent | completed:2026-03-26T05:02]Benchmark pure engine vs ggml at batch=1
 ### T64: [IN_PROGRESS by OmniAgent [sys6]Paged KV cache in pure engine
@@ -362,7 +362,7 @@
 ### T68: [IN_PROGRESS by OmniAgent [sys1-Main] | 20% | started:2026-03-26T08:54 | t10]M1 Max (32GB) validation: run all benchmarks on Sys12
 ### T70: [DONE by OmniAgent [sys3] | completed:2026-03-26T05:18]Comprehensive README with architecture diagram
 ### T72: [IN_PROGRESS by OmniAgent[sys1-Main]Benchmark report: all models, all quants, all batch sizes
-### T73: [IN_PROGRESS by OmniAgent [sys3] | 90% | started:2026-03-26T05:21 | t2500]Draft PR for vLLM: Vulkan platform plugin
+### T73: [IN_PROGRESS by OmniAgent [sys3] | 90% | started:2026-03-26T05:21 | t2520]Draft PR for vLLM: Vulkan platform plugin
 ### T75: [IN_PROGRESS by OmniAgent [sys1-Main]Draft PR for ggml: graph caching + CB optimization patches
 ### T76: [IN_PROGRESS by OmniAgent [sys1-Main]File Mesa issue: VK_KHR_cooperative_matrix request with benchmark data
 
