@@ -446,7 +446,7 @@ def build_display():
     tbl.add_column("Role",  width=10, no_wrap=True)
     tbl.add_column("Chip",  style=M.SUBTEXT, width=9,  no_wrap=True)
     tbl.add_column("Model", style=M.TEAL,    width=22, no_wrap=True)
-    tbl.add_column("Arch",  width=14, no_wrap=True)
+    tbl.add_column("Arch",  width=18, no_wrap=True)
     tbl.add_column("Srv",   width=3,  justify="center")
     tbl.add_column("Agt",   width=3,  justify="center")
     tbl.add_column("Mem",   width=5,  justify="right")

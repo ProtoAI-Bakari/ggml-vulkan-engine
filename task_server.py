@@ -73,6 +73,11 @@ def write_queue_locked(content):
 
 _claim_times = {}  # agent -> list of timestamps
 
+# Task dependencies: value must be DONE before key can be claimed
+DEPENDENCIES = {
+    'T58': 'T57', 'T63': 'T60', 'T61': 'T59', 'T65': 'T60',
+}
+
 def atomic_claim(task_id, agent_name):
     # Rate limit: max 3 claims per minute per agent
     now = time.time()
@@ -82,6 +87,16 @@ def atomic_claim(task_id, agent_name):
     if len(_claim_times[agent_name]) >= 3:
         return False, "RATE_LIMITED — max 3 claims/minute"
     _claim_times[agent_name].append(now)
+    
+    # Check dependencies
+    dep = DEPENDENCIES.get(task_id)
+    if dep:
+        dep_pat = rf"### {re.escape(dep)}:.*?\[DONE"
+        with open(QUEUE_PATH, "r") as f:
+            content = f.read()
+        if not re.search(dep_pat, content):
+            return False, f"DEPENDENCY: {task_id} requires {dep} to be DONE first"
+
     """Atomically claim a READY task. Returns (success, message)."""
     with open(QUEUE_PATH, "r+") as f:
         fcntl.flock(f, fcntl.LOCK_EX)

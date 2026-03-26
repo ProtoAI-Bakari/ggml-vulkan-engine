@@ -155,6 +155,13 @@ def main():
     
     sick = sum(1 for r in results if r["status"] != "OK")
     print(f"\n{'='*70}")
+    # Productivity ranking
+    ranked = sorted([r for r in results if r['turns'] > 0], key=lambda x: x['tps'], reverse=True)
+    if ranked:
+        print(f"\n  Productivity ranking (by TPS):")
+        for r in ranked[:5]:
+            print(f"    {r['node']}: {r['tps']} t/s, {r['turns']} turns, task={r['task']}")
+    
     print(f"  {len(results) - sick}/{len(results)} healthy | {sick} need attention")
     print(f"{'='*70}")
     
