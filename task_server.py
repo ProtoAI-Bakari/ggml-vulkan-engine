@@ -16,6 +16,7 @@ Uses fcntl.flock for atomic file access.
 """
 
 import fcntl
+import time
 import json
 import os
 import re
@@ -70,7 +71,17 @@ def write_queue_locked(content):
         fcntl.flock(f, fcntl.LOCK_UN)
 
 
+_claim_times = {}  # agent -> list of timestamps
+
 def atomic_claim(task_id, agent_name):
+    # Rate limit: max 3 claims per minute per agent
+    now = time.time()
+    if agent_name not in _claim_times:
+        _claim_times[agent_name] = []
+    _claim_times[agent_name] = [t for t in _claim_times[agent_name] if now - t < 60]
+    if len(_claim_times[agent_name]) >= 3:
+        return False, "RATE_LIMITED — max 3 claims/minute"
+    _claim_times[agent_name].append(now)
     """Atomically claim a READY task. Returns (success, message)."""
     with open(QUEUE_PATH, "r+") as f:
         fcntl.flock(f, fcntl.LOCK_EX)
@@ -227,6 +238,11 @@ class TaskHandler(BaseHTTPRequestHandler):
             self._respond(200, json.dumps({"status": "ok", "port": BIND_PORT}), "application/json")
         else:
             self._respond(404, "Not Found")
+
+    def _check_auth(self):
+        """Simple token auth — agents must send X-Auth-Token header."""
+        # For now, accept all requests (token enforcement TBD)
+        return True
 
     def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))

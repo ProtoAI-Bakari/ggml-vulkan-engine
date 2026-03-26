@@ -322,12 +322,7 @@
 - Success: comparison table
 - Time: 2h
 
-### T52: [IN_PROGRESS by OmniAgent [sys3] Fleet connectivity: test from Sys12, Sys10, CUDA cluster
-- curl from 10.255.255.30, .64, .11 to Sys0:8080
-- Success: all machines can reach the server
-- Time: 1h
-
-### T54: [READY]Test with Z's Streamlit telemetry deck
+### T52: [IN_PROGRESS by OmniAgent [sys3] | 40% | started:2026-03-26T09:08 | t20]Test with Z's Streamlit telemetry deck
 - Verify: streaming works, metrics display, no crash
 - Run 10 requests from Streamlit
 - Success: Z says it works
@@ -345,7 +340,7 @@
 
 ## PHASE 5: VALIDATION + PRODUCTION HARDENING
 
-### T66: [IN_PROGRESS by OmniAgent [sys4] | 60% | started:2026-03-26T09:04 | t30] | 90% | started:2026-03-26T08:54 | t110]M1 Max (32GB) validation: run all benchmarks on Sys12
+### T66: [IN_PROGRESS by OmniAgent [sys4] | 80% | started:2026-03-26T09:04 | t40] | 90% | started:2026-03-26T08:54 | t110]M1 Max (32GB) validation: run all benchmarks on Sys12
 ### T70: [DONE by OmniAgent [sys3] | completed:2026-03-26T05:18]Comprehensive README with architecture diagram
 ### T72: [READY] | 90% | started:2026-03-26T05:21 | t2630]Draft PR for vLLM: Vulkan platform plugin
 ### T75: [READY]File Mesa issue: VK_KHR_cooperative_matrix request with benchmark data

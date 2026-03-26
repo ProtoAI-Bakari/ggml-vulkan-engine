@@ -868,6 +868,14 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
                     wait = min(2 ** run_agent._retry_count, 30)
                     print(f"{C.YELLOW}[🔄 Retry #{run_agent._retry_count} in {wait}s...]{C.RESET}")
                     time.sleep(wait)
+                    # Check if model server is down
+                    if run_agent._retry_count == 3:
+                        try:
+                            import urllib.request
+                            urllib.request.urlopen(f"http://{PRIMARY_IP}:{PORT}/health", timeout=3)
+                        except:
+                            print(f"{C.RED}[MODEL SERVER DOWN] Waiting for recovery...{C.RESET}")
+                            time.sleep(30)
                     if run_agent._retry_count >= 5:
                         print(f"{C.RED}[GIVING UP] 5 retries failed. Trimming context.{C.RESET}")
                         run_agent._retry_count = 0
