@@ -288,7 +288,7 @@ Write the shader IMMEDIATELY. First tool call must be write_file.] | 0% | starte
 - Success: repeated prompts reuse KV blocks
 - Time: 8h
 
-### T42: [IN_PROGRESS by OmniAgent [sys5] | 0% | started:2026-03-26T04:01]Handle chunked prefill
+### T42: [IN_PROGRESS by OmniAgent [sys5] | 20% | started:2026-03-26T04:01] | t10]Handle chunked prefill
 - Process partial prompts across multiple engine steps
 - Accumulate KV in correct blocks
 - Success: long prompts (>512 tokens) served correctly
