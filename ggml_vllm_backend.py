@@ -36,10 +36,17 @@ _lib.engine_get_vocab_size.restype = ctypes.c_int
 _lib.engine_free.argtypes = [ctypes.c_void_p]
 
 
+@dataclass
+class SamplingParams:
     max_tokens: int = 100
-    stop: list = None       # stop strings
-    stop_token_ids: set = None  # stop token IDs
+    temperature: float = 0.8
+    top_p: float = 0.9
+    top_k: int = 40
+    stop: list = None
+    stop_token_ids: set = None
     seed: int = None
+    repetition_penalty: float = 1.0
+    repetition_penalty: float = 1.0
 
     def __post_init__(self):
         if self.stop is None:

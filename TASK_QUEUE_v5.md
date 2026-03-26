@@ -287,7 +287,7 @@
 - Success: all models work
 - Time: 4h
 
-### T47: [READY] Implement streaming response support via vLLM SSE
+### T47: [IN_PROGRESS by OmniAgent [Main]] Implement streaming response support via vLLM SSE
 - Tokens yield as generated
 - Success: streaming works in Streamlit deck
 - Time: 4h

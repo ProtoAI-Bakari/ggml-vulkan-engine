@@ -138,7 +138,7 @@ engine_t *engine_load_gguf(const char *gguf_path, int n_ctx) {
     FIND_KEY_U32(n_kv_heads,   "attention.head_count_kv",              8);
     FIND_KEY_F32(rms_eps,      "attention.layer_norm_rms_epsilon", 1e-5f);
     FIND_KEY_F32(rope_theta,   "rope.freq_base",               500000.0f);
-    /* vocab size from token_embd tensor shape */
+    FIND_KEY_U32(vocab_size,     "llama.vocab_size",           128256);
     e->head_dim = e->hidden_dim / e->n_heads;
 
     fprintf(stderr, "[gguf] Model: %d layers, %d hidden, %d intermediate, %d heads, %d kv_heads\n",
@@ -174,7 +174,7 @@ engine_t *engine_load_gguf(const char *gguf_path, int n_ctx) {
         if (t) ggml_set_name(t, name);
 
         /* Map to struct fields */
-        if (strcmp(name, "token_embd.weight") == 0) { e->tok_embd = t; e->vocab_size = meta->ne[1]; }
+        if (strcmp(name, "token_embd.weight") == 0) { e->tok_embd = t; e->vocab_size = vocab_size; }
         else if (strcmp(name, "output_norm.weight") == 0) e->output_norm = t;
         else if (strcmp(name, "output.weight") == 0) e->output = t;
         else {

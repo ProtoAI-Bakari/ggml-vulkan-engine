@@ -210,7 +210,10 @@ def agent_activity():
     except FileNotFoundError:
         pass
 
-    term_width = os.get_terminal_size().columns if hasattr(os, 'get_terminal_size') else 160
+    try:
+        term_width = os.get_terminal_size().columns
+    except Exception:
+        term_width = 160
 
     for name, logfile in logs.items():
         path = os.path.expanduser(f"~/AGENT/{logfile}")
@@ -219,29 +222,31 @@ def agent_activity():
             with open(path, "rb") as f:
                 f.seek(0, 2)
                 size = f.tell()
-                # Read last 4KB to find task claims deeper in log
-                f.seek(max(0, size - 4096))
+                f.seek(max(0, size - 8192))
                 chunk = f.read().decode("utf-8", errors="replace")
             clean = re.sub(r'\x1b\[[0-9;]*m', '', chunk)
 
-            # Find task from log if not in queue (look for CLAIMED or claim_task)
+            # Find task from log
             if task == "?":
                 claims = re.findall(r'CLAIMED (T\d+)', clean)
                 if claims:
-                    task = claims[-1]  # Most recent claim
+                    task = claims[-1]
                 else:
-                    # Try finding any T## reference
                     trefs = re.findall(r'\b(T\d{2,})\b', clean)
                     if trefs:
                         task = trefs[-1]
 
-            # Last meaningful line (skip empty, ANSI leftovers)
-            lines = [l.strip() for l in clean.split("\n") if l.strip() and len(l.strip()) > 5]
-            last = lines[-1] if lines else "(idle)"
-            # Truncate to fit terminal
-            max_last = term_width - 35
-            if len(last) > max_last:
-                last = last[:max_last]
+            # Count turns and tools used
+            turns = clean.count("[Thinking...]")
+            tools_used = re.findall(r'EXECUTING\]: (\w+)', clean)
+            tool_count = len(tools_used)
+            last_3_tools = tools_used[-3:] if tools_used else []
+
+            # Last meaningful action (find tool calls, not garbled stream)
+            actions = []
+            for match in re.finditer(r'\[EXECUTING\]: (\w+)', clean):
+                actions.append(match.group(1))
+            brain_calls = len(re.findall(r'Pinging|ARCHITECT|ENGINEER|DESIGNER|REVIEWER|CODER', clean))
 
             mtime = os.path.getmtime(path)
             age = int(time.time() - mtime)
@@ -253,7 +258,10 @@ def agent_activity():
                 status = "[red]OLD[/red]"
 
             task_str = f"[bold yellow]{task}[/bold yellow]" if task != "?" else "[dim]?[/dim]"
-            console.print(f"  {status} {name} [{task_str}] {last}")
+            tools_str = " → ".join(last_3_tools[-3:]) if last_3_tools else "starting"
+            brain_str = f" [cyan]🧠{brain_calls}[/cyan]" if brain_calls else ""
+
+            console.print(f"  {status} {name} [{task_str}] T{turns} 🔧{tool_count}{brain_str} | {tools_str}")
         except FileNotFoundError:
             console.print(f"  [red]DEAD[/red] {name} [--] No log file")
         except Exception as e:
