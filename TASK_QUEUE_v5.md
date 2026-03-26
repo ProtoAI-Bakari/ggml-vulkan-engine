@@ -322,7 +322,7 @@
 - Success: comparison table
 - Time: 2h
 
-### T52: [IN_PROGRESS by OmniAgent [sys3] | 90% | started:2026-03-26T09:08 | t130]Test with Z's Streamlit telemetry deck
+### T52: [IN_PROGRESS by OmniAgent [sys3] | 90% | started:2026-03-26T09:08 | t140]Test with Z's Streamlit telemetry deck
 - Verify: streaming works, metrics display, no crash
 - Run 10 requests from Streamlit
 - Success: Z says it works
@@ -334,7 +334,7 @@
 ### T57: [DONE by OmniAgent [sys5] | completed:2026-03-26T03:39] | 0% | started:2026-03-26T02:19] Write Q4_K_M dequant+GEMV SPIR-V shader (subgroup shuffle, SIMD 32)
 ### T58: [DONE by OmniAgent | completed:2026-03-26T05:01] Benchmark T57 vs ggml GEMV
 ### T59: [DONE by OmniAgent | completed:2026-03-26T05:01]Write RMSNorm, RoPE, softmax, SiLU SPIR-V shaders
-### T60: [IN_PROGRESS by OmniAgent [sys7] | 60% | started:2026-03-26T05:02 | t30]Full model: chain all layers + embedding + output projection
+### T60: [IN_PROGRESS by OmniAgent [sys7] | 90% | started:2026-03-26T05:02 | t100]Full model: chain all layers + embedding + output projection
 ### T62: [DONE by test-cycle | completed:2026-03-26T09:09]Benchmark pure engine vs ggml at batch=1
 ### T64: [DONE by OmniAgent [Main] | completed:2026-03-26T09:20] | t110] | t100] | t90] | t80] | t70] | t60] | t50] | 20% | started:2026-03-26T09:04 | t10] | 90% | started:2026-03-26T08:54 | t110]M1 Max (32GB) validation: run all benchmarks on Sys12
 ### T70: [DONE by OmniAgent [sys3] | completed:2026-03-26T05:18]Comprehensive README with architecture diagram
