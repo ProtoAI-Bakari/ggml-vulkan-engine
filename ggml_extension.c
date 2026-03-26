@@ -2,32 +2,35 @@
 #include <Python.h>
 #include <stdio.h>
 
-// Forward declaration of the engine_forward function from ggml
-extern int engine_forward(void *ctx, void *tensor);
+/* Forward declaration of the engine function */
+extern int engine_forward(void *ctx, float *input, float *output, size_t n);
 
-static PyObject* py_engine_forward(PyObject *self, PyObject *args) {
-    void *ctx = NULL;
-    void *tensor = NULL;
-    
-    if (!PyArg_ParseTuple(args, "nn", &ctx, &tensor)) {
+static PyObject* ggml_forward(PyObject* self, PyObject* args) {
+    Py_buffer input_buf;
+    Py_buffer output_buf;
+    int result;
+
+    if (!PyArg_ParseTuple(args, "s*s*i", &input_buf, &output_buf, &result)) {
         return NULL;
     }
-    
-    int result = engine_forward(ctx, tensor);
-    return PyLong_FromLong(result);
+
+    /* Call the underlying engine_forward function */
+    int ret = engine_forward(NULL, (float*)input_buf.buf, (float*)output_buf.buf, input_buf.len / sizeof(float));
+
+    PyBuffer_Release(&input_buf);
+    PyBuffer_Release(&output_buf);
+
+    return PyLong_FromLong(ret);
 }
 
-static PyObject* py_init_ggml(PyObject *self, PyObject *args) {
-    // Initialize ggml context
+static PyObject* ggml_init(PyObject* self, PyObject* args) {
     printf("ggml_extension initialized\n");
     Py_RETURN_NONE;
 }
 
 static PyMethodDef GgmlMethods[] = {
-    {"engine_forward", py_engine_forward, METH_VARARGS,
-     "Forward pass through the engine"},
-    {"init_ggml", py_init_ggml, METH_NOARGS,
-     "Initialize ggml context"},
+    {"forward", ggml_forward, METH_VARARGS, "Run forward pass through the model"},
+    {"init", ggml_init, METH_NOARGS, "Initialize ggml extension"},
     {NULL, NULL, 0, NULL}
 };
 

@@ -1,32 +1,32 @@
 # CLUSTER ISSUES TRACKER v1
 # 100 issues to fix — prioritized
-# Updated: 2026-03-26 04:00
+# Updated: 2026-03-26T04:08
 
 ## P0: CRITICAL (agents broken/looping)
 
-1. [OPEN] JSON parse failures from embedded newlines in write_file content — heredocs break JSON
-2. [OPEN] Agents try to claim DONE tasks in sequence instead of skipping to READY
-3. [OPEN] BLOCKED response doesn't always stop agent from re-claiming
-4. [OPEN] Context overflow on CUDA (42K limit) causes infinite retry loop
-5. [OPEN] Agents lose task assignment after context trim — nudge can't find task
-6. [OPEN] Remote agents can't compile/test code — only sys1 has the Vulkan GPU
-7. [OPEN] GO_PROMPT on first turn eats too many tokens reading full queue
-8. [OPEN] Tool schema sent every turn adds ~525 tokens overhead even when not needed
-9. [OPEN] Multiple agents claim same task when API is slow/unreachable
-10. [OPEN] Stream errors during CUDA restart cause all agents using .11 to loop
+1. [IN_PROGRESS by LEAD_CLAUDE | 60% | started:2026-03-26T04:08] JSON parse failures from embedded newlines — PARTIAL FIX: heredoc instruction added
+2. [IN_PROGRESS by LEAD_CLAUDE | 50% | started:2026-03-26T04:08] Agents try to claim DONE tasks — PARTIAL FIX: grep READY first
+3. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:08] BLOCKED response now tells agent to WORK on existing task
+4. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:08] Context overflow — trim history on 400 error
+5. [IN_PROGRESS by LEAD_CLAUDE | 70% | started:2026-03-26T04:08] Agents lose task after context trim — PARTIAL: nudge queries API
+6. [OPEN] Remote agents cant compile/test — agent0 test runner deployed on sys1
+7. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:08] GO_PROMPT grep READY head -3 instead of full read
+8. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:08] Tool schema 18→10 tools (55% smaller, 525 tokens)
+9. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:08] Central task API with flock prevents double-claim
+10. [IN_PROGRESS by LEAD_CLAUDE | 30% | started:2026-03-26T04:08] Stream errors — 1s retry, context trim on 400
 
 ## P1: HIGH (agents inefficient)
 
-11. [OPEN] Agents read TASK_QUEUE_v5.md fully instead of grep READY | head -3
-12. [OPEN] Agents re-read files they already read 5 turns ago
-13. [OPEN] No file cache — agent reads same file every turn after context trim
-14. [OPEN] Agent writes code but never calls push_changes to sync to sys1
-15. [OPEN] Agent writes code but never calls complete_task when done
-16. [OPEN] Agent calls ask_cuda_brain for simple questions (wastes shared resource)
-17. [OPEN] Agent generates 2000 tokens of reasoning before a 20-token tool call
+11. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:08] grep READY | head -3 in GO_PROMPT
+12. [OPEN — next] Agents re-read files they already read
+13. [OPEN — next] No file cache between turns
+14. [IN_PROGRESS by LEAD_CLAUDE | 40% | started:2026-03-26T04:08] push_changes tool deployed, agents dont always call it
+15. [OPEN — next] Agent writes code but never calls complete_task
+16. [OPEN — next] Agent calls ask_cuda_brain for simple questions
+17. [IN_PROGRESS by LEAD_CLAUDE | 80% | started:2026-03-26T04:08] Verbose reasoning — system prompt cut to 232 tokens
 18. [OPEN] write_file with large content (>500 lines) always fails JSON parse
 19. [OPEN] Agent doesn't update_progress — task stays at 0% forever
-20. [OPEN] No way to tell agent "stop working on this task, do X instead"
+20. [OPEN — next] No way to redirect agent to different task
 
 ## P2: MEDIUM (dashboard/monitoring gaps)
 
@@ -39,7 +39,7 @@
 27. [OPEN] Fleet health checker doesn't detect "agent writing but no files produced"
 28. [OPEN] No dashboard column for "last file written" or "last commit"
 29. [OPEN] Task server timestamps accumulate — "| 0% | started:... | 0% | started:..."
-30. [OPEN] Task server BLOCKED check regex fragile with bracket-heavy agent names
+30. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:08] Task server BLOCKED regex fixed for brackets
 
 ## P3: AGENT LIFECYCLE
 
