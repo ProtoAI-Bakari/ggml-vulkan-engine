@@ -21,6 +21,7 @@ import json
 import os
 import re
 import sys
+import threading
 from datetime import datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import parse_qs
@@ -249,6 +250,17 @@ class TaskHandler(BaseHTTPRequestHandler):
         elif self.path == "/tasks/summary":
             s = task_summary()
             self._respond(200, json.dumps(s), "application/json")
+        elif self.path == "/tokens":
+            # Quick token count from local logs
+            import subprocess
+            try:
+                r = subprocess.run("python3 ~/AGENT/count_fleet_tokens.py --json 2>/dev/null", 
+                    shell=True, capture_output=True, text=True, timeout=30)
+                self._respond(200, r.stdout, "application/json")
+            except:
+                self._respond(500, '{"error": "token count failed"}', "application/json")
+            return
+
         elif self.path == "/health":
             self._respond(200, json.dumps({"status": "ok", "port": BIND_PORT}), "application/json")
         else:
@@ -372,10 +384,59 @@ class TaskHandler(BaseHTTPRequestHandler):
             self._respond(404, "Not Found")
 
 
+STALE_CHECK_INTERVAL = 60   # seconds between checks
+STALE_TIMEOUT = 30 * 60    # 30 minutes in seconds
+
+
+def release_stale_tasks():
+    """Background thread: release any task IN_PROGRESS for >30 minutes."""
+    while True:
+        time.sleep(STALE_CHECK_INTERVAL)
+        try:
+            with open(QUEUE_PATH, "r+") as f:
+                fcntl.flock(f, fcntl.LOCK_EX)
+                try:
+                    content = f.read()
+                    now = datetime.now()
+                    # Find all IN_PROGRESS tasks with started timestamps
+                    pattern = r"(### (T\d+):.*?)\[IN_PROGRESS by ([^\]|]+?)(?:\s*\|[^\]]*)?\s*started:(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})[^\]]*\](\]*)"
+                    changed = False
+                    for m in re.finditer(pattern, content):
+                        task_id = m.group(2)
+                        agent = m.group(3).strip()
+                        started_str = m.group(4)
+                        try:
+                            started = datetime.strptime(started_str, "%Y-%m-%dT%H:%M")
+                        except ValueError:
+                            continue
+                        elapsed = (now - started).total_seconds()
+                        if elapsed > STALE_TIMEOUT:
+                            log(f"STALE_RELEASE: {task_id} held by {agent} for {int(elapsed)}s — releasing")
+                            log_history("STALE_RELEASE", task_id, agent, f"held {int(elapsed)}s")
+                            # Replace the full match with [READY]
+                            old = m.group(0)
+                            new = m.group(1) + "[READY]"
+                            content = content.replace(old, new, 1)
+                            changed = True
+                    if changed:
+                        f.seek(0)
+                        f.write(content)
+                        f.truncate()
+                finally:
+                    fcntl.flock(f, fcntl.LOCK_UN)
+        except Exception as e:
+            log(f"STALE_RELEASE error: {e}")
+
+
 def main():
     if not os.path.exists(QUEUE_PATH):
         print(f"ERROR: Queue file not found: {QUEUE_PATH}", file=sys.stderr)
         sys.exit(1)
+
+    # Start background thread for stale task release
+    stale_thread = threading.Thread(target=release_stale_tasks, daemon=True)
+    stale_thread.start()
+    log("Stale task release thread started (check every 60s, timeout 30min)")
 
     server = HTTPServer((BIND_ADDR, BIND_PORT), TaskHandler)
     log(f"Task server starting on {BIND_ADDR}:{BIND_PORT}")
