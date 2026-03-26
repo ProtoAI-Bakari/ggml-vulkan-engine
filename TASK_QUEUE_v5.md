@@ -113,7 +113,7 @@
 - Success: Python overhead drops from 3ms to <0.5ms
 - Time: 8h
 
-### T16: [READY]] Implement fence polling optimization
+### T16: [IN_PROGRESS by OmniAgent [sys2] | 0% | started:2026-03-26T02:22] Implement fence polling optimization
 - Insert fence at ~80% graph completion
 - Spin-wait for final fence instead of blocking
 - Reduces fence latency by 1-2ms
@@ -239,12 +239,12 @@
 - Success: vLLM sampler accepts logits
 - Time: 6h
 
-### T38: [READY]] End-to-end single-request test through vLLM plugin
+### T38: [IN_PROGRESS by OmniAgent [sys1-Main] | 0% | started:2026-03-26T02:24] End-to-end single-request test through vLLM plugin
 - Chat completion, verify coherent response
 - Success: matches direct ggml output quality
 - Time: 4h
 
-### T39: [READY]] Enable max_num_seqs=2: two concurrent requests
+### T39: [IN_PROGRESS by OmniAgent [sys1-Main] | 0% | started:2026-03-26T02:24] Enable max_num_seqs=2: two concurrent requests
 - Paged KV isolates requests
 - Success: both requests correct and independent
 - Time: 6h
@@ -260,7 +260,7 @@
 - Success: repeated prompts reuse KV blocks
 - Time: 8h
 
-### T42: [READY]] Handle chunked prefill
+### T42: [IN_PROGRESS by OmniAgent [sys1-Main] | 0% | started:2026-03-26T02:26] Handle chunked prefill
 - Process partial prompts across multiple engine steps
 - Accumulate KV in correct blocks
 - Success: long prompts (>512 tokens) served correctly
@@ -272,12 +272,12 @@
 - Success: server recovers from OOM without crash
 - Time: 6h
 
-### T44: [READY]]] Stress test: 10 concurrent users, 1000 total requests
+### T44: [IN_PROGRESS by OmniAgent [sys4] | 0% | started:2026-03-26T02:28] Stress test: 10 concurrent users, 1000 total requests
 - Measure aggregate TPS, p99 latency, error rate
 - Success: zero crashes, <1% error rate
 - Time: 4h
 
-### T45: [READY]]] Benchmark max_num_seqs=4 aggregate throughput
+### T45: [IN_PROGRESS by OmniAgent [sys1-Main] | 0% | started:2026-03-26T02:29] Benchmark max_num_seqs=4 aggregate throughput
 - Compare vs single-stream
 - Success: aggregate TPS > 2x single-stream
 - Time: 3h
@@ -316,13 +316,13 @@
 - Success: comparison table
 - Time: 2h
 
-### T52: [READY]]] Test 120B via standalone streaming server
+### T52: [IN_PROGRESS by OmniAgent [sys5] | 0% | started:2026-03-26T02:32] Test 120B via standalone streaming server
 - Verify streaming works for large model
 - Test long generation (200+ tokens)
 - Success: stable, coherent, streaming
 - Time: 2h
 
-### T53: [READY]] Fleet connectivity: test from Sys12, Sys10, CUDA cluster
+### T53: [IN_PROGRESS by OmniAgent [sys1-Main] | 0% | started:2026-03-26T02:37] Fleet connectivity: test from Sys12, Sys10, CUDA cluster
 - curl from 10.255.255.30, .64, .11 to Sys0:8080
 - Success: all machines can reach the server
 - Time: 1h
@@ -342,7 +342,7 @@
 
 ### T56: [DONE]] Implement GGUF weight loader in C (parse header, map weights to VkBuffer)
 ### T57: [IN_PROGRESS by OmniAgent [sys6] | 0% | started:2026-03-26T02:19] Write Q4_K_M dequant+GEMV SPIR-V shader (subgroup shuffle, SIMD 32)
-### T58: [READY]] Benchmark T57 vs ggml GEMV
+### T58: [IN_PROGRESS by OmniAgent | 0% | started:2026-03-26T02:38] Benchmark T57 vs ggml GEMV
 ### T59: [READY] Write RMSNorm, RoPE, softmax, SiLU SPIR-V shaders
 ### T60: [READY] Implement static CB recording for one transformer layer
 ### T61: [READY] Full model: chain all layers + embedding + output projection
