@@ -113,7 +113,7 @@
 - Success: Python overhead drops from 3ms to <0.5ms
 - Time: 8h
 
-### T16: [READY]]] Implement fence polling optimization
+### T16: [IN_PROGRESS by OmniAgent [sys1-Main]]]] Implement fence polling optimization
 - Insert fence at ~80% graph completion
 - Spin-wait for final fence instead of blocking
 - Reduces fence latency by 1-2ms
@@ -184,7 +184,7 @@
 - Success: vLLM recognizes platform
 - Time: 6h
 
-### T28: [READY]]] Create VulkanWorker(WorkerBase) stub
+### T28: [IN_PROGRESS by OmniAgent [sys5]] Create VulkanWorker(WorkerBase) stub
 - init_device(), determine_available_memory(), load_model()
 - Success: worker initializes without crash
 - Time: 6h

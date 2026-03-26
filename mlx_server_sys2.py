@@ -24,7 +24,7 @@ from mlx_lm.sample_utils import make_sampler, make_logits_processors
 from pydantic import BaseModel
 
 # ── Config ─────────────────────────────────────────────────────────────────────
-MODEL_ID        = "mlx-community/Qwen3-235B-A22B-Thinking-2507-4bit"
+MODEL_ID        = "mlx-community/GLM-4.7-Flash-8bit"
 HOST            = "0.0.0.0"
 PORT            = 8000
 MAX_TOKENS      = 8192

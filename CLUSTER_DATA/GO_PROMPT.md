@@ -14,7 +14,7 @@ You are one of 8+ parallel agents working across a 12-node AI cluster. Other age
 - Read ~/AGENT/KNOWLEDGE_BASE.md for project context
 - Use grep/sed/head to inspect files — NEVER read files over 100 lines
 - NEVER rewrite entire files — use sed for targeted edits
-- Compile after every C change: gcc -shared -O2 -fPIC -o libggml_llama_gguf.so ggml_llama_gguf.c -I ~/GITDEV/llama.cpp/ggml/include -L ~/GITDEV/llama.cpp/build-lib/bin -lggml -lggml-base -lggml-vulkan -lggml-cpu -lm -Wl,-rpath,~/GITDEV/llama.cpp/build-lib/bin
+- Compile after every C change: gcc -shared -O2 -fPIC -o libggml_llama_gguf.so ggml_llama_gguf.c -I ~/GITDEV/llama.cpp/ggml/include -L ~/GITDEV/llama.cpp/build-lib/bin -lggml -lggml-base -lggml-vulkan -lggml-cpu -lm -Wl,-rpath,/home/z/GITDEV/llama.cpp/build-lib/bin
 - Test after every change: python3 -c "from ggml_vllm_backend import GgmlLLM, SamplingParams; llm = GgmlLLM('~/models/gguf/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf'); r = llm.generate('Capital of France?', params=SamplingParams(temperature=0, max_tokens=10)); print(f'{r.tps:.0f} TPS: {r.text}')"
 - If broken, restore: git checkout -- ~/AGENT/ggml_llama_gguf.c
 

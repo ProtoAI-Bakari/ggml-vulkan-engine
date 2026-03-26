@@ -46,6 +46,13 @@ NODES = {
     # ── Standalone GPU ──
     "gpu-10": {"ip": "10.255.255.10", "port": 8000, "role": "HYPER-CODER",  "chip": "1x4090",  "ram": "64G",  "os": "Linux"},
 }
+# Aliases so both "sys3" and "mlx-3" work
+NODE_ALIASES = {
+    "sys1": "mlx-0", "sys0": "mlx-0",
+    "sys2": "mlx-2", "sys3": "mlx-3", "sys4": "mlx-4",
+    "sys5": "mlx-5", "sys6": "mlx-6", "sys7": "mlx-7",
+    "cuda-sys1": "cuda-1", "z4090": "gpu-10",
+}
 
 AGENTS = {
     "agent1": {"script": "OMNIAGENT_v4_focused.py",         "log": "LOGS/main_trace.log",     "name": "OmniAgent [Main]"},
@@ -639,6 +646,8 @@ def main():
         parts = cmd.split(maxsplit=1)
         action = parts[0].lower()
         arg = parts[1] if len(parts) > 1 else ""
+        # Resolve aliases (sys3 -> mlx-3, etc.)
+        arg = NODE_ALIASES.get(arg, arg)
 
         if action in ("q", "quit", "exit"):
             break

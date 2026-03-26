@@ -107,13 +107,7 @@ def execute_bash(command: str, timeout: int = 120) -> str:
 
 def read_file(path: str, offset: int = 0, limit: int = 100000) -> str:
     try:
-        p = os.path.expanduser(path)
-        # Fix Linux/macOS path mismatch: /home/z/ → /Users/z/ on macOS
-        if not os.path.exists(p) and p.startswith("/home/z/"):
-            p = p.replace("/home/z/", "/Users/z/", 1)
-        if not os.path.exists(p) and p.startswith("/Users/z/"):
-            p = p.replace("/Users/z/", "/home/z/", 1)
-        with open(p, 'r', errors='ignore') as f:
+        with open(os.path.expanduser(path), 'r', errors='ignore') as f:
             f.seek(offset)
             return f.read(limit)
     except Exception as e: return f"Error reading file: {e}"
@@ -121,11 +115,6 @@ def read_file(path: str, offset: int = 0, limit: int = 100000) -> str:
 def write_file(path: str, content: str) -> str:
     try:
         full_path = os.path.expanduser(path)
-        # Fix Linux/macOS path mismatch
-        if "/home/z/" in full_path and not os.path.exists(os.path.dirname(full_path)):
-            full_path = full_path.replace("/home/z/", "/Users/z/", 1)
-        if "/Users/z/" in full_path and not os.path.exists(os.path.dirname(full_path)):
-            full_path = full_path.replace("/Users/z/", "/home/z/", 1)
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
         with open(full_path, 'w', encoding='utf-8') as f: f.write(content)
         return f"Successfully wrote {len(content)} chars to {full_path}"
@@ -350,7 +339,7 @@ TOOLS_SCHEMA = [
 SYSTEM_PROMPT = f"""You are OmniAgent v4, an elite autonomous systems engineer running on Apple M1 Ultra 128GB with Asahi Linux and Vulkan GPU.
 
 ## YOUR MISSION
-Execute tasks from ~/AGENT/TASK_QUEUE_v5.md. After completing each task, call push_changes and complete_task, then claim the next one. NEVER STOP between tasks. Use ~ for home dir, not /home/z or /Users/z.
+Execute tasks from ~/AGENT/TASK_QUEUE_v4.md and ~/AGENT/TASK_QUEUE_v5.md. After completing each task, git commit and immediately start the next one. NEVER STOP between tasks. NEVER wait for human input.
 
 ## CRITICAL RULES
 1. ALWAYS USE TOOLS. Every response MUST contain at least one tool_call. If you have nothing to execute, read the task queue.
@@ -389,12 +378,12 @@ Execute tasks from ~/AGENT/TASK_QUEUE_v5.md. After completing each task, call pu
 - Python API: ~/AGENT/ggml_vllm_backend.py
 - Server: ~/AGENT/ggml_server.py
 - Models: ~/models/gguf/ (8B Q4=4.6G, 32B Q4=19G, 120B mxfp4=60G)
-- Build cmd: gcc -shared -O2 -fPIC -o libggml_llama_gguf.so ggml_llama_gguf.c -I ~/GITDEV/llama.cpp/ggml/include -L ~/GITDEV/llama.cpp/build-lib/bin -lggml -lggml-base -lggml-vulkan -lggml-cpu -lm -Wl,-rpath,~/GITDEV/llama.cpp/build-lib/bin
+- Build cmd: gcc -shared -O2 -fPIC -o libggml_llama_gguf.so ggml_llama_gguf.c -I ~/GITDEV/llama.cpp/ggml/include -L ~/GITDEV/llama.cpp/build-lib/bin -lggml -lggml-base -lggml-vulkan -lggml-cpu -lm -Wl,-rpath,/home/z/GITDEV/llama.cpp/build-lib/bin
 - Test cmd: python3 -c "from ggml_vllm_backend import GgmlLLM, SamplingParams; llm = GgmlLLM('~/models/gguf/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf'); r = llm.generate('Capital of France?', params=SamplingParams(temperature=0, max_tokens=10)); print(f'{{r.tps:.0f}} TPS: {{r.text}}')"
 - Status: 22 TPS on 8B Q4, coherent output, engine stable
 - llama.cpp reference: 24.7 TPS (our ceiling target)
 
-## CURRENT PRIORITIES (read TASK_QUEUE_v5.md for details)
+## CURRENT PRIORITIES (read TASK_QUEUE_v4.md for details)
 - T07: Add MoE support for gpt-oss-120b (128 experts, 4 active). Study ~/GITDEV/llama.cpp/src/models/openai-moe-iswa.cpp
 - T08: Fix tokenizer discovery for all model families
 - T09: Benchmark 32B Qwen with tokenizer fix
@@ -411,17 +400,17 @@ WRONG:   {{"name"="execute_bash", "arguments"={{"command": "pwd"}}}}
 ## MULTI-AGENT COORDINATION
 - BEFORE starting any task: call claim_task("T07") — if it returns TAKEN, skip to next READY task
 - AFTER completing any task: call complete_task("T07")
-- Check TASK_QUEUE_v5.md for [IN_PROGRESS by ...] to see what other agents are doing
+- Check TASK_QUEUE_v4.md for [IN_PROGRESS by ...] to see what other agents are doing
 - Do NOT work on tasks claimed by other agents
 
 ## ON STARTUP
-1. Read ~/AGENT/TASK_QUEUE_v5.md — check for tasks [IN_PROGRESS by YOUR NAME]
+1. Read ~/AGENT/TASK_QUEUE_v4.md — check for tasks [IN_PROGRESS by YOUR NAME]
 2. If you have an IN_PROGRESS task, RESUME it (don't re-claim)
 3. If no IN_PROGRESS task, find next [READY] task and claim_task it
 4. Also check ~/AGENT/TASK_QUEUE_v5.md for additional READY tasks
 5. Read ~/AGENT/KNOWLEDGE_BASE.md for context
 6. NEVER work on tasks claimed by other agents
-7. Only use TASK_QUEUE_v5.md — there is NO v4 queue. Always use ~/AGENT/ paths with ~, not /home/z or /Users/z.
+7. Only use ONE queue — prefer v4 tasks first, then v5
 
 ## AVAILABLE TOOLS
 {json.dumps(TOOLS_SCHEMA, indent=2)}

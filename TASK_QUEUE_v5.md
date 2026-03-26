@@ -107,13 +107,13 @@
 - Success: correct output after topology change, no stale CB
 - Time: 6h
 
-### T15: [IN_PROGRESS by OmniAgent [sys1-Main]]]] Move Python/ctypes hot path to C extension
+### T15: [READY]]]] Move Python/ctypes hot path to C extension
 - Compiled C shim replaces ctypes for tensor dispatch
 - Eliminate numpy→ctypes→C boundary crossing per forward()
 - Success: Python overhead drops from 3ms to <0.5ms
 - Time: 8h
 
-### T16: [IN_PROGRESS by OmniAgent [sys1-Main]]]] Implement fence polling optimization
+### T16: [READY]]]] Implement fence polling optimization
 - Insert fence at ~80% graph completion
 - Spin-wait for final fence instead of blocking
 - Reduces fence latency by 1-2ms
@@ -184,7 +184,7 @@
 - Success: vLLM recognizes platform
 - Time: 6h
 
-### T28: [READY]]] Create VulkanWorker(WorkerBase) stub
+### T28: [READY]] Create VulkanWorker(WorkerBase) stub
 - init_device(), determine_available_memory(), load_model()
 - Success: worker initializes without crash
 - Time: 6h
@@ -216,7 +216,7 @@
 - Success: attention correct with paged cache
 - Time: 12h
 
-### T34: [READY]]] Wire _update_states()
+### T34: [READY]] Wire _update_states()
 - Parse SchedulerOutput: add/remove/reorder requests
 - Success: request lifecycle correctly managed
 - Time: 8h
@@ -239,17 +239,17 @@
 - Success: vLLM sampler accepts logits
 - Time: 6h
 
-### T38: [READY]]] End-to-end single-request test through vLLM plugin
+### T38: [READY]] End-to-end single-request test through vLLM plugin
 - Chat completion, verify coherent response
 - Success: matches direct ggml output quality
 - Time: 4h
 
-### T39: [READY]]] Enable max_num_seqs=2: two concurrent requests
+### T39: [READY]] Enable max_num_seqs=2: two concurrent requests
 - Paged KV isolates requests
 - Success: both requests correct and independent
 - Time: 6h
 
-### T40: [READY]]] Implement KV cache block freeing + prevent memory leak
+### T40: [IN_PROGRESS by OmniAgent [sys1-Main]] Implement KV cache block freeing + prevent memory leak
 - Release blocks on request completion, return to free pool
 - Success: stable memory after 100+ requests
 - Time: 4h
@@ -260,7 +260,7 @@
 - Success: repeated prompts reuse KV blocks
 - Time: 8h
 
-### T42: [READY]]] Handle chunked prefill
+### T42: [IN_PROGRESS by OmniAgent [sys6]] Handle chunked prefill
 - Process partial prompts across multiple engine steps
 - Accumulate KV in correct blocks
 - Success: long prompts (>512 tokens) served correctly
@@ -300,12 +300,12 @@
 
 ## PHASE 3: 120B MODEL + FLEET [from Sys12 task queue]
 
-### T49: [READY]]] Merge 120B GGUF shards
+### T49: [IN_PROGRESS by OmniAgent [sys3]] Merge 120B GGUF shards
 - llama-gguf-split --merge
 - Success: single merged GGUF file
 - Time: 30min (I/O bound)
 
-### T50: [READY]]] Test 120B on standalone ggml engine
+### T50: [IN_PROGRESS by OmniAgent [sys2]] Test 120B on standalone ggml engine
 - Verify coherent output
 - Measure TPS
 - Success: coherent text at any TPS
@@ -332,7 +332,7 @@
 - Success: fleet_status.json with accurate info
 - Time: 2h
 
-### T55: [READY]] Test with Z's Streamlit telemetry deck
+### T55: [IN_PROGRESS by OmniAgent [sys5]] Test with Z's Streamlit telemetry deck
 - Verify: streaming works, metrics display, no crash
 - Run 10 requests from Streamlit
 - Success: Z says it works
