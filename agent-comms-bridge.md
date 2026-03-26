@@ -124,3 +124,29 @@ Last sync: OmniAgent v4 autonomous session
 - Handles paged KV cache with slot_mapping
 - Supports block table indexing for virtual-to-physical translation
 - Test passed: 128 tokens, 8 heads, 128 head_size
+
+## T36 COMPLETED by OmniAgent [Main] - Wed Mar 25 07:37:16 PM PDT 2026
+- **Task**: Handle token ID mapping: verify GGUF vocab matches HF tokenizer
+- **Changes**:
+  - Added  C binding to get vocab from engine
+  - Replaced hardcoded vocab detection with dynamic engine call
+  - Added vocab mismatch warning when GGUF != HF tokenizer
+- **Results**:
+  - Llama-3.1-8B: vocab match (128256)
+  - Qwen2.5-3B: vocab mismatch detected (GGUF=151936, HF=151665) - warning logged
+- **Files modified**:
+  - : vocab size detection + verification
+  - : GGUF header parser (standalone utility)
+
+## T36 COMPLETED by OmniAgent [Main]
+- **Task**: Handle token ID mapping: verify GGUF vocab matches HF tokenizer
+- **Changes**:
+  - Added engine_get_vocab_size() C binding to get vocab from engine
+  - Replaced hardcoded vocab detection with dynamic engine call
+  - Added vocab mismatch warning when GGUF != HF tokenizer
+- **Results**:
+  - Llama-3.1-8B: vocab match (128256)
+  - Qwen2.5-3B: vocab mismatch detected (GGUF=151936, HF=151665) - warning logged
+- **Files modified**:
+  - ggml_vllm_backend.py: vocab size detection + verification
+  - gguf_vocab_parser.py: GGUF header parser (standalone utility)

@@ -31,6 +31,8 @@ _lib.engine_forward.restype = ctypes.c_int
 _lib.engine_reset_kv.argtypes = [ctypes.c_void_p]
 _lib.engine_warmup.argtypes = [ctypes.c_void_p]
 _lib.engine_warmup.restype = ctypes.c_int
+_lib.engine_get_vocab_size.argtypes = [ctypes.c_void_p]
+_lib.engine_get_vocab_size.restype = ctypes.c_int
 _lib.engine_free.argtypes = [ctypes.c_void_p]
 
 
@@ -107,13 +109,17 @@ class GgmlLLM:
         logger.info(f"Loaded in {load_time:.1f}s")
         print(f"[GgmlLLM] Loaded in {load_time:.1f}s", flush=True)
 
-        # Detect vocab size from model name
-        base = os.path.basename(self.model_path).lower()
-        if "qwen" in base:
-            self.vocab_size = 151936
-        else:
-            self.vocab_size = 128256  # Llama-3.1 default
-
+        # T36: Get actual vocab size from C engine
+        self.vocab_size = _lib.engine_get_vocab_size(self._engine)
+        print(f"[INFO] Vocab size from engine: {self.vocab_size}", flush=True)
+        
+        # T36: Verify vocab size matches HF tokenizer
+        if self.tokenizer:
+            hf_vocab = len(self.tokenizer.get_vocab())
+            if self.vocab_size != hf_vocab:
+                print(f"[WARNING] Vocab mismatch: GGUF={self.vocab_size}, HF={hf_vocab}", flush=True)
+            else:
+                print(f"[INFO] Vocab sizes match: {self.vocab_size}", flush=True)
         # Stats tracking
         self._total_tokens = 0
         self._total_time = 0
