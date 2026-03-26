@@ -388,9 +388,11 @@ def extract_tool_calls(text):
     errors = []
     for m in re.finditer(r'<tool_call>\s*(.*?)\s*</tool_call>', text, re.DOTALL):
         raw = m.group(1).strip()
-        # Fix common model output issues: trailing commas, single quotes
+        # Fix common model output issues
         raw = re.sub(r',\s*([}\]])', r'\1', raw)  # remove trailing commas
         raw = raw.replace("'", '"')  # single to double quotes
+        raw = re.sub(r'"arguments:\s*\{', '"arguments": {', raw)  # fix missing ": after arguments
+        raw = re.sub(r'"name:\s*"', '"name": "', raw)  # fix missing ": after name
         try:
             tc = json.loads(raw)
             # Anti-Hallucination Check: flatten nested arguments if model hallucinates them
@@ -494,7 +496,7 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
             
             while True: 
                 # --- PERFECT CONTEXT MANAGEMENT ---
-                if sum(len(str(m.get("content", ""))) for m in history) > 30000:
+                if sum(len(str(m.get("content", ""))) for m in history) > 20000:
                     sys_prompt = history[0]
                     new_tail = history[-10:]
                     while new_tail and new_tail[0]["role"] != "user":
@@ -537,11 +539,20 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
                     break
                 except Exception as stream_err:
                     print(f"\n{C.RED}[⚠️ STREAM ERROR: {stream_err}]{C.RESET}")
+                    err_str = str(stream_err)
+                    if "context length" in err_str or "input_tokens" in err_str or "400" in err_str:
+                        # Context overflow — trim history aggressively instead of retrying
+                        print(f"{C.RED}[CONTEXT OVERFLOW — trimming history]{C.RESET}")
+                        sys_prompt_msg = history[0]
+                        history = [sys_prompt_msg] + history[-4:]
+                        while history and history[1].get("role") != "user":
+                            history.pop(1)
+                        continue
                     print(f"{C.YELLOW}[🔄 Retrying in 5s...]{C.RESET}")
                     time.sleep(5)
                     if full_content:
-                        history.append({"role": "assistant", "content": full_content + "\n[TRUNCATED BY CONNECTION ERROR]"})
-                    history.append({"role": "user", "content": "[SYSTEM]: Previous response was cut off by a connection error. Continue where you left off. Use a tool call."})
+                        history.append({"role": "assistant", "content": full_content + "\n[TRUNCATED]"})
+                    history.append({"role": "user", "content": "[SYSTEM]: Connection error. Continue. Use a tool call."})
                     continue
                 
                 history.append({"role": "assistant", "content": full_content})
@@ -554,13 +565,19 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
                     run_agent._parse_fail_count += 1
 
                     if run_agent._parse_fail_count >= 3:
-                        # Break the loop — trim history to escape bad pattern
-                        print(f"\n{C.RED}⚠️ [AGENT RESET]: 3+ parse failures. Clearing bad pattern from context.{C.RESET}")
-                        # Keep system + last user message, drop the broken assistant turns
-                        sys_msg = history[0]
-                        last_user = [m for m in history if m["role"] == "user"][-1]
-                        history = [sys_msg, last_user]
-                        history.append({"role": "user", "content": "[SYSTEM]: Your previous tool calls had broken JSON syntax. The correct format is:\n<tool_call>\n{\"name\": \"execute_bash\", \"arguments\": {\"command\": \"pwd\"}}\n</tool_call>\nNote: use COLON after key names, not equals sign. Try again."})
+                        # Escalate to Claude for help with persistent failures
+                        print(f"\n{C.RED}⚠️ [ESCALATING TO CLAUDE]: 3+ parse failures. Asking Claude for help.{C.RESET}")
+                        try:
+                            # Get the broken content and ask Claude to fix it
+                            broken = full_content[:500] if full_content else "empty response"
+                            fix = ask_claude(f"My tool call JSON keeps failing to parse. Here's my broken output:\n{broken}\n\nThe correct format is: <tool_call>\n{{\"name\": \"execute_bash\", \"arguments\": {{\"command\": \"pwd\"}}}}\n</tool_call>\n\nWhat am I doing wrong? Give me the corrected tool call.")
+                            history.append({"role": "user", "content": f"[CLAUDE FIX]: {fix}\n\nNow try again with correct JSON syntax."})
+                        except Exception:
+                            # Fallback: just reset context
+                            sys_msg = history[0]
+                            last_user = [m for m in history if m["role"] == "user"][-1]
+                            history = [sys_msg, last_user]
+                            history.append({"role": "user", "content": "[SYSTEM]: Tool calls had broken JSON. Format:\n<tool_call>\n{\"name\": \"execute_bash\", \"arguments\": {\"command\": \"pwd\"}}\n</tool_call>"})
                         run_agent._parse_fail_count = 0
                         continue
 

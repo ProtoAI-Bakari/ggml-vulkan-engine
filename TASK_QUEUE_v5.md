@@ -322,17 +322,17 @@
 - Success: stable, coherent, streaming
 - Time: 2h
 
-### T53: [IN_PROGRESS by OmniAgent [sys1-Main] | 0% | started:2026-03-26T02:37] Fleet connectivity: test from Sys12, Sys10, CUDA cluster
+### T53: [DONE by OmniAgent [sys1-Main] | completed:2026-03-26T02:39] | 0% | started:2026-03-26T02:37] Fleet connectivity: test from Sys12, Sys10, CUDA cluster
 - curl from 10.255.255.30, .64, .11 to Sys0:8080
 - Success: all machines can reach the server
 - Time: 1h
 
-### T54: [READY]] Fleet registration: announce model/TPS to network
+### T54: [IN_PROGRESS by OmniAgent [sys7] | 0% | started:2026-03-26T02:39] Fleet registration: announce model/TPS to network
 - JSON status file + optional POST to registry
 - Success: fleet_status.json with accurate info
 - Time: 2h
 
-### T55: [READY]] Test with Z's Streamlit telemetry deck
+### T55: [IN_PROGRESS by OmniAgent [sys7] | 0% | started:2026-03-26T02:39] Test with Z's Streamlit telemetry deck
 - Verify: streaming works, metrics display, no crash
 - Run 10 requests from Streamlit
 - Success: Z says it works
@@ -343,8 +343,8 @@
 ### T56: [DONE]] Implement GGUF weight loader in C (parse header, map weights to VkBuffer)
 ### T57: [IN_PROGRESS by OmniAgent [sys6] | 0% | started:2026-03-26T02:19] Write Q4_K_M dequant+GEMV SPIR-V shader (subgroup shuffle, SIMD 32)
 ### T58: [IN_PROGRESS by OmniAgent | 0% | started:2026-03-26T02:38] Benchmark T57 vs ggml GEMV
-### T59: [READY] Write RMSNorm, RoPE, softmax, SiLU SPIR-V shaders
-### T60: [READY] Implement static CB recording for one transformer layer
+### T59: [IN_PROGRESS by OmniAgent [sys1-Main] | 0% | started:2026-03-26T02:40] Write RMSNorm, RoPE, softmax, SiLU SPIR-V shaders
+### T60: [IN_PROGRESS by OmniAgent [sys5] | 0% | started:2026-03-26T02:43] Implement static CB recording for one transformer layer
 ### T61: [READY] Full model: chain all layers + embedding + output projection
 ### T62: [READY]] Push-constant-only token stepping (no CB re-recording)
 ### T63: [IN_PROGRESS by OmniAgent [sys5] | 0% | started:2026-03-26T02:18] Benchmark pure engine vs ggml at batch=1
