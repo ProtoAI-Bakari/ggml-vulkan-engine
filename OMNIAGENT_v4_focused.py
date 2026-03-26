@@ -350,7 +350,6 @@ TOOLS_SCHEMA = [
     {"type": "function", "function": {"name": "claim_task", "description": "Claim a READY task", "parameters": {"type": "object", "properties": {"task_id": {"type": "string"}}, "required": ["task_id"]}}},
     {"type": "function", "function": {"name": "complete_task", "description": "Mark task DONE", "parameters": {"type": "object", "properties": {"task_id": {"type": "string"}}, "required": ["task_id"]}}},
     {"type": "function", "function": {"name": "push_changes", "description": "Push files to sys1", "parameters": {"type": "object", "properties": {"files": {"type": "string"}, "message": {"type": "string"}}, "required": ["files"]}}},
-    {"type": "function", "function": {"name": "ask_human", "description": "Ask the human for help. LAST RESORT only.", "parameters": {"type": "object", "properties": {"question": {"type": "string"}}, "required": ["question"]}}}
 ]
 
 SYSTEM_PROMPT = """You are OmniAgent, an autonomous engineer. Execute tasks from ~/AGENT/TASK_QUEUE_v5.md.
