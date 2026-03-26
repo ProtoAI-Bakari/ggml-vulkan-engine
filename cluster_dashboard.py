@@ -225,8 +225,7 @@ def _agent_count(ip, auth):
     except ValueError: return 0
 
 def _agent_task(ip, auth):
-    """Get task from central API (source of truth) by matching agent name to IP."""
-    # Map IP to agent name for lookup
+    """Get task from central API, fallback to agent log."""
     ip_to_agent = {
         "10.255.255.2": "sys2", "10.255.255.3": "sys3", "10.255.255.4": "sys4",
         "10.255.255.5": "sys5", "10.255.255.6": "sys6", "10.255.255.7": "sys7",
@@ -234,23 +233,31 @@ def _agent_task(ip, auth):
     agent_label = ip_to_agent.get(ip, "")
     if not agent_label:
         return f"[{M.OVERLAY}]-[/]"
+    # Try API first
     try:
-        import urllib.request, json as _json
+        import urllib.request, json as _json, re as _re
         with urllib.request.urlopen("http://127.0.0.1:9091/tasks", timeout=2) as r:
             content = r.read().decode()
-        # Find IN_PROGRESS tasks for this agent
-        import re as _re
         m = _re.search(rf'### (T\d+):.*?\[IN_PROGRESS by [^\]]*{agent_label}[^\]]*\|?\s*(\d+)%', content)
         if m:
-            tid = m.group(1)
-            pct = m.group(2)
-            return f"[{M.YELLOW}]{tid}[/] {pct}%"
-        # Check without progress %
+            return f"[{M.YELLOW}]{m.group(1)}[/] {m.group(2)}%"
         m2 = _re.search(rf'### (T\d+):.*?\[IN_PROGRESS by [^\]]*{agent_label}', content)
         if m2:
             return f"[{M.YELLOW}]{m2.group(1)}[/]"
     except Exception:
         pass
+    # Fallback: check agent log for CLAIMED
+    claimed = ssh_cmd(ip, "strings ~/AGENT/LOGS/agent_trace.log 2>/dev/null | grep -oE 'CLAIMED T[0-9]+' | tail -1", auth, timeout=5)
+    if claimed:
+        tid = claimed.replace("CLAIMED ", "")
+        return f"[{M.TEAL}]{tid}[/]"
+    # Fallback 2: check turns
+    turns = ssh_cmd(ip, "strings ~/AGENT/LOGS/agent_trace.log 2>/dev/null | grep -c 'Turn'", auth, timeout=5)
+    try:
+        t = int(turns.strip())
+        if t > 0:
+            return f"[{M.OVERLAY}]t{t}[/]"
+    except: pass
     return f"[{M.OVERLAY}]-[/]"
 
 def _req_count(ip, auth):
