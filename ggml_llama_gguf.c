@@ -581,3 +581,8 @@ void engine_free(engine_t *e) {
     }
     free(e);
 }
+
+/* T36: Get vocab size from engine */
+int engine_get_vocab_size(engine_t *e) {
+    return e->vocab_size;
+}
