@@ -94,8 +94,8 @@ engine_t *engine_load_gguf(const char *gguf_path, int n_ctx) {
     e->backend_vk = ggml_backend_vk_init(0);
     if (!e->backend_vk) { fprintf(stderr, "Vulkan init failed\n"); free(e); return NULL; }
     e->backend_cpu = ggml_backend_cpu_init();
-    ggml_backend_t backends[1] = { e->backend_vk }; // T79: Single-backend only
-    e->sched = ggml_backend_sched_new(backends, NULL, 1, GRAPH_SIZE, false, false); // T79: Skip CPU fallback
+    ggml_backend_t backends[2] = { e->backend_vk, e->backend_cpu }; // Vulkan primary, CPU required as fallback
+    e->sched = ggml_backend_sched_new(backends, NULL, 2, GRAPH_SIZE, false, false);
     e->alloc = ggml_gallocr_new(ggml_backend_vk_buffer_type(0));  // T12: Graph allocator
     e->n_ctx = n_ctx;
 
@@ -364,17 +364,17 @@ int engine_forward(engine_t *e, int n_tokens,
     e->token_count++;
 
     /* Reuse persistent context — ggml_reset is MUCH faster than init/free */
-    if (!e->_persistent_ctx) {
+    if (!e->cached_graph_ctx) {
         struct ggml_init_params gp = {
             .mem_size = e->compute_buf_size,
             .mem_buffer = e->compute_buf,
             .no_alloc = true,
         };
-        e->_persistent_ctx = ggml_init(gp);
+        e->cached_graph_ctx = ggml_init(gp);
     } else {
-        ggml_reset(e->_persistent_ctx);
+        ggml_reset(e->cached_graph_ctx);
     }
-    struct ggml_context *ctx = e->_persistent_ctx;
+    struct ggml_context *ctx = e->cached_graph_ctx;
     if (!ctx) return -1;
 
     double t_graph_start = ggml_time_us();

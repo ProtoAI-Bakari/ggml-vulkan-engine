@@ -311,7 +311,7 @@
 
 ## PHASE 3: 120B MODEL + FLEET [from Sys12 task queue]
 
-### T49: [IN_PROGRESS by OmniAgent [sys6] | 90% | started:2026-03-26T05:03 | t80]Test 120B on standalone ggml engine
+### T49: [IN_PROGRESS by OmniAgent [sys6] | 90% | started:2026-03-26T05:03 | t170]Test 120B on standalone ggml engine
 - Verify coherent output
 - Measure TPS
 - Success: coherent text at any TPS
@@ -334,7 +334,7 @@
 ### T57: [DONE by OmniAgent [sys5] | completed:2026-03-26T03:39] | 0% | started:2026-03-26T02:19] Write Q4_K_M dequant+GEMV SPIR-V shader (subgroup shuffle, SIMD 32)
 ### T58: [DONE by OmniAgent | completed:2026-03-26T05:01] Benchmark T57 vs ggml GEMV
 ### T59: [DONE by OmniAgent | completed:2026-03-26T05:01]Write RMSNorm, RoPE, softmax, SiLU SPIR-V shaders
-### T60: [IN_PROGRESS by OmniAgent [sys7] | 90% | started:2026-03-26T05:02 | t120]Full model: chain all layers + embedding + output projection
+### T60: [IN_PROGRESS by OmniAgent [sys7] | 90% | started:2026-03-26T05:02 | t210]Full model: chain all layers + embedding + output projection
 ### T62: [DONE by test-cycle | completed:2026-03-26T09:09]Benchmark pure engine vs ggml at batch=1
 ### T64: [DONE by OmniAgent [Main] | completed:2026-03-26T09:20] | t110] | t100] | t90] | t80] | t70] | t60] | t50] | 20% | started:2026-03-26T09:04 | t10] | 90% | started:2026-03-26T08:54 | t110]M1 Max (32GB) validation: run all benchmarks on Sys12
 ### T70: [DONE by OmniAgent [sys3] | completed:2026-03-26T05:18]Comprehensive README with architecture diagram
@@ -343,7 +343,7 @@
 ### T79: [DONE by OmniAgent [Main] | completed:2026-03-26T09:23]Design agent-to-model routing protocol (gRPC or HTTP)
 ### T82: [DONE by OmniAgent [Main] | completed:2026-03-26T09:23]Multi-model serving: 0.5B fast + 8B smart + 120B reasoning on same box
 ### T84: [DONE]Agent communication bridge: cross-machine task coordination
-### T85: [READY]Integration with Z's v44 agent framework
+### T85: [IN_PROGRESS by OmniAgent | 0% | started:2026-03-26T09:26] Integration with Z's v44 agent framework
 
 ## SUMMARY
 - 85 tasks across 9 phases
