@@ -631,11 +631,11 @@ def fix_restart_agent(name, node, reason="watchdog auto-restart"):
         "pip3 install requests openai numpy 2>/dev/null"
     ), auth, timeout=60)
 
-    # Step 3: Launch agent — use nohup directly (tmux has quoting issues through SSH layers)
+    # Step 3: Launch agent with correct --name flag
     ssh(ip, (
-        "cd ~/AGENT && "
-        "nohup python3 OMNIAGENT_v4_focused.py --auto-go "
-        ">> ~/AGENT/LOGS/agent_trace.log 2>&1 &"
+        f"cd ~/AGENT && "
+        f"nohup python3 OMNIAGENT_v4_focused.py --auto-go --name 'OmniAgent [{name}]' "
+        f">> ~/AGENT/LOGS/agent_trace.log 2>&1 &"
     ), auth, timeout=15)
     time.sleep(5)
 
