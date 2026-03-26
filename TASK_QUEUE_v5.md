@@ -335,7 +335,7 @@
 ### T58: [DONE by OmniAgent | completed:2026-03-26T05:01] Benchmark T57 vs ggml GEMV
 ### T59: [DONE by OmniAgent | completed:2026-03-26T05:01]Write RMSNorm, RoPE, softmax, SiLU SPIR-V shaders
 ### T60: [IN_PROGRESS by OmniAgent [sys7] | 40% | started:2026-03-26T05:02 | t20]Full model: chain all layers + embedding + output projection
-### T62: [READY]Benchmark pure engine vs ggml at batch=1
+### T62: [DONE by test-cycle | completed:2026-03-26T09:09]Benchmark pure engine vs ggml at batch=1
 ### T64: [READY]Flash attention SPIR-V shader (tiled, scalar, 2-pass online softmax)
 
 ## PHASE 5: VALIDATION + PRODUCTION HARDENING
