@@ -1,0 +1,15 @@
+[Unit]
+Description=ggml Vulkan Inference Server
+After=network.target
+
+[Service]
+Type=simple
+User=z
+Group=video
+WorkingDirectory=/home/z/AGENT
+ExecStart=/usr/bin/python3 /home/z/AGENT/ggml_server.py --model /home/z/models/gguf/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf --port 8080
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

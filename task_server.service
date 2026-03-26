@@ -1,0 +1,14 @@
+[Unit]
+Description=ProtoAI Task Queue Server
+After=network.target
+
+[Service]
+Type=simple
+User=z
+WorkingDirectory=/home/z/AGENT
+ExecStart=/usr/bin/python3 /home/z/AGENT/task_server.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
