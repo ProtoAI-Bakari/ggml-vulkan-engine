@@ -690,13 +690,30 @@ def extract_tool_calls(text):
             errors.append(err)
     # Fallback: bare JSON with "name" and "arguments" keys (no tags)
     if not calls:
+        # Strategy A: balanced brace extraction (handles well-formed but untagged JSON)
         for m in re.finditer(r'\{', text):
             candidate = _extract_brace_block(text, m.start())
             if candidate and '"name"' in candidate and '"argument' in candidate:
                 tc, err = _try_parse_tool_json(candidate.strip())
                 if tc:
                     calls.append(tc)
-                    break  # only take the first bare match to avoid false positives
+                    break
+                elif err:
+                    errors.append(err)
+    if not calls:
+        # Strategy B: greedy grab from { to last } on same/nearby lines
+        # Handles malformed JSON where brace-tracking fails (e.g. missing quotes)
+        for m in re.finditer(r'\{[^{}]*"name"\s*:\s*"(\w+)"', text):
+            # Find the outermost closing }} after this match
+            rest = text[m.start():]
+            # Grab up to the last } that could close the outer object
+            end_m = re.search(r'\}\s*\}', rest)
+            if end_m:
+                candidate = rest[:end_m.end()]
+                tc, err = _try_parse_tool_json(candidate.strip())
+                if tc:
+                    calls.append(tc)
+                    break
                 elif err:
                     errors.append(err)
     return calls, errors
