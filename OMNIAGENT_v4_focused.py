@@ -84,7 +84,7 @@ client = OpenAI(base_url=PRIMARY_URL, api_key="sk-local", timeout=600.0)
 # =====================================================
 # TOOLS
 # =====================================================
-def execute_bash(command: str, timeout: int = 120) -> str:
+def execute_bash(command: str, timeout: int = 30) -> str:
     try:
         cmd_str = command.strip()
         if cmd_str.endswith('&'):
@@ -592,7 +592,7 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
                             history.pop(1)
                         continue
                     print(f"{C.YELLOW}[🔄 Retrying in 5s...]{C.RESET}")
-                    time.sleep(5)
+                    time.sleep(1)
                     if full_content:
                         history.append({"role": "assistant", "content": full_content + "\n[TRUNCATED]"})
                     history.append({"role": "user", "content": "[SYSTEM]: Connection error. Continue. Use a tool call."})
@@ -607,7 +607,7 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
                         run_agent._parse_fail_count = 0
                     run_agent._parse_fail_count += 1
 
-                    if run_agent._parse_fail_count >= 3:
+                    if run_agent._parse_fail_count >= 2:
                         # Hard reset context instead of wasting Claude tokens
                         print(f"\n{C.RED}⚠️ [HARD RESET]: 3+ parse failures. Resetting context.{C.RESET}")
                         sys_msg = history[0]
@@ -627,14 +627,25 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
                     if not hasattr(run_agent, '_no_tool_count'):
                         run_agent._no_tool_count = 0
                     run_agent._no_tool_count += 1
-                    if run_agent._no_tool_count >= 3:
-                        # Hard reset: wipe history back to system + last user msg
-                        print(f"\n{C.RED}⚠️ [HARD RESET]: 3 responses with no tool call. Resetting context.{C.RESET}")
-                        sys_msg = history[0]
-                        last_user = [m for m in history if m["role"] == "user"][-1]
-                        history = [sys_msg, last_user]
+                    if run_agent._no_tool_count >= 2:
+                        # Escalate to Claude after 2 empty turns
+                        print(f"\n{C.RED}⚠️ [STUCK]: 2 responses with no tool call. Asking Claude for help.{C.RESET}")
+                        try:
+                            my_task = ""
+                            try:
+                                import urllib.request as _ur
+                                with _ur.urlopen("http://10.255.255.128:9091/tasks", timeout=2) as _r:
+                                    _q = _r.read().decode()
+                                _m = re.search(rf'### (T\d+):.*?\[IN_PROGRESS by [^\]]*{re.escape(_AGENT_NAME)}', _q)
+                                if _m: my_task = _m.group(1)
+                            except: pass
+                            fix = ask_claude(f"I'm stuck on {my_task}. My last output had no tool calls. What execute_bash command should I run next? Give me ONE specific command.")
+                            history.append({"role": "user", "content": f"[CLAUDE]: {fix}\n\nNow execute it with a tool call."})
+                        except:
+                            history.append({"role": "user", "content": "Output ONLY a tool call. Example:\n<tool_call>\n{\"name\": \"execute_bash\", \"arguments\": {\"command\": \"ls ~/AGENT/\"}}\n</tool_call>"})
                         run_agent._no_tool_count = 0
-                    history.append({"role": "user", "content": "STOP. Do NOT think or explain. Output ONLY:\n<tool_call>\n{\"name\": \"execute_bash\", \"arguments\": {\"command\": \"pwd\"}}\n</tool_call>\nReplace pwd with your actual command. Nothing else."})
+                        continue
+                    history.append({"role": "user", "content": "You MUST use a tool call. Example:\n<tool_call>\n{\"name\": \"execute_bash\", \"arguments\": {\"command\": \"pwd\"}}\n</tool_call>"})
                     continue
 
                 # Reset parse failure counter on success

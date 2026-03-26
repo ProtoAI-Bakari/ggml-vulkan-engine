@@ -133,11 +133,15 @@ def log(level, msg):
     c = colors.get(level, "")
     r = "\033[0m"
     line = f"[{ts}] [{level:5}] {msg}"
+    # Print with colors to terminal
     print(f"{c}{line}{r}", flush=True)
+    # Write plain text (no ANSI) to log file — avoids duplication with tee
     try:
         os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
         with open(LOG_FILE, "a") as f:
-            f.write(line + "\n")
+            # Strip any ANSI codes that might be in msg
+            clean = re.sub(r'\033\[[0-9;]*m', '', line)
+            f.write(clean + "\n")
     except:
         pass
 
@@ -312,10 +316,22 @@ def ask_brain(question, use_cuda=True, max_tokens=2000):
     try:
         data = json.loads(body)
         content = data["choices"][0]["message"]["content"]
-        # Strip thinking tags if present (Qwen3.5 uses <think>...</think>)
+        # Strip thinking tags (Qwen3.5 uses <think>...</think>)
         content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL).strip()
-        # Strip "Thinking Process:" preamble (Qwen3.5 plain-text reasoning)
-        content = re.sub(r'^Thinking Process:.*?(?=\[|\{)', '', content, flags=re.DOTALL).strip()
+        # Strip "Thinking Process:" preamble before the actual JSON output
+        if "Thinking Process:" in content:
+            # Find the JSON array/object after the thinking
+            json_start = None
+            for marker in ['[{', '[\n{', '```json', '```']:
+                idx = content.find(marker)
+                if idx >= 0:
+                    json_start = idx
+                    break
+            if json_start is not None:
+                content = content[json_start:].strip()
+            else:
+                # No JSON found — strip thinking and keep whatever remains
+                content = re.sub(r'Thinking Process:.*?(?:\n\n|\Z)', '', content, flags=re.DOTALL).strip()
         log("BRAIN", f"{brain_name} responded in {elapsed:.1f}s ({len(content)} chars)")
         return content
     except Exception as e:
@@ -485,10 +501,12 @@ def analyze_node(name, node):
             if count >= 2:
                 result["errors"].append(f"{err} x{count}")
 
-    # Productive output detection
+    # Productive output detection — count actual work indicators
     productive = (raw.count("write_file") + raw.count("git commit") + raw.count("git add") +
-                  raw.count("COMPLETED") + raw.count("Successfully wrote"))
-    if result["turns"] > 15 and productive == 0:
+                  raw.count("COMPLETED") + raw.count("Successfully wrote") +
+                  raw.count("execute_bash") + raw.count("push_changes") +
+                  raw.count("EXIT CODE: 0"))
+    if result["turns"] > 20 and productive == 0:
         result["warnings"].append("NO PRODUCTIVE OUTPUT despite many turns")
 
     # Multi-claim detection
@@ -554,32 +572,97 @@ def fix_restart_agent(name, node, reason="watchdog auto-restart"):
 
     log("FIX", f"Restarting {name} agent: {reason}")
 
-    # Kill existing
+    TMUX = "/opt/homebrew/bin/tmux"
+
+    # Kill existing agent process
     ssh(ip, "pkill -f 'python3.*OMNIAGENT' 2>/dev/null", auth, timeout=10)
     time.sleep(2)
     ssh(ip, "pkill -9 -f 'python3.*OMNIAGENT' 2>/dev/null", auth, timeout=10)
     time.sleep(1)
 
-    # Clear the agent's conversation by truncating recent log (keeps history but signals fresh start)
+    # Verify kill — check no stale procs + memory released
+    rc_ps, ps_out = ssh(ip, "ps -ef | grep OMNIAGENT | grep -v grep | head -5", auth, timeout=8)
+    if ps_out.strip():
+        log("WARN", f"{name}: stale procs after kill: {ps_out[:100]}")
+        # Force kill by PID
+        pids = re.findall(r'\s(\d+)\s', ps_out)
+        for pid in pids[:5]:
+            ssh(ip, f"kill -9 {pid} 2>/dev/null", auth, timeout=5)
+        time.sleep(1)
+    else:
+        log("OK", f"{name}: agent processes cleared")
+
+    # Check memory after kill (macOS: vm_stat; Linux: free -h)
+    rc_mem, mem_out = ssh(ip, "vm_stat 2>/dev/null | head -4 || free -h 2>/dev/null | head -3", auth, timeout=8)
+    if mem_out:
+        log("INFO", f"{name} memory after kill: {mem_out[:120]}")
+
     # Write restart marker
     ssh(ip, f"echo '[WATCHDOG RESTART {datetime.now().isoformat()}] {reason}' >> ~/AGENT/LOGS/agent_trace.log", auth, timeout=8)
 
-    # Relaunch in tmux
-    agent_cmd = node.get("agent_cmd", "python3 OMNIAGENT_v4_focused.py --no-tty")
-    rc, out = ssh(ip,
-        f"cd ~/AGENT && tmux kill-session -t agent 2>/dev/null; sleep 1; "
-        f"tmux new-session -d -s agent '{agent_cmd} < /dev/null 2>&1 | tee -a ~/AGENT/LOGS/agent_trace.log'",
-        auth, timeout=20)
+    # Kill old tmux session if any
+    TMUX = "/opt/homebrew/bin/tmux"
+    ssh(ip, f"{TMUX} kill-session -t agent 2>/dev/null", auth, timeout=8)
+    time.sleep(1)
 
-    # Verify
-    time.sleep(3)
-    rc2, pid = ssh(ip, "pgrep -f OMNIAGENT | head -1", auth, timeout=8)
-    if rc2 == 0 and pid.strip():
-        log("OK", f"Agent {name} restarted, PID={pid.strip()}")
+    # Step 1: Sync latest agent code from sys1 before restarting
+    log("FIX", f"Syncing latest code to {name}...")
+    for f in ["OMNIAGENT_v4_focused.py", "GO_PROMPT.md"]:
+        # SCP from sys1 to target via intermediate if needed
+        src_ip = "10.255.255.128"
+        if IS_Z4090:
+            # z4090 -> pull from sys1 to tmp -> push to target
+            tmp = f"/tmp/_sync_{f.replace('/','_')}"
+            subprocess.run(
+                ["sshpass", "-f", str(PASSFILE), "scp"] + SSH_OPTS.split()[:4] +
+                [f"z@{src_ip}:~/AGENT/{f}", tmp],
+                capture_output=True, timeout=15)
+            if os.path.exists(tmp):
+                scp_to(ip, tmp, f"~/AGENT/{f}", auth)
+                try: os.remove(tmp)
+                except: pass
+        else:
+            # Running on sys1 — direct SCP
+            scp_to(ip, os.path.expanduser(f"~/AGENT/{f}"), f"~/AGENT/{f}", auth)
+
+    # Step 2: Ensure requests module available
+    ssh(ip, "python3 -c 'import requests' 2>/dev/null || pip3 install requests 2>/dev/null", auth, timeout=30)
+
+    # Step 3: Write launch script (avoids quoting issues)
+    ssh(ip, (
+        "cat > ~/AGENT/.watchdog_launch.sh << 'WDEOF'\n"
+        "#!/bin/bash\n"
+        "export PATH=/opt/homebrew/bin:/usr/local/bin:$PATH\n"
+        "cd ~/AGENT\n"
+        "python3 OMNIAGENT_v4_focused.py --auto-go < /dev/null 2>&1 | tee -a ~/AGENT/LOGS/agent_trace.log\n"
+        "WDEOF\n"
+        "chmod +x ~/AGENT/.watchdog_launch.sh"
+    ), auth, timeout=10)
+
+    # Step 4: Launch via tmux
+    rc, out = ssh(ip, f"{TMUX} new-session -d -s agent 'bash ~/AGENT/.watchdog_launch.sh'", auth, timeout=15)
+    time.sleep(5)
+
+    # Check tmux
+    rc2, sessions = ssh(ip, f"{TMUX} list-sessions 2>&1", auth, timeout=8)
+    if "agent" not in (sessions or ""):
+        # Tmux failed — fall back to nohup
+        log("WARN", f"Tmux failed on {name}, trying nohup fallback...")
+        ssh(ip, "cd ~/AGENT && nohup bash .watchdog_launch.sh > /dev/null 2>&1 &", auth, timeout=10)
+        time.sleep(5)
+
+    rc3, pid = ssh(ip, "pgrep -f OMNIAGENT | head -1", auth, timeout=8)
+
+    if "agent" in (sessions or ""):
+        log("OK", f"Agent {name} restarted, tmux session active" + (f", PID={pid.strip()}" if pid.strip() else ""))
+        comms_write(ip, auth, f"Agent restarted by watchdog: {reason}")
+        return True
+    elif rc3 == 0 and pid.strip():
+        log("OK", f"Agent {name} restarted, PID={pid.strip()} (tmux check inconclusive)")
         comms_write(ip, auth, f"Agent restarted by watchdog: {reason}")
         return True
     else:
-        log("ERROR", f"Agent {name} restart may have failed")
+        log("ERROR", f"Agent {name} restart failed: tmux='{sessions[:80]}', pid='{pid[:40]}'")
         return False
 
 
@@ -975,6 +1058,15 @@ class AutonomousWatchdog:
                     self.state["restart_counts"][name] = self.state["restart_counts"].get(name, 0) + 1
                     self.history["restarts"].append({
                         "time": datetime.now().isoformat(), "node": name, "reason": "context overflow"})
+                continue
+
+            # Parse failures persistent — restart to clear corrupted context
+            if "PARSE FAILURES" in issues_str and self.consecutive_sick[name] >= 2:
+                if self.state["restart_counts"].get(name, 0) < MAX_RESTARTS_PER_NODE:
+                    fix_restart_agent(name, node, "persistent parse failures — clearing context")
+                    self.state["restart_counts"][name] = self.state["restart_counts"].get(name, 0) + 1
+                    self.history["restarts"].append({
+                        "time": datetime.now().isoformat(), "node": name, "reason": "parse failures"})
                 continue
 
             # Claim loop — restart to reset agent state

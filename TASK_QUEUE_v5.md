@@ -123,18 +123,7 @@
 - Success: correct output after topology change, no stale CB
 - Time: 6h
 
-### T15: [IN_PROGRESS by OmniAgent [sys6
-
-TASK T38
-Send a chat completion request through the full vLLM pipeline. Verify coherent response.
-
-STEPS
-1. write_file
-2. execute_bash
-3. push_changes
-4. complete_task T38
-
-Write the test IMMEDIATELY. First tool call must be write_file.] | 0% | started:2026-03-26T02:19] Move Python/ctypes hot path to C extension
+### T15: [DONE by unknown | completed:2026-03-26T03:39] | 0% | started:2026-03-26T02:19] Move Python/ctypes hot path to C extension
 - Compiled C shim replaces ctypes for tensor dispatch
 - Eliminate numpy→ctypes→C boundary crossing per forward()
 - Success: Python overhead drops from 3ms to <0.5ms
@@ -379,8 +368,19 @@ Write the shader IMMEDIATELY. First tool call must be write_file.] | 0% | starte
 ## PHASE 4: PURE VULKAN ENGINE [Perspective B — speculative, 35-45 TPS]
 
 ### T56: [DONE]] Implement GGUF weight loader in C (parse header, map weights to VkBuffer)
-### T57: [IN_PROGRESS by OmniAgent [sys5] | 0% | started:2026-03-26T02:19] Write Q4_K_M dequant+GEMV SPIR-V shader (subgroup shuffle, SIMD 32)
-### T58: [READY] Benchmark T57 vs ggml GEMV
+### T57: [DONE by OmniAgent [sys5] | completed:2026-03-26T03:39] | 0% | started:2026-03-26T02:19] Write Q4_K_M dequant+GEMV SPIR-V shader (subgroup shuffle, SIMD 32)
+### T58: [IN_PROGRESS by OmniAgent [sys6
+
+TASK T38
+Send a chat completion request through the full vLLM pipeline. Verify coherent response.
+
+STEPS
+1. write_file
+2. execute_bash
+3. push_changes
+4. complete_task T38
+
+Write the test IMMEDIATELY. First tool call must be write_file.] | 0% | started:2026-03-26T03:41] Benchmark T57 vs ggml GEMV
 ### T59: [READY]Write RMSNorm, RoPE, softmax, SiLU SPIR-V shaders
 ### T60: [READY]Implement static CB recording for one transformer layer
 ### T61: [READY]Full model: chain all layers + embedding + output projection

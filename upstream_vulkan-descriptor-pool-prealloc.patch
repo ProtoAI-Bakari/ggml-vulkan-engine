@@ -1,5 +1,5 @@
 From: OmniAgent v4 <omniagent@example.com>
-Date: Wed Mar 25 19:08:19 2026 
+Date: Thu Mar 26 03:42:16 2026 
 Subject: [ggml] Vulkan: Pre-allocate descriptor pool (65k sets)
 
 Eliminates runtime Vulkan descriptor allocations, reducing jitter in latency-sensitive paths.

@@ -29,7 +29,7 @@ RULES:
 - BEFORE architecture decisions: ask_architect
 - BEFORE writing code: ask_coder_brain
 - AFTER writing code: ask_reviewer
-- WHEN stuck: ask_designer
+- WHEN stuck >90s: ask_claude immediately. Do NOT wait.
 - Every 5-10 tool calls: consult at least ONE brain
 - ask_claude ONLY as last resort (expensive)
 
