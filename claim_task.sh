@@ -20,26 +20,18 @@ if command -v curl >/dev/null 2>&1; then
             exit 1
         fi
     fi
-    echo "WARNING: Task API unreachable, falling back to local edit" >&2
-fi
-
-# --- Fallback: local file edit (original behavior) ---
-for F in ~/AGENT/TASK_QUEUE_v5.md /Users/z/AGENT/TASK_QUEUE_v5.md; do
-    [ -f "$F" ] && QUEUE="$F" && break
-done
-[ -z "$QUEUE" ] && echo "NO QUEUE FILE FOUND" && exit 1
-
-# Check if task is READY
-grep -q "$TASK.*\[READY\]" "$QUEUE" || { echo "NOT READY — $TASK is not available"; exit 1; }
-
-# Check if this agent already has a task
-EXISTING=$(grep "IN_PROGRESS by $AGENT" "$QUEUE" | head -1 | grep -oE 'T[0-9]+' | head -1)
-if [ -n "$EXISTING" ]; then
-    echo "BLOCKED — $AGENT already has $EXISTING. Complete it first."
+    echo "Task API unreachable. Retrying..." >&2
+    sleep 3
+    RESP=$(curl -s --max-time 5 -X POST "$TASK_API/claim" -d "task=$TASK&agent=$AGENT" 2>/dev/null)
+    if [ -n "$RESP" ]; then
+        OK=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin).get('ok',''))" 2>/dev/null)
+        MSG=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin).get('msg',''))" 2>/dev/null)
+        [ "$OK" = "True" ] && echo "CLAIMED $TASK for $AGENT (via API, retry)" && exit 0
+        echo "$MSG"; exit 1
+    fi
+    echo "FAILED: Task API unreachable. Use execute_bash to work on your existing task."
     exit 1
 fi
 
-# Claim it (local sed — NOT atomic across nodes)
-sed -i.bak "/$TASK/s/\[READY\]/[IN_PROGRESS by $AGENT]/" "$QUEUE" 2>/dev/null || \
-sed -i '' "/$TASK/s/\[READY\]/[IN_PROGRESS by $AGENT]/" "$QUEUE"
-echo "CLAIMED $TASK for $AGENT (local fallback)"
+echo "FAILED: curl not available. Use execute_bash to work on your existing task."
+exit 1
