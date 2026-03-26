@@ -119,6 +119,10 @@ class GgmlLLM:
                 print(f"[WARNING] Vocab mismatch: GGUF={self.vocab_size}, HF={hf_vocab}", flush=True)
             else:
                 print(f"[INFO] Vocab sizes match: {self.vocab_size}", flush=True)
+            # Store HF vocab size for clamping (fixes Qwen padding issue)
+            self.hf_vocab_size = hf_vocab
+        else:
+            self.hf_vocab_size = self.vocab_size
         # Stats tracking
         self._total_tokens = 0
         self._total_time = 0
@@ -274,9 +278,13 @@ class GgmlLLM:
 
         # Sample first token
         next_token = self._sample(logits_buf[-1], params, generated_ids)
+        if next_token in stop_ids:
+            return GenerationResult("", generated_ids, prefill_tps, 0, t_prefill, "stop")
         generated_ids.append(next_token)
         if stream_callback and self.tokenizer:
-            stream_callback(self.tokenizer.decode([next_token]), next_token)
+            # Clamp token ID to HF vocab range (fixes Qwen padding issue)
+            safe_token = min(next_token, self.hf_vocab_size - 1)
+            stream_callback(self.tokenizer.decode([safe_token]), safe_token)
 
         # Decode loop
         decode_times = []
@@ -302,10 +310,15 @@ class GgmlLLM:
                 break
 
             next_token = self._sample(logits_1[0], params, generated_ids)
+            if next_token in stop_ids:
+                finish_reason = "stop"
+                break
             generated_ids.append(next_token)
 
             if stream_callback and self.tokenizer:
-                stream_callback(self.tokenizer.decode([next_token]), next_token)
+                # Bounds check to prevent crashes, but allow all tokens through
+                if next_token >= 0:
+                    stream_callback(self.tokenizer.decode([next_token]), next_token)
 
             # Check stop strings
             if params.stop and self.tokenizer:
@@ -320,7 +333,9 @@ class GgmlLLM:
         t_total = time.perf_counter() - t_start
 
         if self.tokenizer:
-            text = self.tokenizer.decode(generated_ids, skip_special_tokens=True)
+            # Just filter negative indices to prevent crashes
+            safe_ids = [tid for tid in generated_ids if tid >= 0]
+            text = self.tokenizer.decode(safe_ids, skip_special_tokens=True)
         else:
             text = f"[{len(generated_ids)} tokens]"
 

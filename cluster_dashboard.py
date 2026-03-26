@@ -38,7 +38,7 @@ SSH_AGENT_TIMEOUT = 5
 
 # -- Node definitions --
 MLX_NODES = {
-    "sys1":   {"ip": "127.0.0.1",    "port": 8081, "auth": "local",    "role": "AGENT-HOST", "chip": "M1U 128G", "os": "linux"},
+    "sys1":   {"ip": "127.0.0.1",    "port": 8080, "auth": "local",    "role": "AGENT-HOST", "chip": "M1U 128G", "os": "linux"},
     "sys2":   {"ip": "10.255.255.2",  "port": 8000, "auth": "passfile", "role": "ARCHITECT",  "chip": "M2U 192G", "os": "macos"},
     "sys3":   {"ip": "10.255.255.3",  "port": 8000, "auth": "passfile", "role": "ENGINEER",   "chip": "M2U 192G", "os": "macos"},
     "sys4":   {"ip": "10.255.255.4",  "port": 8000, "auth": "passfile", "role": "CODER",      "chip": "M1U 128G", "os": "macos"},
@@ -220,12 +220,29 @@ def _disk_avail(ip, auth):
     return val.replace("Gi", "G").replace("Ti", "T").replace("Mi", "M")  # normalize
 
 def _agent_count(ip, auth):
-    out = ssh_cmd(ip, "pgrep -af OMNIAGENT 2>/dev/null | wc -l", auth, timeout=SSH_AGENT_TIMEOUT)
+    out = ssh_cmd(ip, "ps aux | grep OMNIAGENT | grep -v grep | wc -l", auth, timeout=SSH_AGENT_TIMEOUT)
     try: return int(out.strip())
     except ValueError: return 0
 
+def _agent_task(ip, auth):
+    """Get current task ID + turn count from agent log."""
+    out = ssh_cmd(ip, "tail -c 15000 ~/AGENT/LOGS/agent_trace.log 2>/dev/null | grep -oE 'CLAIMED T[0-9]+' | tail -1", auth, timeout=5)
+    task = out.replace("CLAIMED ", "") if out else ""
+    turns = ssh_cmd(ip, "tail -c 15000 ~/AGENT/LOGS/agent_trace.log 2>/dev/null | grep -c 'Turn'", auth, timeout=5)
+    try: turns = int(turns.strip())
+    except: turns = 0
+    pushes = ssh_cmd(ip, "tail -c 15000 ~/AGENT/LOGS/agent_trace.log 2>/dev/null | grep -c 'PUSH'", auth, timeout=5)
+    try: pushes = int(pushes.strip())
+    except: pushes = 0
+    parts = []
+    if task: parts.append(f"[{M.YELLOW}]{task}[/]")
+    if turns > 0: parts.append(f"t{turns}")
+    if pushes > 0: parts.append(f"[{M.GREEN}]p{pushes}[/]")
+    return " ".join(parts) if parts else f"[{M.OVERLAY}]-[/]"
+
 def _req_count(ip, auth):
-    out = ssh_cmd(ip, "grep -ch 'POST.*200' ~/AGENT/LOGS/*_mlx.log 2>/dev/null | awk '{s+=$1}END{print s+0}'", auth, timeout=5)
+    # Search MLX logs, vLLM logs, and ggml server logs for completed POST requests
+    out = ssh_cmd(ip, "grep -rch 'POST.*200' ~/AGENT/LOGS/ /tmp/ray/session_latest/logs/ 2>/dev/null | paste -sd+ | bc 2>/dev/null || echo 0", auth, timeout=5)
     try: return int(out.strip())
     except (ValueError, AttributeError): return 0
 
@@ -250,7 +267,7 @@ def poll_node(name, node):
         "status": "DOWN", "model": "-", "agent": "-",
         "mem_pct": f"[{M.OVERLAY}]?[/]", "disk": "?", "reqs": 0, "tps": 0.0,
         "layers": "-", "hidden": "-", "arch_type": "-", "experts": "-",
-        "gpu_pct": f"[{M.OVERLAY}]-[/]",
+        "gpu_pct": f"[{M.OVERLAY}]-[/]", "task": f"[{M.OVERLAY}]-[/]",
     }
 
     status, model = _health_check(ip, port, auth)
@@ -262,19 +279,23 @@ def poll_node(name, node):
     arch = _model_arch(ip, auth, model)
     data.update(arch)
 
-    # Agent presence + metrics for sys nodes
+    # Agent presence
     if name.startswith("sys"):
         if name != "sys1":
             cnt = _agent_count(ip, auth)
             data["agent"] = "RUN" if cnt > 0 else "OFF"
         else:
             try:
-                r = subprocess.run("pgrep -c -f OMNIAGENT", shell=True, capture_output=True, text=True, timeout=3)
+                r = subprocess.run("pgrep -af OMNIAGENT | wc -l", shell=True, capture_output=True, text=True, timeout=3)
                 data["agent"] = "RUN" if r.stdout.strip() not in ("0", "") else "OFF"
             except Exception:
                 data["agent"] = "OFF"
-        data["reqs"] = _req_count(ip, auth)
-        data["tps"] = _tps_recent(ip, auth)
+
+    # Reqs + TPS + Task for ALL nodes with servers
+    data["reqs"] = _req_count(ip, auth)
+    data["tps"] = _tps_recent(ip, auth)
+    if name.startswith("sys") and name != "sys1":
+        data["task"] = _agent_task(ip, auth)
 
     data["mem_pct"] = _mem_pct(ip, auth, nos)
     data["gpu_pct"] = _gpu_pct(ip, auth, nos, node.get("chip", ""))
@@ -296,7 +317,7 @@ def count_tasks():
 
 # -- Table builder --
 def _section_sep(table, label, color):
-    table.add_row(f"[bold {color}]-- {label} --[/]", "", "", "", "", "", "", "", "", "", "", "", style=f"on {M.MANTLE}")
+    table.add_row(f"[bold {color}]-- {label} --[/]", "", "", "", "", "", "", "", "", "", "", "", "", style=f"on {M.MANTLE}")
 
 def _add_node_row(table, d):
     role = d.get("role", "?")
@@ -338,6 +359,7 @@ def _add_node_row(table, d):
         srv_dot, agt_str,
         d.get("mem_pct", "?"), d.get("gpu_pct", f"[{M.OVERLAY}]-[/]"),
         d.get("disk", "?"),
+        d.get("task", f"[{M.OVERLAY}]-[/]"),
         tps_str, reqs_str,
     )
 
@@ -369,20 +391,21 @@ def build_display():
     tbl.add_column("Mem",   width=5,  justify="right")
     tbl.add_column("GPU",   width=4,  justify="right")
     tbl.add_column("Disk",  width=5,  justify="right",  style=M.SUBTEXT)
+    tbl.add_column("Task",  width=8,  no_wrap=True)
     tbl.add_column("TPS",   width=4,  justify="right")
     tbl.add_column("Reqs",  width=4,  justify="right")
 
     _section_sep(tbl, "MLX Fleet", M.MAUVE)
     for n in MLX_NODES:
-        _add_node_row(tbl, node_data.get(n, {"name": n, "status": "ERR", **MLX_NODES[n], "model": "-", "agent": "-", "mem_pct": "?", "disk": "?", "reqs": 0, "tps": 0.0, "layers": "-", "hidden": "-", "arch_type": "-", "experts": "-", "gpu_pct": f"[{M.OVERLAY}]-[/]"}))
+        _add_node_row(tbl, node_data.get(n, {"name": n, "status": "ERR", **MLX_NODES[n], "model": "-", "agent": "-", "mem_pct": "?", "disk": "?", "reqs": 0, "tps": 0.0, "layers": "-", "hidden": "-", "arch_type": "-", "experts": "-", "gpu_pct": f"[{M.OVERLAY}]-[/]", "task": f"[{M.OVERLAY}]-[/]"}))
 
     _section_sep(tbl, "CUDA Cluster", M.PEACH)
     for n in CUDA_NODES:
-        _add_node_row(tbl, node_data.get(n, {"name": n, "status": "ERR", **CUDA_NODES[n], "model": "-", "agent": "-", "mem_pct": "?", "disk": "?", "reqs": 0, "tps": 0.0, "layers": "-", "hidden": "-", "arch_type": "-", "experts": "-", "gpu_pct": f"[{M.OVERLAY}]-[/]"}))
+        _add_node_row(tbl, node_data.get(n, {"name": n, "status": "ERR", **CUDA_NODES[n], "model": "-", "agent": "-", "mem_pct": "?", "disk": "?", "reqs": 0, "tps": 0.0, "layers": "-", "hidden": "-", "arch_type": "-", "experts": "-", "gpu_pct": f"[{M.OVERLAY}]-[/]", "task": f"[{M.OVERLAY}]-[/]"}))
 
     _section_sep(tbl, "Standalone GPU", M.FLAMINGO)
     for n in GPU_NODES:
-        _add_node_row(tbl, node_data.get(n, {"name": n, "status": "ERR", **GPU_NODES[n], "model": "-", "agent": "-", "mem_pct": "?", "disk": "?", "reqs": 0, "tps": 0.0, "layers": "-", "hidden": "-", "arch_type": "-", "experts": "-", "gpu_pct": f"[{M.OVERLAY}]-[/]"}))
+        _add_node_row(tbl, node_data.get(n, {"name": n, "status": "ERR", **GPU_NODES[n], "model": "-", "agent": "-", "mem_pct": "?", "disk": "?", "reqs": 0, "tps": 0.0, "layers": "-", "hidden": "-", "arch_type": "-", "experts": "-", "gpu_pct": f"[{M.OVERLAY}]-[/]", "task": f"[{M.OVERLAY}]-[/]"}))
 
     up     = sum(1 for d in node_data.values() if d.get("status") in ("UP", "PING"))
     agents = sum(1 for d in node_data.values() if d.get("agent") == "RUN")

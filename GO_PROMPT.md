@@ -35,8 +35,8 @@ RULES:
 
 ## STEP 4: COMPLETE AND REPORT (do ALL of these)
 After finishing a task:
-1. call complete_task with the task ID
-2. execute_bash: git add -A && git commit -m "T07: description of what was done"
+1. call push_changes with all modified files (e.g. "ggml_llama_gguf.c,engine/new_file.py")
+2. call complete_task with the task ID
 3. execute_bash: echo -e "## [$(date)] T07 DONE by $(hostname)\n- Result: ...\n- TPS: ...\n" >> ~/AGENT/KNOWLEDGE_BASE.md
 4. execute_bash: echo -e "## T07 COMPLETE [$(date)]\nResult: ...\n" >> ~/AGENT/agent-comms-bridge.md
 5. Immediately claim and start the NEXT ready task. DO NOT STOP.

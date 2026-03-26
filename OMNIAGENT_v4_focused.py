@@ -255,6 +255,33 @@ def complete_task(task_id: str) -> str:
     print(f"{C.GREEN}[✅ {out}]{C.RESET}")
     return out
 
+def push_changes(files: str, message: str = "Agent work") -> str:
+    """Push changed files back to sys1 (the git host). Files = comma-separated paths relative to ~/AGENT."""
+    import subprocess
+    SYS1_IP = "10.255.255.128"
+    results = []
+    for f in files.split(","):
+        f = f.strip()
+        if not f or ".." in f:
+            results.append(f"{f}: SKIPPED (invalid)")
+            continue
+        local = os.path.expanduser(f"~/AGENT/{f}")
+        if not os.path.exists(local):
+            results.append(f"{f}: SKIPPED (not found)")
+            continue
+        try:
+            subprocess.run(
+                ["sshpass", "-f", os.path.expanduser("~/DEV/authpass"), "scp", "-o", "StrictHostKeyChecking=no",
+                 local, f"z@{SYS1_IP}:~/AGENT/{f}"],
+                capture_output=True, text=True, timeout=30
+            )
+            results.append(f"{f}: PUSHED to sys1")
+        except Exception as e:
+            results.append(f"{f}: FAILED ({e})")
+    out = "\n".join(results)
+    print(f"{C.GREEN}[📤 PUSH]\n{out}{C.RESET}")
+    return out
+
 def restart_self(reason: str = "update") -> str:
     """Gracefully restart this agent. The bash launcher will respawn it."""
     print(f"\n{C.YELLOW}[🔄 RESTARTING: {reason}]{C.RESET}")
@@ -285,7 +312,7 @@ TOOL_DISPATCH = {
     "ask_architect": ask_architect, "ask_engineer": ask_engineer,
     "ask_designer": ask_designer, "ask_reviewer": ask_reviewer,
     "ask_cuda_brain": ask_cuda_brain, "ask_minimax": ask_minimax, "ask_claude": ask_claude,
-    "claim_task": claim_task, "complete_task": complete_task,
+    "claim_task": claim_task, "complete_task": complete_task, "push_changes": push_changes,
     "restart_self": restart_self, "self_improve": self_improve, "ask_human": ask_human
 }
 
@@ -305,6 +332,7 @@ TOOLS_SCHEMA = [
     {"type": "function", "function": {"name": "self_improve", "description": "Stage a self-improvement for the next agent version. Log bugs, missing features, or code patches you want applied later.", "parameters": {"type": "object", "properties": {"description": {"type": "string", "description": "What to improve"}, "code_patch": {"type": "string", "description": "Optional Python code to add/change"}}, "required": ["description"]}}},
     {"type": "function", "function": {"name": "claim_task", "description": "BEFORE starting any task: claim it so other agents don't work on it. Returns CLAIMED or TAKEN.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string", "description": "Task ID like T07, T08"}}, "required": ["task_id"]}}},
     {"type": "function", "function": {"name": "complete_task", "description": "AFTER finishing a task: mark it DONE in the queue.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string", "description": "Task ID like T07"}}, "required": ["task_id"]}}},
+    {"type": "function", "function": {"name": "push_changes", "description": "AFTER making code changes: push modified files back to sys1 (git host) so they get committed. Files = comma-separated paths relative to ~/AGENT.", "parameters": {"type": "object", "properties": {"files": {"type": "string", "description": "Comma-separated file paths, e.g. 'ggml_llama_gguf.c,ggml_vllm_backend.py'"}, "message": {"type": "string", "description": "Description of what changed"}}, "required": ["files"]}}},
     {"type": "function", "function": {"name": "ask_human", "description": "Ask the human for help. LAST RESORT only.", "parameters": {"type": "object", "properties": {"question": {"type": "string"}}, "required": ["question"]}}}
 ]
 

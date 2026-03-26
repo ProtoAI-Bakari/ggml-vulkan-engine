@@ -16,7 +16,7 @@
 - Success: 12/12 coherent, no crash, consistent TPS
 - Time: 1h
 
-### T02: [IN_PROGRESS by OmniAgent [Main]]] Fix standalone streaming server startup + stability
+### T02: [DONE by OmniAgent [sys1-Main]]]]] Fix standalone streaming server startup + stability
 - Server must start in <30s, serve on 0.0.0.0:8080
 - ThreadingMixIn for concurrent HTTP (sequential engine underneath)
 - KV reset between every request (engine_reset_kv)
@@ -107,13 +107,13 @@
 - Success: correct output after topology change, no stale CB
 - Time: 6h
 
-### T15: [IN_PROGRESS by OmniAgent [Main]]] Move Python/ctypes hot path to C extension
+### T15: [IN_PROGRESS by OmniAgent [sys1-Main]]]] Move Python/ctypes hot path to C extension
 - Compiled C shim replaces ctypes for tensor dispatch
 - Eliminate numpy→ctypes→C boundary crossing per forward()
 - Success: Python overhead drops from 3ms to <0.5ms
 - Time: 8h
 
-### T16: [IN_PROGRESS by OmniAgent [Main]]] Implement fence polling optimization
+### T16: [IN_PROGRESS by OmniAgent [sys1-Main]]]] Implement fence polling optimization
 - Insert fence at ~80% graph completion
 - Spin-wait for final fence instead of blocking
 - Reduces fence latency by 1-2ms
@@ -184,7 +184,7 @@
 - Success: vLLM recognizes platform
 - Time: 6h
 
-### T28: [IN_PROGRESS by OmniAgent [Main]]] Create VulkanWorker(WorkerBase) stub
+### T28: [READY]]] Create VulkanWorker(WorkerBase) stub
 - init_device(), determine_available_memory(), load_model()
 - Success: worker initializes without crash
 - Time: 6h
@@ -216,7 +216,7 @@
 - Success: attention correct with paged cache
 - Time: 12h
 
-### T34: [IN_PROGRESS by OmniAgent [Main]]] Wire _update_states()
+### T34: [READY]]] Wire _update_states()
 - Parse SchedulerOutput: add/remove/reorder requests
 - Success: request lifecycle correctly managed
 - Time: 8h
@@ -239,45 +239,45 @@
 - Success: vLLM sampler accepts logits
 - Time: 6h
 
-### T38: [IN_PROGRESS by OmniAgent [Main]]] End-to-end single-request test through vLLM plugin
+### T38: [READY]]] End-to-end single-request test through vLLM plugin
 - Chat completion, verify coherent response
 - Success: matches direct ggml output quality
 - Time: 4h
 
-### T39: [IN_PROGRESS by OmniAgent [Main]]] Enable max_num_seqs=2: two concurrent requests
+### T39: [READY]]] Enable max_num_seqs=2: two concurrent requests
 - Paged KV isolates requests
 - Success: both requests correct and independent
 - Time: 6h
 
-### T40: [IN_PROGRESS by OmniAgent [Main]]] Implement KV cache block freeing + prevent memory leak
+### T40: [READY]]] Implement KV cache block freeing + prevent memory leak
 - Release blocks on request completion, return to free pool
 - Success: stable memory after 100+ requests
 - Time: 4h
 
-### T41: [IN_PROGRESS by OmniAgent [Main]]] Implement prefix caching integration
+### T41: [READY]]] Implement prefix caching integration
 - Accept new_computed_blocks from scheduler
 - Skip recomputation for cached prefixes
 - Success: repeated prompts reuse KV blocks
 - Time: 8h
 
-### T42: [IN_PROGRESS by OmniAgent [Main]]] Handle chunked prefill
+### T42: [READY]]] Handle chunked prefill
 - Process partial prompts across multiple engine steps
 - Accumulate KV in correct blocks
 - Success: long prompts (>512 tokens) served correctly
 - Time: 8h
 
-### T43: [IN_PROGRESS by OmniAgent [Main]]] Implement preemption via recompute
+### T43: [READY]]] Implement preemption via recompute
 - When KV blocks exhausted, evict lowest-priority request
 - Mark for recomputation
 - Success: server recovers from OOM without crash
 - Time: 6h
 
-### T44: [IN_PROGRESS by OmniAgent [Main]]] Stress test: 10 concurrent users, 1000 total requests
+### T44: [READY]]] Stress test: 10 concurrent users, 1000 total requests
 - Measure aggregate TPS, p99 latency, error rate
 - Success: zero crashes, <1% error rate
 - Time: 4h
 
-### T45: [IN_PROGRESS by OmniAgent [Main]]] Benchmark max_num_seqs=4 aggregate throughput
+### T45: [READY]]] Benchmark max_num_seqs=4 aggregate throughput
 - Compare vs single-stream
 - Success: aggregate TPS > 2x single-stream
 - Time: 3h
@@ -300,12 +300,12 @@
 
 ## PHASE 3: 120B MODEL + FLEET [from Sys12 task queue]
 
-### T49: [IN_PROGRESS by OmniAgent [Main]]] Merge 120B GGUF shards
+### T49: [READY]]] Merge 120B GGUF shards
 - llama-gguf-split --merge
 - Success: single merged GGUF file
 - Time: 30min (I/O bound)
 
-### T50: [IN_PROGRESS by OmniAgent [Main]]] Test 120B on standalone ggml engine
+### T50: [READY]]] Test 120B on standalone ggml engine
 - Verify coherent output
 - Measure TPS
 - Success: coherent text at any TPS
@@ -316,23 +316,23 @@
 - Success: comparison table
 - Time: 2h
 
-### T52: [IN_PROGRESS by OmniAgent [Main]]] Test 120B via standalone streaming server
+### T52: [READY]]] Test 120B via standalone streaming server
 - Verify streaming works for large model
 - Test long generation (200+ tokens)
 - Success: stable, coherent, streaming
 - Time: 2h
 
-### T53: [IN_PROGRESS by OmniAgent [Main]] Fleet connectivity: test from Sys12, Sys10, CUDA cluster
+### T53: [READY]] Fleet connectivity: test from Sys12, Sys10, CUDA cluster
 - curl from 10.255.255.30, .64, .11 to Sys0:8080
 - Success: all machines can reach the server
 - Time: 1h
 
-### T54: [IN_PROGRESS by OmniAgent [Main]] Fleet registration: announce model/TPS to network
+### T54: [READY]] Fleet registration: announce model/TPS to network
 - JSON status file + optional POST to registry
 - Success: fleet_status.json with accurate info
 - Time: 2h
 
-### T55: [IN_PROGRESS by OmniAgent [Main]] Test with Z's Streamlit telemetry deck
+### T55: [READY]] Test with Z's Streamlit telemetry deck
 - Verify: streaming works, metrics display, no crash
 - Run 10 requests from Streamlit
 - Success: Z says it works
@@ -341,8 +341,8 @@
 ## PHASE 4: PURE VULKAN ENGINE [Perspective B — speculative, 35-45 TPS]
 
 ### T56: [DONE]] Implement GGUF weight loader in C (parse header, map weights to VkBuffer)
-### T57: [IN_PROGRESS by OmniAgent [Main]]] Write Q4_K_M dequant+GEMV SPIR-V shader (subgroup shuffle, SIMD 32)
-### T58: [IN_PROGRESS by OmniAgent [Main]]] Benchmark T57 vs ggml GEMV
+### T57: [READY]]] Write Q4_K_M dequant+GEMV SPIR-V shader (subgroup shuffle, SIMD 32)
+### T58: [READY]]] Benchmark T57 vs ggml GEMV
 ### T59: [READY] Write RMSNorm, RoPE, softmax, SiLU SPIR-V shaders
 ### T60: [READY] Implement static CB recording for one transformer layer
 ### T61: [READY] Full model: chain all layers + embedding + output projection
