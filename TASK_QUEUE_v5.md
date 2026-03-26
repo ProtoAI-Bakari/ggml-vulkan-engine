@@ -336,11 +336,11 @@
 ### T59: [DONE by OmniAgent | completed:2026-03-26T05:01]Write RMSNorm, RoPE, softmax, SiLU SPIR-V shaders
 ### T60: [IN_PROGRESS by OmniAgent [sys7] | 80% | started:2026-03-26T05:02 | t40]Full model: chain all layers + embedding + output projection
 ### T62: [DONE by test-cycle | completed:2026-03-26T09:09]Benchmark pure engine vs ggml at batch=1
-### T64: [READY]Flash attention SPIR-V shader (tiled, scalar, 2-pass online softmax)
+### T64: [IN_PROGRESS by OmniAgent [Main]Flash attention SPIR-V shader (tiled, scalar, 2-pass online softmax)
 
 ## PHASE 5: VALIDATION + PRODUCTION HARDENING
 
-### T66: [IN_PROGRESS by OmniAgent [sys4] | 60% | started:2026-03-26T09:04 | t30] | 90% | started:2026-03-26T08:54 | t110]M1 Max (32GB) validation: run all benchmarks on Sys12
+### T66: [IN_PROGRESS by OmniAgent [sys4] | 20% | started:2026-03-26T09:04 | t10] | 90% | started:2026-03-26T08:54 | t110]M1 Max (32GB) validation: run all benchmarks on Sys12
 ### T70: [DONE by OmniAgent [sys3] | completed:2026-03-26T05:18]Comprehensive README with architecture diagram
 ### T72: [READY] | 90% | started:2026-03-26T05:21 | t2630]Draft PR for vLLM: Vulkan platform plugin
 ### T75: [READY]File Mesa issue: VK_KHR_cooperative_matrix request with benchmark data

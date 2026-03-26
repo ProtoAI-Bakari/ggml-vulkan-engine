@@ -1,6 +1,6 @@
 # CLUSTER ISSUES TRACKER v1
 # 100 issues to fix — prioritized
-# Updated: 2026-03-26T09:15
+# Updated: 2026-03-26T09:16
 
 ## P0: CRITICAL (agents broken/looping)
 
@@ -32,19 +32,19 @@
 
 21. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:15] Dashboard TPS column shows 0 for sys1 (ggml server logs differently)
 22. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Dashboard Reqs column shows 0 for sys1
-23. [OPEN] Dashboard Arch column fails on some models (binary log issue)
+23. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:16] Dashboard Arch column fails on some models (binary log issue)
 24. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:15] Dashboard GPU% uses powermetrics (needs sudo, adds 500ms per node)
 25. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Commander still uses old node names (mlx-0, cuda-1) not sys1, cuda-sys1
-26. [OPEN] Commander agent detection shows wrong count in "Agents: 1 running"
+26. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:16] Commander agent detection shows wrong count in "Agents: 1 running"
 27. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Fleet health checker doesn't detect "agent writing but no files produced"
-28. [OPEN] No dashboard column for "last file written" or "last commit"
+28. [DEFERRED — needs frontend/infra] No dashboard column for "last file written" or "last commit"
 29. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:15] Task server timestamps accumulate — "| 0% | started:... | 0% | started:..."
 30. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:08] Task server BLOCKED regex fixed for brackets
 
 ## P3: AGENT LIFECYCLE
 
 31. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:15] No graceful agent shutdown — pkill -9 loses in-flight work
-32. [OPEN] Agent doesn't save state between restarts — loses context
+32. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:16] Agent doesn't save state between restarts — loses context
 33. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Agent can't resume a partially-completed task after restart
 34. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:15] No heartbeat mechanism — can't tell if agent is alive vs thinking
 35. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:15] Agent log grows unbounded — no rotation
@@ -57,10 +57,10 @@
 ## P4: TASK MANAGEMENT
 
 41. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] Task queue file gets corrupted by concurrent writes from API + agents
-42. [OPEN] Duplicate timestamps accumulate on task entries from multiple claims
+42. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:16] Duplicate timestamps accumulate on task entries from multiple claims
 43. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:15] No task dependencies — T57 should block T58 but doesn't
 44. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:15] No task priority — agents pick random READY tasks, not highest priority
-45. [OPEN] No way to assign a task to a specific agent/node
+45. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:16] No way to assign a task to a specific agent/node
 46. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No estimated completion time tracking
 47. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No task history — can't see who worked on what and when
 48. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:15] claim_task.sh falls back to local sed when API is unreachable — creates split-brain
@@ -108,16 +108,16 @@
 
 ## P8: OBSERVABILITY
 
-81. [OPEN] No Prometheus/Grafana for fleet metrics
+81. [DEFERRED — needs frontend/infra] No Prometheus/Grafana for fleet metrics
 82. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] No token usage tracking per agent per task
-83. [OPEN] No cost tracking for CUDA brain usage
-84. [OPEN] No agent efficiency metric (useful output per token)
-85. [OPEN] No task completion velocity tracking
+83. [DEFERRED — needs frontend/infra] No cost tracking for CUDA brain usage
+84. [DEFERRED — needs frontend/infra] No agent efficiency metric (useful output per token)
+85. [DEFERRED — needs frontend/infra] No task completion velocity tracking
 86. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] No heatmap of which tools are used most/least
-87. [OPEN] No error rate per model/node correlation
-88. [OPEN] No TTFT trend over time
-89. [OPEN] No disk usage trend alerting
-90. [OPEN] No network latency monitoring between nodes
+87. [DEFERRED — needs frontend/infra] No error rate per model/node correlation
+88. [DEFERRED — needs frontend/infra] No TTFT trend over time
+89. [DEFERRED — needs frontend/infra] No disk usage trend alerting
+90. [DEFERRED — needs frontend/infra] No network latency monitoring between nodes
 
 ## P9: AGENT INTELLIGENCE
 
@@ -167,7 +167,7 @@
 119. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Agent should detect when its model server crashes and alert
 120. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] No centralized error log aggregating all agent errors
 121. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Task queue file getting corrupted with duplicate brackets ]]]]
-122. [OPEN] No visualization of task completion over time
+122. [DEFERRED — needs frontend/infra] No visualization of task completion over time
 123. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] Agent should batch small file operations instead of one per turn
 124. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No way to set max_tokens dynamically per task complexity
 125. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] CUDA brain at 42K context but agents rarely need >4K
@@ -175,14 +175,14 @@
 127. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No way to see total tokens generated across all agents
 128. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Agent0 test runner doesn't report results to dashboard
 129. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] No integration test that verifies full claim→work→push→complete cycle
-130. [OPEN] Dashboard doesn't show which phase each agent is working on
+130. [DEFERRED — needs frontend/infra] Dashboard doesn't show which phase each agent is working on
 131. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] No alert when disk drops below threshold on any node
 132. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Agent should minimize context by summarizing completed work
 133. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] No way to share findings between agents (KB not synced to remotes)
 134. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] Task server should reject claims for tasks with unmet dependencies
 135. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] No health endpoint for the agent process itself
 136. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] Dashboard arch column truncates model info with ellipsis
-137. [OPEN] No way to see agent error rate over time
+137. [DEFERRED — needs frontend/infra] No way to see agent error rate over time
 138. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Agent should use sed for small edits instead of rewriting files
 139. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No git branch per agent — all work on master
 140. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] Push_changes doesn't handle merge conflicts
