@@ -23,6 +23,7 @@
 #   - After EACH task: push_changes + complete_task
 #   - If stuck >3 failures: ask_claude for help
 #   - Use ~ for paths, never /home/z or /Users/z
+#   - DEPENDENCIES: T58→T57, T63→T60, T61→T59, T65→T60
 
 ## PHASE 0: STABILITY + MEASUREMENT [DO FIRST — nothing else matters if broken]
 

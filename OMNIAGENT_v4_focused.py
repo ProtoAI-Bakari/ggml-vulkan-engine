@@ -592,6 +592,20 @@ def load_go_prompt():
 def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
     global _AGENT_NAME
     _AGENT_NAME = agent_name
+
+    # Log rotation at startup (fixes #35: unbounded log growth)
+    for _log_name in ("agent_trace.log", "main_trace.log"):
+        _log_path = os.path.join(os.path.expanduser("~/AGENT/LOGS"), _log_name)
+        try:
+            if os.path.exists(_log_path) and os.path.getsize(_log_path) > 10 * 1024 * 1024:
+                with open(_log_path, 'r') as _f:
+                    _lines = _f.readlines()
+                with open(_log_path, 'w') as _f:
+                    _f.writelines(_lines[-5000:])
+                print(f"[LOG] Rotated {_log_name}: kept last 5000 of {len(_lines)} lines")
+        except Exception:
+            pass
+
     print(f"{C.BOLD}{C.CYAN}🚀 {agent_name} ONLINE | Model: {MODEL_NAME}{C.RESET}")
     history = [{"role": "system", "content": SYSTEM_PROMPT}]
 

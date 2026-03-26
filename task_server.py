@@ -96,13 +96,6 @@ def atomic_claim(task_id, agent_name):
                 tid = existing_task.group(1) if existing_task else "unknown"
                 return False, f"BLOCKED — {agent_name} already has {tid}"
 
-            # Clean any stale timestamps before claiming
-            new_content = re.sub(r'\| 0% \| started:[^\]]+', '', content)
-            content = new_content
-            # Re-match after cleaning
-            match = re.search(pattern, content)
-            if not match:
-                return False, 'CLEAN_FAILED'
             # Claim it: replace [READY] with [IN_PROGRESS by agent | 0% | started:timestamp]
             ts = datetime.now().strftime("%Y-%m-%dT%H:%M")
             new_content = re.sub(
@@ -111,6 +104,10 @@ def atomic_claim(task_id, agent_name):
                 content,
                 count=1,
             )
+            # Strip any stale metadata that accumulated on this task line
+            # (e.g., leftover "| 0% | started:..." from previous claims)
+            task_line_pat = rf"(### {re.escape(task_id)}:.*?\[IN_PROGRESS by [^\]]+\])((?:\s*\|[^\]\n]*\])*)"
+            new_content = re.sub(task_line_pat, r"\1", new_content, count=1)
 
             f.seek(0)
             f.write(new_content)
@@ -136,6 +133,13 @@ def atomic_complete(task_id, agent_name):
                     return False, "ALREADY_DONE"
                 return False, "NOT_IN_PROGRESS"
 
+            # Strip any accumulated stale metadata after the status bracket
+            stale_pat = rf"(### {re.escape(task_id)}:.*?\[IN_PROGRESS by [^\]]+\])((?:\s*\|[^\]\n]*\])*)"
+            content = re.sub(stale_pat, r"\1", content, count=1)
+            # Re-match after cleanup
+            match = re.search(pattern, content)
+            if not match:
+                return False, "NOT_IN_PROGRESS"
             ts = datetime.now().strftime("%Y-%m-%dT%H:%M")
             new_content = re.sub(
                 pattern,
@@ -241,6 +245,33 @@ class TaskHandler(BaseHTTPRequestHandler):
             log(f"PROGRESS {task_id} by {agent} -> {pct}%: {msg}")
             code = 200 if ok else 409
             self._respond(code, json.dumps({"ok": ok, "msg": msg}), "application/json")
+
+        elif self.path == "/block":
+            task_id = params.get("task", [None])[0]
+            agent = params.get("agent", [None])[0]
+            reason = params.get("reason", ["unknown"])[0]
+            if not task_id:
+                self._respond(400, "Missing task param")
+                return
+            with open(QUEUE_PATH, "r+") as f:
+                fcntl.flock(f, fcntl.LOCK_EX)
+                try:
+                    content = f.read()
+                    pattern = rf"(### {re.escape(task_id)}:.*?)\[IN_PROGRESS[^\]]*\]"
+                    match = re.search(pattern, content)
+                    if match:
+                        ts = datetime.now().strftime("%Y-%m-%dT%H:%M")
+                        new_content = re.sub(pattern, rf"\g<1>[BLOCKED by {agent or 'system'} | reason:{reason} | {ts}]", content, count=1)
+                        f.seek(0)
+                        f.write(new_content)
+                        f.truncate()
+                        log(f"BLOCKED {task_id}: {reason}")
+                        self._respond(200, json.dumps({"ok": True, "msg": f"BLOCKED {task_id}"}), "application/json")
+                    else:
+                        self._respond(409, json.dumps({"ok": False, "msg": "NOT_IN_PROGRESS"}), "application/json")
+                finally:
+                    fcntl.flock(f, fcntl.LOCK_UN)
+            return
 
         elif self.path == "/complete":
             task_id = params.get("task", [None])[0]
