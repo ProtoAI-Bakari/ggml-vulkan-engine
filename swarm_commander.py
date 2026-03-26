@@ -334,10 +334,14 @@ def launch_agent(agent_id, auto_go=False):
     if not agent:
         console.print(f"[red]Unknown agent: {agent_id}[/red]")
         return
-    # Check if already running
+    # Check if already running (tmux OR bare process)
     r = subprocess.run(f"tmux has-session -t {agent_id} 2>/dev/null", shell=True)
     if r.returncode == 0:
-        console.print(f"[yellow]{agent_id}: already running (attach: tmux attach -t {agent_id})[/yellow]")
+        console.print(f"[yellow]{agent_id}: already running in tmux (attach: tmux attach -t {agent_id})[/yellow]")
+        return
+    r2 = subprocess.run(f"pgrep -f '{agent['script']}' >/dev/null 2>&1", shell=True)
+    if r2.returncode == 0:
+        console.print(f"[yellow]{agent_id}: running in a terminal (not tmux). Use 'agentstop {agent_id.replace('agent','')}' to kill it first.[/yellow]")
         return
     script = agent["script"]
     log = agent["log"]
@@ -352,13 +356,25 @@ def launch_agent(agent_id, auto_go=False):
     console.print(f"[green]{agent_id}: launched ({mode}) → tmux attach -t {agent_id}[/green]")
 
 def stop_agent(agent_id):
-    """Stop an agent tmux session."""
+    """Stop an agent — kills tmux sessions AND any matching processes."""
     if agent_id == "all":
+        # Kill ALL agent processes — tmux sessions AND bare terminal agents
         for aid in AGENTS:
             subprocess.run(f"tmux kill-session -t {aid} 2>/dev/null", shell=True)
-        console.print(f"[red]All agents stopped[/red]")
+        # Kill any OMNIAGENT processes not in tmux
+        subprocess.run("pkill -f 'OMNIAGENT_v4' 2>/dev/null", shell=True)
+        subprocess.run("pkill -f 'run_agent.sh' 2>/dev/null", shell=True)
+        # Verify
+        r = subprocess.run("ps aux | grep OMNIAGENT | grep -v grep | wc -l",
+                          shell=True, capture_output=True, text=True, timeout=3)
+        remaining = r.stdout.strip()
+        console.print(f"[red]All agents stopped ({remaining} processes remaining)[/red]")
         return
     subprocess.run(f"tmux kill-session -t {agent_id} 2>/dev/null", shell=True)
+    # Also kill the specific script if running outside tmux
+    agent = AGENTS.get(agent_id)
+    if agent:
+        subprocess.run(f"pkill -f '{agent['script']}' 2>/dev/null", shell=True)
     console.print(f"[red]{agent_id}: stopped[/red]")
 
 def goal_all():
@@ -629,21 +645,34 @@ def main():
         elif action == "logs":
             if arg:
                 node = NODES.get(arg)
-                if node and arg != "sys0":
-                    console.print(f"[dim]Tailing {arg} logs (Ctrl+C to stop)...[/dim]")
-                    try:
-                        sname = NODE_TO_SERVER.get(arg, arg)
-                        os.system(f"sshpass -f {PASSFILE} ssh {SSH_OPTS} z@{node['ip']} 'tail -f ~/AGENT/LOGS/{sname}_mlx.log'")
-                    except KeyboardInterrupt:
-                        pass
-                elif arg == "sys0":
+                if not node:
+                    console.print(f"[red]Unknown node: {arg}[/red]")
+                elif arg in ("mlx-0",):
                     console.print("[dim]Tailing sys0 agent logs...[/dim]")
                     try:
                         os.system("tail -f ~/AGENT/LOGS/main_trace.log")
                     except KeyboardInterrupt:
                         pass
+                elif arg.startswith("cuda-"):
+                    # CUDA nodes use password auth
+                    console.print(f"[dim]Tailing {arg} vLLM logs (Ctrl+C to stop)...[/dim]")
+                    try:
+                        os.system(f"sshpass -p z ssh {SSH_OPTS} z@{node['ip']} 'tail -f /tmp/ray/session_latest/logs/serve*.log 2>/dev/null || journalctl -u vllm -f 2>/dev/null || echo No vLLM logs found'")
+                    except KeyboardInterrupt:
+                        pass
+                elif arg.startswith("mlx-"):
+                    sname = NODE_TO_SERVER.get(arg, arg)
+                    console.print(f"[dim]Tailing {arg} MLX logs (Ctrl+C to stop)...[/dim]")
+                    try:
+                        os.system(f"sshpass -f {PASSFILE} ssh {SSH_OPTS} z@{node['ip']} 'tail -f ~/AGENT/LOGS/{sname}_mlx.log'")
+                    except KeyboardInterrupt:
+                        pass
                 else:
-                    console.print(f"[red]Unknown node: {arg}[/red]")
+                    console.print(f"[dim]Tailing {arg}...[/dim]")
+                    try:
+                        os.system(f"sshpass -p z ssh {SSH_OPTS} z@{node['ip']} 'tail -f ~/AGENT/LOGS/*.log 2>/dev/null || echo No logs'")
+                    except KeyboardInterrupt:
+                        pass
             else:
                 console.print("[red]Usage: logs <node>[/red]")
         elif action == "tasks":

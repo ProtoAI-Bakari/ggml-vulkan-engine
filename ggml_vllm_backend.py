@@ -36,14 +36,6 @@ _lib.engine_get_vocab_size.restype = ctypes.c_int
 _lib.engine_free.argtypes = [ctypes.c_void_p]
 
 
-@dataclass
-class SamplingParams:
-    """vLLM-compatible sampling parameters."""
-    temperature: float = 0.0
-    top_k: int = -1       # -1 = disabled
-    top_p: float = 1.0
-    min_p: float = 0.0
-    repetition_penalty: float = 1.0
     max_tokens: int = 100
     stop: list = None       # stop strings
     stop_token_ids: set = None  # stop token IDs

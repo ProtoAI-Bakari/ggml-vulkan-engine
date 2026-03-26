@@ -244,45 +244,45 @@
 - Success: matches direct ggml output quality
 - Time: 4h
 
-### T39: [READY] Enable max_num_seqs=2: two concurrent requests
+### T39: [IN_PROGRESS by OmniAgent [Main]] Enable max_num_seqs=2: two concurrent requests
 - Paged KV isolates requests
 - Success: both requests correct and independent
 - Time: 6h
 
-### T40: [READY] Implement KV cache block freeing + prevent memory leak
+### T40: [IN_PROGRESS by OmniAgent [Sys4]] Implement KV cache block freeing + prevent memory leak
 - Release blocks on request completion, return to free pool
 - Success: stable memory after 100+ requests
 - Time: 4h
 
-### T41: [READY] Implement prefix caching integration
+### T41: [IN_PROGRESS by OmniAgent [Main]] Implement prefix caching integration
 - Accept new_computed_blocks from scheduler
 - Skip recomputation for cached prefixes
 - Success: repeated prompts reuse KV blocks
 - Time: 8h
 
-### T42: [READY] Handle chunked prefill
+### T42: [IN_PROGRESS by OmniAgent [Main]] Handle chunked prefill
 - Process partial prompts across multiple engine steps
 - Accumulate KV in correct blocks
 - Success: long prompts (>512 tokens) served correctly
 - Time: 8h
 
-### T43: [READY] Implement preemption via recompute
+### T43: [IN_PROGRESS by OmniAgent [Main]] Implement preemption via recompute
 - When KV blocks exhausted, evict lowest-priority request
 - Mark for recomputation
 - Success: server recovers from OOM without crash
 - Time: 6h
 
-### T44: [READY] Stress test: 10 concurrent users, 1000 total requests
+### T44: [IN_PROGRESS by OmniAgent [Main]] Stress test: 10 concurrent users, 1000 total requests
 - Measure aggregate TPS, p99 latency, error rate
 - Success: zero crashes, <1% error rate
 - Time: 4h
 
-### T45: [READY] Benchmark max_num_seqs=4 aggregate throughput
+### T45: [IN_PROGRESS by OmniAgent [Main]] Benchmark max_num_seqs=4 aggregate throughput
 - Compare vs single-stream
 - Success: aggregate TPS > 2x single-stream
 - Time: 3h
 
-### T46: [READY] Test all model sizes through vLLM plugin (0.5B → 120B)
+### T46: [IN_PROGRESS by OmniAgent [Main]] Test all model sizes through vLLM plugin (0.5B → 120B)
 - Verify each model loads and produces coherent output
 - Success: all models work
 - Time: 4h

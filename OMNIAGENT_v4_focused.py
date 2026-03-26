@@ -143,7 +143,7 @@ def _ask_brain(brain_name: str, query: str, system_hint: str = "") -> str:
     try:
         sys_msg = system_hint or f"You are an expert advising an autonomous agent. Do not use tool tags. Be precise. Project: Vulkan GPU inference on Asahi Linux."
         payload = {"messages": [{"role": "system", "content": sys_msg}, {"role": "user", "content": query}],
-                   "max_tokens": 2000, "temperature": 0.2, "stream": True}
+                   "max_tokens": 4000, "temperature": 0.2, "stream": True}
         full = ""
         t0 = time.time()
         print(f"{color}", end="", flush=True)
@@ -186,7 +186,7 @@ def ask_reviewer(query: str) -> str:
 def ask_minimax(query: str) -> str:
     print(f"\n{C.MAGENTA}[🧠 Pinging MiniMax Model at {MINIMAX_IP}...]{C.RESET}")
     try:
-        payload = {"model": "mlx-community/MiniMax-M2-REAP-139B", "messages": [{"role": "user", "content": f"You are a master systems architect advising an autonomous agent. Provide exact logic. Do not use tool tags. We are running vLLM on Asahi Linux with a custom Vulkan backend.\n\nQuery: {query}"}], "max_tokens": 2000, "temperature": 0.2, "stream": True}
+        payload = {"model": "mlx-community/MiniMax-M2-REAP-139B", "messages": [{"role": "user", "content": f"You are a master systems architect advising an autonomous agent. Provide exact logic. Do not use tool tags. We are running vLLM on Asahi Linux with a custom Vulkan backend.\n\nQuery: {query}"}], "max_tokens": 4000, "temperature": 0.2, "stream": True}
         full = ""
         t0 = time.time()
         print(f"{C.GREEN}", end="", flush=True)
@@ -472,7 +472,7 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
 
                 try:
                     t_turn_start = time.time()
-                    stream = client.chat.completions.create(model=MODEL_NAME, messages=history, stream=True, max_tokens=2000, temperature=0.3)
+                    stream = client.chat.completions.create(model=MODEL_NAME, messages=history, stream=True, max_tokens=4000, temperature=0.3)
                     t_first_token = None
                     print(f"\r{C.BOLD}{C.CYAN}[{agent_name}]: {C.RESET}", end="")
                     for chunk in stream:
