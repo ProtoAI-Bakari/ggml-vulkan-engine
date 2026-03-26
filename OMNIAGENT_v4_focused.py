@@ -129,6 +129,8 @@ def write_file(path: str, content: str) -> str:
         # Large file safety: if content >20 lines, warn (should use heredoc)
         if content.count(chr(10)) > 20:
             print(f"{C.YELLOW}[WARN] Large write_file ({content.count(chr(10))} lines) — consider heredoc next time{C.RESET}")
+        if len(content) > 5000:
+            print(f"{C.YELLOW}[WARN] write_file content is {len(content)} chars — large content often breaks JSON parsing. Use execute_bash with cat<<'EOF'>file ... EOF instead.{C.RESET}")
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
         with open(full_path, 'w', encoding='utf-8') as f: f.write(content)
         return f"Successfully wrote {len(content)} chars to {full_path}"
