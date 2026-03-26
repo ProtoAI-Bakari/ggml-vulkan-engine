@@ -226,12 +226,13 @@ def ask_claude(query: str) -> str:
     except Exception as ex:
         return f"Claude error: {ex}"
 
+_AGENT_NAME = "OmniAgent [Main]"  # Set by run_agent() at startup
+
 def claim_task(task_id: str) -> str:
     """Claim a task from the queue so other agents don't work on it."""
     import subprocess
-    agent_name = "OmniAgent [Main]"  # Will be overridden per-instance
     result = subprocess.run(
-        ["bash", os.path.expanduser("~/AGENT/claim_task.sh"), task_id, agent_name],
+        ["bash", os.path.expanduser("~/AGENT/claim_task.sh"), task_id, _AGENT_NAME],
         capture_output=True, text=True, timeout=5
     )
     out = result.stdout.strip()
@@ -241,9 +242,8 @@ def claim_task(task_id: str) -> str:
 def complete_task(task_id: str) -> str:
     """Mark a task as DONE in the queue."""
     import subprocess
-    agent_name = "OmniAgent [Main]"
     result = subprocess.run(
-        ["bash", os.path.expanduser("~/AGENT/complete_task.sh"), task_id, agent_name],
+        ["bash", os.path.expanduser("~/AGENT/complete_task.sh"), task_id, _AGENT_NAME],
         capture_output=True, text=True, timeout=5
     )
     out = result.stdout.strip()
@@ -434,6 +434,8 @@ def load_go_prompt():
         return None
 
 def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
+    global _AGENT_NAME
+    _AGENT_NAME = agent_name
     print(f"{C.BOLD}{C.CYAN}🚀 {agent_name} ONLINE | Model: {MODEL_NAME}{C.RESET}")
     history = [{"role": "system", "content": SYSTEM_PROMPT}]
 

@@ -138,14 +138,7 @@ engine_t *engine_load_gguf(const char *gguf_path, int n_ctx) {
     FIND_KEY_U32(n_kv_heads,   "attention.head_count_kv",              8);
     FIND_KEY_F32(rms_eps,      "attention.layer_norm_rms_epsilon", 1e-5f);
     FIND_KEY_F32(rope_theta,   "rope.freq_base",               500000.0f);
-    // Custom vocab_size detection: try llama.vocab_size, then tokenizer.ggml.tokens array count
-    e->vocab_size = 128256;  // default fallback
-    key = gguf_find_key(gguf, "llama.vocab_size");
-    if (key >= 0) { e->vocab_size = gguf_get_val_u32(gguf, key); }
-    else {
-        key = gguf_find_key(gguf, "tokenizer.ggml.tokens");
-        if (key >= 0) { e->vocab_size = gguf_get_arr_n(gguf, key); }
-    }
+    FIND_KEY_U32(vocab_size,     "llama.vocab_size",           128256);
     e->head_dim = e->hidden_dim / e->n_heads;
 
     fprintf(stderr, "[gguf] Model: %d layers, %d hidden, %d intermediate, %d heads, %d kv_heads\n",
@@ -181,7 +174,7 @@ engine_t *engine_load_gguf(const char *gguf_path, int n_ctx) {
         if (t) ggml_set_name(t, name);
 
         /* Map to struct fields */
-        if (strcmp(name, "token_embd.weight") == 0) { e->tok_embd = t; /* vocab_size already set by FIND_KEY_U32 */ }
+        if (strcmp(name, "token_embd.weight") == 0) { e->tok_embd = t; if (t->ne[1] != e->vocab_size) { fprintf(stderr, "[gguf] vocab_size override: %d -> %lld (from token_embd)\n", e->vocab_size, (long long)t->ne[1]); e->vocab_size = (int)t->ne[1]; } }
         else if (strcmp(name, "output_norm.weight") == 0) e->output_norm = t;
         else if (strcmp(name, "output.weight") == 0) e->output = t;
         else {
@@ -501,11 +494,14 @@ int engine_forward(engine_t *e, int n_tokens,
     }
     ggml_set_name(cur, e->return_hidden ? "hidden" : "logits");
 
-    ggml_backend_sched_reset(e->sched);
     ggml_build_forward_expand(graph, cur);
-    if (!ggml_gallocr_alloc_graph(e->alloc, graph)) {
+
+    /* Use backend scheduler for BOTH allocation and compute (matches llama.cpp) */
+    ggml_backend_sched_reset(e->sched);
+    if (!ggml_backend_sched_alloc_graph(e->sched, graph)) {
         e->t_graph_build_us = ggml_time_us() - t_graph_start;
         e->t_backend_compute_us = 0;
+        fprintf(stderr, "[engine] sched alloc failed\n");
         return -2;
     }
     e->t_graph_build_us = ggml_time_us() - t_graph_start;

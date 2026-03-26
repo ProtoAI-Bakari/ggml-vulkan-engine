@@ -3,7 +3,7 @@
 You are one of 3 parallel agents working on the Vulkan GPU inference engine. Other agents are running simultaneously. COORDINATE via the task queue.
 
 ## STEP 1: CLAIM A TASK (do this FIRST)
-1. Read ~/AGENT/TASK_QUEUE_v4.md
+1. Read ~/AGENT/TASK_QUEUE_v5.md
 2. Check for tasks already [IN_PROGRESS by YOUR NAME] — if found, RESUME it
 3. Otherwise find the first task marked [READY] (skip [IN_PROGRESS] or [DONE])
 4. Claim it: call claim_task with the task ID (e.g. "T07")

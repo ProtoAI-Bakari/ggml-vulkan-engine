@@ -60,8 +60,17 @@ console = Console()
 
 # ── Utilities ────────────────────────────────────────────────────────────────
 
+def _auth_for_ip(ip):
+    """Return SSH auth prefix based on IP range."""
+    octets = ip.split(".")
+    if len(octets) == 4:
+        last = int(octets[3])
+        if 10 <= last <= 18:
+            return "sshpass -p z"
+    return f"sshpass -f {PASSFILE}"
+
 def ssh_cmd(ip, cmd, timeout=5):
-    """Run command on remote macOS node via sshpass."""
+    """Run command on remote node via sshpass (auto-detects auth, single-quote safe)."""
     if ip in ("127.0.0.1", "localhost"):
         try:
             r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout)
@@ -69,7 +78,8 @@ def ssh_cmd(ip, cmd, timeout=5):
         except Exception:
             return ""
     try:
-        full = f"sshpass -f {PASSFILE} ssh {SSH_OPTS} z@{ip} \"{cmd}\""
+        auth = _auth_for_ip(ip)
+        full = f"{auth} ssh {SSH_OPTS} z@{ip} '{cmd}'"
         r = subprocess.run(full, shell=True, capture_output=True, text=True, timeout=timeout)
         return r.stdout.strip()
     except Exception:
@@ -94,14 +104,25 @@ def health_check(name, node):
         active = d.get("active", 0)
         return {"status": "UP", "model": model, "role": role, "active": active}
     except Exception:
-        # Try ping as fallback
-        try:
-            r = subprocess.run(f"ping -c1 -W1 {ip}", shell=True, capture_output=True, timeout=3)
-            if r.returncode == 0:
-                return {"status": "PING", "model": "(reachable, no LLM)", "role": node["role"], "active": 0}
-        except Exception:
-            pass
-        return {"status": "DOWN", "model": "-", "role": node["role"], "active": 0}
+        pass
+    # Try /v1/models (vLLM servers like CUDA)
+    try:
+        r = requests.get(f"http://{ip}:{port}/v1/models", timeout=3)
+        d = r.json()
+        models = d.get("data", [])
+        if models:
+            model = models[0].get("id", "?").split("/")[-1][:35]
+            return {"status": "UP", "model": model, "role": node["role"], "active": 0}
+    except Exception:
+        pass
+    # Try ping as fallback
+    try:
+        r = subprocess.run(f"ping -c1 -W1 {ip}", shell=True, capture_output=True, timeout=3)
+        if r.returncode == 0:
+            return {"status": "PING", "model": "(reachable, no LLM)", "role": node["role"], "active": 0}
+    except Exception:
+        pass
+    return {"status": "DOWN", "model": "-", "role": node["role"], "active": 0}
 
 def get_mem_usage(ip):
     """Get memory usage % from remote node."""
