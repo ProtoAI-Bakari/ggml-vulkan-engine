@@ -100,6 +100,15 @@ client = OpenAI(base_url=PRIMARY_URL, api_key="sk-local", timeout=600.0)
 # TOOLS
 # =====================================================
 def execute_bash(command: str, timeout: int = 30) -> str:
+    # Fix /home/z vs /Users/z in commands
+    if "/home/z/" in command:
+        import platform
+        if platform.system() == "Darwin":
+            command = command.replace("/home/z/", "/Users/z/")
+    if "/Users/z/" in command:
+        import platform
+        if platform.system() == "Linux":
+            command = command.replace("/Users/z/", "/home/z/")
     # Audit: log destructive commands
     destructive = any(x in command for x in ["rm -rf", "pkill", "kill -9", "rmdir", "dd if"])
     if destructive:
@@ -849,8 +858,18 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
                         while history and history[1].get("role") != "user":
                             history.pop(1)
                         continue
-                    print(f"{C.YELLOW}[🔄 Retrying in 5s...]{C.RESET}")
-                    time.sleep(1)
+                    if not hasattr(run_agent, '_retry_count'):
+                        run_agent._retry_count = 0
+                    run_agent._retry_count += 1
+                    wait = min(2 ** run_agent._retry_count, 30)
+                    print(f"{C.YELLOW}[🔄 Retry #{run_agent._retry_count} in {wait}s...]{C.RESET}")
+                    time.sleep(wait)
+                    if run_agent._retry_count >= 5:
+                        print(f"{C.RED}[GIVING UP] 5 retries failed. Trimming context.{C.RESET}")
+                        run_agent._retry_count = 0
+                        sys_prompt_msg = history[0]
+                        history = [sys_prompt_msg] + history[-4:]
+                        continue
                     if full_content:
                         history.append({"role": "assistant", "content": full_content + "\n[TRUNCATED]"})
                     history.append({"role": "user", "content": "[SYSTEM]: Connection error. Continue. Use a tool call."})
@@ -906,6 +925,21 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
                     history.append({"role": "user", "content": "You MUST use a tool call. Example:\n<tool_call>\n{\"name\": \"execute_bash\", \"arguments\": {\"command\": \"pwd\"}}\n</tool_call>"})
                     continue
 
+                # Track file writes for push reminder
+                for tc in tool_calls:
+                    if tc['name'] == 'write_file':
+                        if not hasattr(run_agent, '_files_written'):
+                            run_agent._files_written = []
+                        run_agent._files_written.append(tc.get('arguments', {}).get('path', '?'))
+                
+                # After 20 tool calls with file writes, inject push reminder
+                if hasattr(run_agent, '_files_written') and len(run_agent._files_written) >= 3:
+                    files_list = ','.join(run_agent._files_written[-5:])
+                    results_msg += f'
+[SYSTEM REMINDER]: You have written {len(run_agent._files_written)} files. Call push_changes("{files_list}") NOW to save your work to sys1.
+'
+                    run_agent._files_written = []  # Reset after reminder
+                
                 # Auto-progress: update every 10 tool calls
                 if not hasattr(run_agent, '_tool_count'):
                     run_agent._tool_count = 0

@@ -288,7 +288,7 @@
 - Success: zero crashes, <1% error rate
 - Time: 4h
 
-### T45: [READY]Benchmark max_num_seqs=4 aggregate throughput
+### T45: [IN_PROGRESS by Agent_Sys6M1US128G20C64C2TB.local | 0% | started:2026-03-26T09:05]Benchmark max_num_seqs=4 aggregate throughput
 - Compare vs single-stream
 - Success: aggregate TPS > 2x single-stream
 - Time: 3h
@@ -311,7 +311,7 @@
 
 ## PHASE 3: 120B MODEL + FLEET [from Sys12 task queue]
 
-### T49: [IN_PROGRESS by OmniAgent [sys6] | 90% | started:2026-03-26T05:03 | t2170]Test 120B on standalone ggml engine
+### T49: [IN_PROGRESS by OmniAgent [sys6] | 40% | started:2026-03-26T05:03 | t20]Test 120B on standalone ggml engine
 - Verify coherent output
 - Measure TPS
 - Success: coherent text at any TPS
@@ -339,13 +339,13 @@
 ### T57: [DONE by OmniAgent [sys5] | completed:2026-03-26T03:39] | 0% | started:2026-03-26T02:19] Write Q4_K_M dequant+GEMV SPIR-V shader (subgroup shuffle, SIMD 32)
 ### T58: [DONE by OmniAgent | completed:2026-03-26T05:01] Benchmark T57 vs ggml GEMV
 ### T59: [DONE by OmniAgent | completed:2026-03-26T05:01]Write RMSNorm, RoPE, softmax, SiLU SPIR-V shaders
-### T60: [IN_PROGRESS by OmniAgent [sys7] | 90% | started:2026-03-26T05:02 | t2770]Full model: chain all layers + embedding + output projection
+### T60: [IN_PROGRESS by OmniAgent [sys7] | 20% | started:2026-03-26T05:02 | t10]Full model: chain all layers + embedding + output projection
 ### T62: [READY]Benchmark pure engine vs ggml at batch=1
 ### T64: [READY]Flash attention SPIR-V shader (tiled, scalar, 2-pass online softmax)
 
 ## PHASE 5: VALIDATION + PRODUCTION HARDENING
 
-### T66: [IN_PROGRESS by OmniAgent [sys4] | 90% | started:2026-03-26T09:04 | t50] | 90% | started:2026-03-26T08:54 | t110]M1 Max (32GB) validation: run all benchmarks on Sys12
+### T66: [IN_PROGRESS by OmniAgent [sys4] | 60% | started:2026-03-26T09:04 | t30] | 90% | started:2026-03-26T08:54 | t110]M1 Max (32GB) validation: run all benchmarks on Sys12
 ### T70: [DONE by OmniAgent [sys3] | completed:2026-03-26T05:18]Comprehensive README with architecture diagram
 ### T72: [READY] | 90% | started:2026-03-26T05:21 | t2630]Draft PR for vLLM: Vulkan platform plugin
 ### T75: [READY]File Mesa issue: VK_KHR_cooperative_matrix request with benchmark data
