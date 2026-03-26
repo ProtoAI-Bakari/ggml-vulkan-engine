@@ -1040,6 +1040,9 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
                 tool_calls, parse_errors = extract_tool_calls(full_content)
                 
                 if parse_errors and not tool_calls:
+                    # Debug: log what failed to parse
+                    print(f"{C.RED}[PARSE DEBUG] content={repr(full_content[:300])}{C.RESET}")
+                    print(f"{C.RED}[PARSE DEBUG] errors={parse_errors}{C.RESET}")
                     # Count consecutive parse failures
                     if not hasattr(run_agent, '_parse_fail_count'):
                         run_agent._parse_fail_count = 0
@@ -1093,6 +1096,11 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
                             run_agent._files_written = []
                         run_agent._files_written.append(tc.get('arguments', {}).get('path', '?'))
                 
+                # Track tool calls
+                if not hasattr(run_agent, '_tool_count'):
+                    run_agent._tool_count = 0
+                run_agent._tool_count += len(tool_calls)
+
                 # After 20 successful tool calls with ANY file write/heredoc, FORCE push reminder
                 if run_agent._tool_count >= 20 and hasattr(run_agent, '_files_written') and run_agent._files_written and not getattr(run_agent, '_pushed_this_session', False):
                     files_list = ','.join(run_agent._files_written[-10:])
@@ -1103,9 +1111,6 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
                     results_msg += '\n[SYSTEM]: Call complete_task for your current task NOW, then claim the next one.\n'
                 
                 # Auto-progress: update every 10 tool calls
-                if not hasattr(run_agent, '_tool_count'):
-                    run_agent._tool_count = 0
-                run_agent._tool_count += len(tool_calls)
                 if run_agent._tool_count % 10 == 0:
                     try:
                         import urllib.request as _ur
