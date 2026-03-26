@@ -513,7 +513,7 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
                 if my_task:
                     user_input = f"FOCUS: You are on {my_task}. DO NOT read the task queue again. DO NOT claim more tasks. EXECUTE code for {my_task} NOW using execute_bash. Description: {my_task_desc}"
                 else:
-                    user_input = "claim_task for the next [READY] task in ~/AGENT/TASK_QUEUE_v5.md. Only claim ONE task."
+                    user_input = "You have NO task. Run: execute_bash with command 'grep READY ~/AGENT/TASK_QUEUE_v5.md | head -3' then claim_task the first one."
             else:
                 user_input = get_multiline_input()
 
