@@ -126,6 +126,9 @@ def write_file(path: str, content: str) -> str:
             full_path = full_path.replace("/home/z/", "/Users/z/", 1)
         if "/Users/z/" in full_path and not os.path.exists(os.path.dirname(full_path)):
             full_path = full_path.replace("/Users/z/", "/home/z/", 1)
+        # Large file safety: if content >20 lines, warn (should use heredoc)
+        if content.count(chr(10)) > 20:
+            print(f"{C.YELLOW}[WARN] Large write_file ({content.count(chr(10))} lines) — consider heredoc next time{C.RESET}")
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
         with open(full_path, 'w', encoding='utf-8') as f: f.write(content)
         return f"Successfully wrote {len(content)} chars to {full_path}"
@@ -635,6 +638,19 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
                                 break
                 except Exception:
                     pass
+                # Check for external nudge file
+                nudge_path = os.path.expanduser('~/AGENT/.nudge')
+                if os.path.exists(nudge_path):
+                    try:
+                        nudge_msg = open(nudge_path).read().strip()
+                        os.remove(nudge_path)
+                        if nudge_msg:
+                            user_input = f'[EXTERNAL NUDGE]: {nudge_msg}'
+                            print(f"{C.MAGENTA}[NUDGE] {nudge_msg}{C.RESET}")
+                            # Skip normal nudge logic
+                            history.append({"role": "user", "content": user_input})
+                            continue
+                    except: pass
                 if my_task:
                     user_input = (
                         f"Your assigned task is {my_task}. You MUST work on it now.\n"

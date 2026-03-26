@@ -1,81 +1,87 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
+#include <numpy/arrayobject.h>
 #include <stdio.h>
 
-// Mock engine_forward implementation - replace with actual GGML forward pass
-static int engine_forward(float* input, float* weights, float* output,
-                          int batch_size, int input_dim, int hidden_dim) {
-    // Simple matrix multiplication as placeholder for GGML forward pass
-    for (int b = 0; b < batch_size; b++) {
-        for (int i = 0; i < hidden_dim; i++) {
-            float sum = 0.0f;
-            for (int j = 0; j < input_dim; j++) {
-                sum += input[b * input_dim + j] * weights[j * hidden_dim + i];
-            }
-            output[b * hidden_dim + i] = sum;
-        }
-    }
-    return 0;
-}
+// Forward declaration of the engine_forward function
+// This should be implemented elsewhere in your ggml engine
+typedef struct {
+    void* ctx;
+    int n_threads;
+} EngineContext;
 
-// Python wrapper function
+extern int engine_forward(EngineContext* ctx, const float* input, float* output, int input_size);
+
 static PyObject* py_engine_forward(PyObject* self, PyObject* args) {
-    Py_buffer input_buf, weights_buf, output_buf;
-    int batch_size, input_dim, hidden_dim;
-
-    if (!PyArg_ParseTuple(args, "y*y*y*iii", &input_buf, &weights_buf, &output_buf,
-                          &batch_size, &input_dim, &hidden_dim)) {
+    PyArrayObject* input_arr = NULL;
+    int n_threads = 4;
+    
+    if (!PyArg_ParseTuple(args, "O!|i", &PyArray_Type, &input_arr, &n_threads)) {
         return NULL;
     }
-
-    if (input_buf.len != batch_size * input_dim * sizeof(float)) {
-        PyErr_SetString(PyExc_ValueError, "Invalid input buffer size");
-        PyBuffer_Release(&input_buf);
-        PyBuffer_Release(&weights_buf);
-        PyBuffer_Release(&output_buf);
+    
+    // Validate input array is contiguous and float type
+    if (!PyArray_ISCONTIGUOUS(input_arr) || PyArray_TYPE(input_arr) != NPY_FLOAT) {
+        PyErr_SetString(PyExc_ValueError, "Input must be contiguous float array");
         return NULL;
     }
-
-    if (weights_buf.len != input_dim * hidden_dim * sizeof(float)) {
-        PyErr_SetString(PyExc_ValueError, "Invalid weights buffer size");
-        PyBuffer_Release(&input_buf);
-        PyBuffer_Release(&weights_buf);
-        PyBuffer_Release(&output_buf);
+    
+    int input_size = (int)PyArray_SIZE(input_arr);
+    float* input_data = (float*)PyArray_DATA(input_arr);
+    
+    // Allocate output buffer
+    npy_intp dims[] = {input_size};
+    PyArrayObject* output_arr = (PyArrayObject*)PyArray_SimpleNew(1, dims, NPY_FLOAT);
+    if (output_arr == NULL) {
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate output array");
         return NULL;
     }
-
-    if (output_buf.len != batch_size * hidden_dim * sizeof(float)) {
-        PyErr_SetString(PyExc_ValueError, "Invalid output buffer size");
-        PyBuffer_Release(&input_buf);
-        PyBuffer_Release(&weights_buf);
-        PyBuffer_Release(&output_buf);
+    
+    float* output_data = (float*)PyArray_DATA(output_arr);
+    
+    // Initialize engine context
+    EngineContext ctx = {NULL, n_threads};
+    
+    // Call the forward function
+    int result = engine_forward(&ctx, input_data, output_data, input_size);
+    
+    if (result != 0) {
+        Py_DECREF(output_arr);
+        PyErr_Format(PyExc_RuntimeError, "engine_forward failed with code %d", result);
         return NULL;
     }
-
-    int result = engine_forward((float*)input_buf.buf, (float*)weights_buf.buf,
-                                (float*)output_buf.buf, batch_size, input_dim, hidden_dim);
-
-    PyBuffer_Release(&input_buf);
-    PyBuffer_Release(&weights_buf);
-    PyBuffer_Release(&output_buf);
-
-    return PyLong_FromLong(result);
+    
+    return (PyObject*)output_arr;
 }
 
-static PyMethodDef GGMLMethods[] = {
-    {"engine_forward", py_engine_forward, METH_VARARGS,
-     "Run forward pass through GGML model"},
+static PyObject* py_init_engine(PyObject* self, PyObject* args) {
+    int n_threads = 4;
+    
+    if (!PyArg_ParseTuple(args, "|i", &n_threads)) {
+        return NULL;
+    }
+    
+    printf("Initializing GGML engine with %d threads\n", n_threads);
+    Py_RETURN_NONE;
+}
+
+static PyMethodDef ExtensionMethods[] = {
+    {"forward", py_engine_forward, METH_VARARGS,
+     "Run forward pass through the model. Takes input array, returns output array."},
+    {"init_engine", py_init_engine, METH_VARARGS,
+     "Initialize the engine with specified thread count."},
     {NULL, NULL, 0, NULL}
 };
 
-static struct PyModuleDef ggml_module = {
+static struct PyModuleDef ggmlmodule = {
     PyModuleDef_HEAD_INIT,
     "ggml_extension",
-    "GGML Engine Forward Pass Extension",
+    "GGML Python C Extension",
     -1,
-    GGMLMethods
+    ExtensionMethods
 };
 
 PyMODINIT_FUNC PyInit_ggml_extension(void) {
-    return PyModule_Create(&ggml_module);
+    import_array();
+    return PyModule_Create(&ggmlmodule);
 }
