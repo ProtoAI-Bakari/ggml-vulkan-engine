@@ -304,8 +304,30 @@ def poll_node(name, node):
                 data["agent"] = "OFF"
 
     # Reqs + TPS + Task for ALL nodes with servers
-    data["reqs"] = _req_count(ip, auth)
-    data["tps"] = _tps_recent(ip, auth)
+    # For vLLM nodes (CUDA, z4090): use /metrics endpoint
+    if port > 0 and not name.startswith("sys"):
+        try:
+            import urllib.request, json as _json
+            with urllib.request.urlopen(f"http://{ip}:{port}/metrics", timeout=3) as _r:
+                metrics = _r.read().decode()
+            import re as _re
+            # TPS from time_per_output_token (inverse = TPS)
+            tpot = _re.search(r'request_time_per_output_token_seconds_sum\{[^}]*\}\s+([0-9.]+)', metrics)
+            tpot_count = _re.search(r'request_time_per_output_token_seconds_count\{[^}]*\}\s+([0-9.]+)', metrics)
+            if tpot and tpot_count and float(tpot.group(1)) > 0:
+                avg_tpot = float(tpot.group(1)) / float(tpot_count.group(1))
+                if avg_tpot > 0:
+                    data["tps"] = round(1.0 / avg_tpot, 1)
+            # Total requests
+            req_matches = _re.findall(r'request_success_total\{[^}]*finished_reason="(?:stop|length)"[^}]*\}\s+([0-9.]+)', metrics)
+            if req_matches:
+                data["reqs"] = int(sum(float(x) for x in req_matches))
+        except Exception:
+            pass
+    if data["tps"] == 0.0:
+        data["tps"] = _tps_recent(ip, auth)
+    if data["reqs"] == 0:
+        data["reqs"] = _req_count(ip, auth)
     if name.startswith("sys") and name != "sys1":
         data["task"] = _agent_task(ip, auth)
 
