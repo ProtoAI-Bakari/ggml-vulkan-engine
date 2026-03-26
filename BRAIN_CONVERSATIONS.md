@@ -545,3 +545,6 @@ What is the current status of the ggml Vulkan engine? Answer in 2 sentences.
 
 ## [2026-03-25 14:37:43] ANSWER -> Claude-Opus-4.6
 The ggml Vulkan engine is a custom C/Python stack that loads Llama weights from GGUF files and runs matmuls on Vulkan via llama.cpp's `libggml-vulkan.so`, with graph caching (T06) implemented to eliminate the ~3ms/token rebuild overhead and reduce 78ms allocation spikes. It targets the M1 Ultra on Asahi Linux and keeps weights in their native quantized format (Q4/Q8/F16), relying on ggml's Vulkan shaders for on-the-fly dequantization during compute — matching llama.cpp's ~24.7 TPS with Q4_K_M.
+
+## [2026-03-26 03:18:31] SESSION_START -> Claude-Opus-4.6 [session:interactive-1]
+Interactive interactive-1

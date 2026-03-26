@@ -107,13 +107,13 @@
 - Success: correct output after topology change, no stale CB
 - Time: 6h
 
-### T15: [IN_PROGRESS by OmniAgent [sys1-Main] | 0% | started:2026-03-26T02:19] Move Python/ctypes hot path to C extension
+### T15: [READY] | 0% | started:2026-03-26T02:19] Move Python/ctypes hot path to C extension
 - Compiled C shim replaces ctypes for tensor dispatch
 - Eliminate numpy→ctypes→C boundary crossing per forward()
 - Success: Python overhead drops from 3ms to <0.5ms
 - Time: 8h
 
-### T16: [IN_PROGRESS by OmniAgent [sys2] | 0% | started:2026-03-26T02:22] Implement fence polling optimization
+### T16: [READY] | 0% | started:2026-03-26T02:22] Implement fence polling optimization
 - Insert fence at ~80% graph completion
 - Spin-wait for final fence instead of blocking
 - Reduces fence latency by 1-2ms
@@ -184,7 +184,7 @@
 - Success: vLLM recognizes platform
 - Time: 6h
 
-### T28: [IN_PROGRESS by OmniAgent [sys3] | 0% | started:2026-03-26T02:18] | 0% | started:2026-03-26T02:16] Create VulkanWorker(WorkerBase) stub
+### T28: [IN_PROGRESS by OmniAgent [sys2] | 0% | started:2026-03-26T03:18] | 0% | started:2026-03-26T02:18] | 0% | started:2026-03-26T02:16] Create VulkanWorker(WorkerBase) stub
 - init_device(), determine_available_memory(), load_model()
 - Success: worker initializes without crash
 - Time: 6h
@@ -216,7 +216,7 @@
 - Success: attention correct with paged cache
 - Time: 12h
 
-### T34: [READY] | 0% | started:2026-03-26T02:18] Wire _update_states()
+### T34: [READY] | 0% | started:2026-03-26T02:52] | 0% | started:2026-03-26T02:18] Wire _update_states()
 - Parse SchedulerOutput: add/remove/reorder requests
 - Success: request lifecycle correctly managed
 - Time: 8h
@@ -239,45 +239,45 @@
 - Success: vLLM sampler accepts logits
 - Time: 6h
 
-### T38: [READY] | 0% | started:2026-03-26T02:24] End-to-end single-request test through vLLM plugin
+### T38: [READY] | 0% | started:2026-03-26T02:56] | 0% | started:2026-03-26T02:24] End-to-end single-request test through vLLM plugin
 - Chat completion, verify coherent response
 - Success: matches direct ggml output quality
 - Time: 4h
 
-### T39: [READY] | 0% | started:2026-03-26T02:24] Enable max_num_seqs=2: two concurrent requests
+### T39: [READY] | 0% | started:2026-03-26T02:57] | 0% | started:2026-03-26T02:24] Enable max_num_seqs=2: two concurrent requests
 - Paged KV isolates requests
 - Success: both requests correct and independent
 - Time: 6h
 
-### T40: [READY] | 0% | started:2026-03-26T02:18] Implement KV cache block freeing + prevent memory leak
+### T40: [READY] | 0% | started:2026-03-26T02:59] | 0% | started:2026-03-26T02:18] Implement KV cache block freeing + prevent memory leak
 - Release blocks on request completion, return to free pool
 - Success: stable memory after 100+ requests
 - Time: 4h
 
-### T41: [IN_PROGRESS by OmniAgent [sys5] | 0% | started:2026-03-26T02:18] Implement prefix caching integration
+### T41: [READY] | 0% | started:2026-03-26T02:18] Implement prefix caching integration
 - Accept new_computed_blocks from scheduler
 - Skip recomputation for cached prefixes
 - Success: repeated prompts reuse KV blocks
 - Time: 8h
 
-### T42: [READY] | 0% | started:2026-03-26T02:26] Handle chunked prefill
+### T42: [READY] | 0% | started:2026-03-26T02:53] | 0% | started:2026-03-26T02:26] Handle chunked prefill
 - Process partial prompts across multiple engine steps
 - Accumulate KV in correct blocks
 - Success: long prompts (>512 tokens) served correctly
 - Time: 8h
 
-### T43: [IN_PROGRESS by OmniAgent [sys6] | 0% | started:2026-03-26T02:18] Implement preemption via recompute
+### T43: [READY] | 0% | started:2026-03-26T02:18] Implement preemption via recompute
 - When KV blocks exhausted, evict lowest-priority request
 - Mark for recomputation
 - Success: server recovers from OOM without crash
 - Time: 6h
 
-### T44: [IN_PROGRESS by OmniAgent [sys4] | 0% | started:2026-03-26T02:28] Stress test: 10 concurrent users, 1000 total requests
+### T44: [READY] | 0% | started:2026-03-26T02:28] Stress test: 10 concurrent users, 1000 total requests
 - Measure aggregate TPS, p99 latency, error rate
 - Success: zero crashes, <1% error rate
 - Time: 4h
 
-### T45: [READY] | 0% | started:2026-03-26T02:29] Benchmark max_num_seqs=4 aggregate throughput
+### T45: [READY] | 0% | started:2026-03-26T02:52] | 0% | started:2026-03-26T02:29] Benchmark max_num_seqs=4 aggregate throughput
 - Compare vs single-stream
 - Success: aggregate TPS > 2x single-stream
 - Time: 3h
@@ -300,12 +300,12 @@
 
 ## PHASE 3: 120B MODEL + FLEET [from Sys12 task queue]
 
-### T49: [READY] | 0% | started:2026-03-26T02:19] Merge 120B GGUF shards
+### T49: [READY] | 0% | started:2026-03-26T02:52] | 0% | started:2026-03-26T02:19] Merge 120B GGUF shards
 - llama-gguf-split --merge
 - Success: single merged GGUF file
 - Time: 30min (I/O bound)
 
-### T50: [IN_PROGRESS by OmniAgent [sys4] | 0% | started:2026-03-26T02:50] | 0% | started:2026-03-26T02:18] Test 120B on standalone ggml engine
+### T50: [READY] | 0% | started:2026-03-26T02:50] | 0% | started:2026-03-26T02:18] Test 120B on standalone ggml engine
 - Verify coherent output
 - Measure TPS
 - Success: coherent text at any TPS
@@ -316,7 +316,7 @@
 - Success: comparison table
 - Time: 2h
 
-### T52: [READY] | 0% | started:2026-03-26T02:32] Test 120B via standalone streaming server
+### T52: [READY] | 0% | started:2026-03-26T02:54] | 0% | started:2026-03-26T02:32] Test 120B via standalone streaming server
 - Verify streaming works for large model
 - Test long generation (200+ tokens)
 - Success: stable, coherent, streaming
@@ -327,12 +327,12 @@
 - Success: all machines can reach the server
 - Time: 1h
 
-### T54: [IN_PROGRESS by OmniAgent [sys7] | 0% | started:2026-03-26T02:39] Fleet registration: announce model/TPS to network
+### T54: [READY] | 0% | started:2026-03-26T02:39] Fleet registration: announce model/TPS to network
 - JSON status file + optional POST to registry
 - Success: fleet_status.json with accurate info
 - Time: 2h
 
-### T55: [READY] | 0% | started:2026-03-26T02:39] Test with Z's Streamlit telemetry deck
+### T55: [READY] | 0% | started:2026-03-26T02:51] | 0% | started:2026-03-26T02:39] Test with Z's Streamlit telemetry deck
 - Verify: streaming works, metrics display, no crash
 - Run 10 requests from Streamlit
 - Success: Z says it works
@@ -341,47 +341,47 @@
 ## PHASE 4: PURE VULKAN ENGINE [Perspective B — speculative, 35-45 TPS]
 
 ### T56: [DONE]] Implement GGUF weight loader in C (parse header, map weights to VkBuffer)
-### T57: [READY] | 0% | started:2026-03-26T02:19] Write Q4_K_M dequant+GEMV SPIR-V shader (subgroup shuffle, SIMD 32)
-### T58: [IN_PROGRESS by OmniAgent | 0% | started:2026-03-26T02:38] Benchmark T57 vs ggml GEMV
-### T59: [READY] | 0% | started:2026-03-26T02:40] Write RMSNorm, RoPE, softmax, SiLU SPIR-V shaders
-### T60: [READY] | 0% | started:2026-03-26T02:43] Implement static CB recording for one transformer layer
-### T61: [READY] | 0% | started:2026-03-26T02:45] Full model: chain all layers + embedding + output projection
-### T62: [READY] | 0% | started:2026-03-26T02:46] Push-constant-only token stepping (no CB re-recording)
-### T63: [READY] | 0% | started:2026-03-26T02:18] Benchmark pure engine vs ggml at batch=1
+### T57: [IN_PROGRESS by OmniAgent [sys5] | 0% | started:2026-03-26T03:18] | 0% | started:2026-03-26T02:51] | 0% | started:2026-03-26T02:19] Write Q4_K_M dequant+GEMV SPIR-V shader (subgroup shuffle, SIMD 32)
+### T58: [READY] Benchmark T57 vs ggml GEMV
+### T59: [READY] | 0% | started:2026-03-26T02:52] | 0% | started:2026-03-26T02:40] Write RMSNorm, RoPE, softmax, SiLU SPIR-V shaders
+### T60: [READY] | 0% | started:2026-03-26T02:53] | 0% | started:2026-03-26T02:43] Implement static CB recording for one transformer layer
+### T61: [READY] | 0% | started:2026-03-26T02:53] | 0% | started:2026-03-26T02:45] Full model: chain all layers + embedding + output projection
+### T62: [READY] | 0% | started:2026-03-26T02:54] | 0% | started:2026-03-26T02:46] Push-constant-only token stepping (no CB re-recording)
+### T63: [READY] | 0% | started:2026-03-26T02:54] | 0% | started:2026-03-26T02:18] Benchmark pure engine vs ggml at batch=1
 ### T64: [READY] | 0% | started:2026-03-26T02:48] Paged KV cache in pure engine
-### T65: [READY] | 0% | started:2026-03-26T02:48] Flash attention SPIR-V shader (tiled, scalar, 2-pass online softmax)
+### T65: [READY] | 0% | started:2026-03-26T02:56] | 0% | started:2026-03-26T02:48] Flash attention SPIR-V shader (tiled, scalar, 2-pass online softmax)
 
 ## PHASE 5: VALIDATION + PRODUCTION HARDENING
 
-### T66: [READY] | 0% | started:2026-03-26T02:49] Numerical accuracy: logits comparison ggml vs llama.cpp for 1000 tokens
-### T67: [READY] | 0% | started:2026-03-26T02:49] Memory leak testing: 10,000 requests, monitor RSS + Vulkan memory
-### T68: [READY] | 0% | started:2026-03-26T02:50] Edge case testing: empty, max-length, special tokens, unicode
-### T69: [IN_PROGRESS by OmniAgent [sys7] | 0% | started:2026-03-26T02:50] | 0% | started:2026-03-26T02:18] M1 Max (32GB) validation: run all benchmarks on Sys12
-### T70: [READY] Deployment documentation: hardware reqs, install, config, troubleshoot
+### T66: [READY] | 0% | started:2026-03-26T02:57] | 0% | started:2026-03-26T02:49] Numerical accuracy: logits comparison ggml vs llama.cpp for 1000 tokens
+### T67: [READY] | 0% | started:2026-03-26T02:57] | 0% | started:2026-03-26T02:49] Memory leak testing: 10,000 requests, monitor RSS + Vulkan memory
+### T68: [READY] | 0% | started:2026-03-26T02:58] | 0% | started:2026-03-26T02:50] Edge case testing: empty, max-length, special tokens, unicode
+### T69: [READY] | 0% | started:2026-03-26T02:50] | 0% | started:2026-03-26T02:18] M1 Max (32GB) validation: run all benchmarks on Sys12
+### T70: [READY] | 0% | started:2026-03-26T02:51] Deployment documentation: hardware reqs, install, config, troubleshoot
 
 ## PHASE 6: DOCUMENTATION + UPSTREAM
 
-### T71: [READY] Comprehensive README with architecture diagram
-### T72: [READY] Benchmark report: all models, all quants, all batch sizes
-### T73: [READY] Blog post: Vulkan LLM Inference on Apple Silicon Linux
-### T74: [READY]] Draft PR for vLLM: Vulkan platform plugin
-### T75: [READY] Draft PR for ggml: graph caching + CB optimization patches
-### T76: [READY] File Mesa issue: VK_KHR_cooperative_matrix request with benchmark data
+### T71: [READY] | 0% | started:2026-03-26T02:51] Comprehensive README with architecture diagram
+### T72: [READY] | 0% | started:2026-03-26T02:52] Benchmark report: all models, all quants, all batch sizes
+### T73: [READY] | 0% | started:2026-03-26T02:53] Blog post: Vulkan LLM Inference on Apple Silicon Linux
+### T74: [READY] | 0% | started:2026-03-26T02:53] Draft PR for vLLM: Vulkan platform plugin
+### T75: [READY] | 0% | started:2026-03-26T02:54] Draft PR for ggml: graph caching + CB optimization patches
+### T76: [READY] | 0% | started:2026-03-26T02:55] File Mesa issue: VK_KHR_cooperative_matrix request with benchmark data
 
 ## PHASE 7: ADVANCED OPTIMIZATION
 
-### T77: [READY] Study ThunderMittens findings: register-direct loads beat shared memory on UMA
-### T78: [READY] | 0% | started:2026-03-26T02:18] Profile register pressure per kernel (occupancy analysis)
-### T79: [READY] Test VK_EXT_memory_budget on Honeykrisp
-### T80: [READY] Investigate ggml_backend_sched optimization for single-backend (skip routing)
+### T77: [READY] | 0% | started:2026-03-26T02:55] Study ThunderMittens findings: register-direct loads beat shared memory on UMA
+### T78: [READY] | 0% | started:2026-03-26T02:56] | 0% | started:2026-03-26T02:18] Profile register pressure per kernel (occupancy analysis)
+### T79: [READY] | 0% | started:2026-03-26T02:56] Test VK_EXT_memory_budget on Honeykrisp
+### T80: [READY] | 0% | started:2026-03-26T02:57] Investigate ggml_backend_sched optimization for single-backend (skip routing)
 
 ## PHASE 8: AGENTIC FRAMEWORK PROTOTYPE
 
-### T81: [READY] Design agent-to-model routing protocol (gRPC or HTTP)
-### T82: [READY] Build prototype: agent → router → best model → response
-### T83: [READY] Multi-model serving: 0.5B fast + 8B smart + 120B reasoning on same box
-### T84: [READY] Agent communication bridge: cross-machine task coordination
-### T85: [READY] Integration with Z's v44 agent framework
+### T81: [READY] | 0% | started:2026-03-26T02:57] Design agent-to-model routing protocol (gRPC or HTTP)
+### T82: [READY] | 0% | started:2026-03-26T02:58] Build prototype: agent → router → best model → response
+### T83: [READY] | 0% | started:2026-03-26T02:59] Multi-model serving: 0.5B fast + 8B smart + 120B reasoning on same box
+### T84: [READY] | 0% | started:2026-03-26T02:59] Agent communication bridge: cross-machine task coordination
+### T85: [READY] | 0% | started:2026-03-26T03:00] Integration with Z's v44 agent framework
 
 ## SUMMARY
 - 85 tasks across 8 phases
