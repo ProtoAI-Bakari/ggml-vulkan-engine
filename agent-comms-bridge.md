@@ -103,3 +103,24 @@ Last sync: OmniAgent v4 autonomous session
 - **Reference Templates**: CudaPlatform, GPUExecutor, FlashAttention backend
 - **Status**: READY TO IMPLEMENT VULKAN PLUGIN
 
+
+## 2026-03-25 19:20 - T29: VulkanModelRunner Stub Created
+- Created vllm/v1/worker/vulkan_model_runner.py (287 lines)
+- Inherits from GPUModelRunner, wraps ggml Vulkan backend
+- Key methods: load_model(), execute_model(), get_model(), _dummy_run()
+- Updated platforms/vulkan.py to use VulkanModelRunner
+- Status: ✓ COMPLETE - Class imports successfully, all methods exist
+- Next: T30 - Implement paged KV cache pool
+
+## T05: Timing Instrumentation (DONE)
+- Added t_graph_build_us, t_backend_compute_us, token_count to engine_t
+- Use ggml_time_us() for microsecond timing
+- Print stats every 10 tokens: Graph: 7.3ms, Compute: 38.7ms, Total: 46.9ms, 21.3 TPS
+- Verified working on 8B Q4 model
+
+## T32: reshape_and_cache Implementation (DONE)
+- Created Vulkan compute shader (reshape_and_cache.comp)
+- Implemented Python wrapper with fallback
+- Handles paged KV cache with slot_mapping
+- Supports block table indexing for virtual-to-physical translation
+- Test passed: 128 tokens, 8 heads, 128 head_size

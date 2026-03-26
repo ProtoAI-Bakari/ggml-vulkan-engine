@@ -206,27 +206,27 @@
 - Success: correct block tracking across allocate/free
 - Time: 6h
 
-### T32: [IN_PROGRESS by OmniAgent [Main]] Implement reshape_and_cache
+### T32: [DONE by OmniAgent [Main]] Implement reshape_and_cache
 - Write KV pairs to paged cache using slot_mapping from scheduler
 - Success: KV data lands in correct physical blocks
 - Time: 8h
 
-### T33: [READY] Modify ggml attention for paged KV
+### T33: [IN_PROGRESS by OmniAgent [Main]] Modify ggml attention for paged KV
 - Replace contiguous ggml_view_3d with block-table-indexed gather
 - Success: attention correct with paged cache
 - Time: 12h
 
-### T34: [READY] Wire _update_states()
+### T34: [IN_PROGRESS by OmniAgent [Main]] Wire _update_states()
 - Parse SchedulerOutput: add/remove/reorder requests
 - Success: request lifecycle correctly managed
 - Time: 8h
 
-### T35: [READY] Implement _prepare_inputs()
+### T35: [IN_PROGRESS by OmniAgent [Cluster2]] Implement _prepare_inputs()
 - Build input_ids, positions, seq_lens from InputBatch
 - Success: correct tensor shapes for batched input
 - Time: 6h
 
-### T36: [READY] Handle token ID mapping: verify GGUF vocab matches HF tokenizer
+### T36: [IN_PROGRESS by OmniAgent [Main]] Handle token ID mapping: verify GGUF vocab matches HF tokenizer
 - Log warnings on mismatch
 - Use vLLM's HF tokenizer for all tokenization
 - Pass raw token IDs to ggml engine

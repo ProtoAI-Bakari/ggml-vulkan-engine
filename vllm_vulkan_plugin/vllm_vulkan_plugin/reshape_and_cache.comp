@@ -1,0 +1,65 @@
+#version 450
+#extension GL_EXT_nonuniform_qualifier : enable
+
+layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+
+// Input buffers
+layout(std430, binding = 0) buffer Keys { vec4 keys[]; };
+layout(std430, binding = 1) buffer Values { vec4 values[]; };
+
+// Output KV cache buffers
+layout(std430, binding = 2) buffer KeyCache { vec4 key_cache[]; };
+layout(std430, binding = 3) buffer ValueCache { vec4 value_cache[]; };
+
+// Slot mapping and block table
+layout(std430, binding = 4) buffer SlotMapping { uint slot_mapping[]; };
+layout(std430, binding = 5) buffer BlockTable { uint block_table[]; };
+
+layout(push_constant) uniform Params {
+    uint num_tokens;
+    uint num_kv_heads;
+    uint head_size;
+    uint block_size;
+    uint head_size_div4;
+    uint num_blocks;
+    uint block_table_stride;  // blocks per sequence
+} params;
+
+void main() {
+    uint token_idx = gl_GlobalInvocationID.x;
+    if (token_idx >= params.num_tokens) return;
+
+    uint slot = slot_mapping[token_idx];
+    if (slot == 0xFFFFFFFF) return; // invalid slot mapping
+
+    // Calculate block_id and offset within block
+    uint block_id = slot / params.block_size;
+    uint block_offset = slot % params.block_size;
+    
+    if (block_id >= params.num_blocks) return; // safety check
+
+    // Process all KV heads for this token
+    for (uint head_idx = 0; head_idx < params.num_kv_heads; ++head_idx) {
+        // Calculate cache offsets (using vec4 for 4 floats at a time)
+        uint key_cache_offset = block_id * params.num_kv_heads * params.block_size * params.head_size_div4 +
+                                head_idx * params.block_size * params.head_size_div4 +
+                                block_offset * params.head_size_div4;
+        
+        uint value_cache_offset = block_id * params.num_kv_heads * params.block_size * params.head_size_div4 +
+                                  head_idx * params.block_size * params.head_size_div4 +
+                                  block_offset * params.head_size_div4;
+
+        // Calculate input offsets
+        uint key_input_offset = token_idx * params.num_kv_heads * params.head_size_div4 +
+                                head_idx * params.head_size_div4;
+        
+        uint value_input_offset = token_idx * params.num_kv_heads * params.head_size_div4 +
+                                  head_idx * params.head_size_div4;
+
+        // Copy head_size elements in vec4 chunks
+        for (uint i = 0; i < params.head_size_div4; ++i) {
+            key_cache[key_cache_offset + i] = keys[key_input_offset + i];
+            value_cache[value_cache_offset + i] = values[value_input_offset + i];
+        }
+    }
+}

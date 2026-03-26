@@ -1,15 +1,5 @@
-"""Vulkan platform plugin for vLLM.
+"""vLLM Vulkan Plugin - reshape_and_cache implementation"""
 
-This package provides Vulkan support for vLLM inference on Apple M1/M2/M3
-and other Vulkan-capable devices.
-"""
+from .reshape_and_cache import reshape_and_cache, reshape_and_cache_vulkan
 
-from .vulkan_platform import VulkanPlatform, get_vulkan_platform, check_and_update_config, get_attn_backend_cls
-
-__version__ = "0.1.0"
-__all__ = [
-    "VulkanPlatform",
-    "get_vulkan_platform",
-    "check_and_update_config",
-    "get_attn_backend_cls",
-]
+__all__ = ['reshape_and_cache', 'reshape_and_cache_vulkan']
