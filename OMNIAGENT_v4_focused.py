@@ -529,7 +529,7 @@ def _try_parse_tool_json(raw):
     # Fix missing colon/quote after key names: "arguments { → "arguments": {
     # Handles: "arguments": x (correct), "arguments: x (missing "), "arguments" { (missing :)
     cleaned = re.sub(
-        r'"(name|arguments|command|path|query|task_id|pct|note|content|files|message|description|code_patch|question|offset|limit)"?\s*:?\s(?=[{\["\'-\dtfn])',
+        r'"(name|arguments|command|path|query|task_id|pct|note|content|files|message|description|code_patch|question|offset|limit)"?\s*:?\s(?=[{\["\'0-9tfn\-])',
         r'"\1": ', cleaned)
 
     # Progressive attempts — try least-destructive fixups first
