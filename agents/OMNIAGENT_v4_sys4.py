@@ -49,13 +49,24 @@ signal.signal(signal.SIGINT, sigint_handler)
 # =====================================================
 # CONFIGURATION
 # =====================================================
-PRIMARY_IP   = "10.255.255.4" # 122B cluster
-CODER_IP     = "10.255.255.11"  # Coder brain
+PRIMARY_IP   = "10.255.255.11" # 122B cluster (CUDA TP8)
+CODER_IP     = "10.255.255.4"  # Coder brain (MLX)
 MINIMAX_IP   = "192.168.1.164" # MiniMax
 PORT         = "8000"
 
+# ── Brain Endpoints (Leadership Council) ──
+BRAINS = {
+    "architect":  "http://10.255.255.2:8000/v1/chat/completions",   # M2 Ultra 192G — Qwen3-235B-Thinking
+    "engineer":   "http://10.255.255.3:8000/v1/chat/completions",   # M2 Ultra 192G — Qwen3.5-122B
+    "coder":      "http://10.255.255.11:8000/v1/chat/completions",  # CUDA 8x3090 TP8 — Qwen3.5-122B-FP8 (PRIMARY)
+    "designer":   "http://10.255.255.5:8000/v1/chat/completions",   # M1 Ultra 128G — GLM-4.7-Flash
+    "reviewer":   "http://10.255.255.6:8000/v1/chat/completions",   # M1 Ultra 128G — Qwen3.5-122B
+    "fast_coder": "http://10.255.255.7:8000/v1/chat/completions",   # M1 Ultra 128G — Qwen3-Coder-Next-4bit
+    "cuda_brain": "http://10.255.255.11:8000/v1/chat/completions",  # 8x3090 TP8 — Qwen3.5-122B-FP8
+}
+
 PRIMARY_URL  = f"http://{PRIMARY_IP}:{PORT}/v1"
-CODER_URL    = f"http://{CODER_IP}:{PORT}/v1/chat/completions"
+CODER_URL    = BRAINS["coder"]
 MINIMAX_URL  = f"http://{MINIMAX_IP}:8765/v1/chat/completions"
 
 LOG_DIR = os.path.expanduser("~/AGENT/LOGS")
@@ -119,14 +130,24 @@ def search_web(query: str) -> str:
         return out
     except Exception as e: return f"Web Search Error: {e}"
 
-def ask_coder_brain(query: str) -> str:
-    print(f"\n{C.MAGENTA}[🧠 Pinging Coder Model at {CODER_IP}...]{C.RESET}")
+def _ask_brain(brain_name: str, query: str, system_hint: str = "") -> str:
+    """Generic brain query with streaming. Used by all ask_* functions."""
+    url = BRAINS.get(brain_name)
+    if not url:
+        return f"Unknown brain: {brain_name}"
+    ip = url.split("//")[1].split(":")[0]
+    color = {"architect": C.RED, "engineer": C.YELLOW, "coder": C.GREEN,
+             "designer": C.CYAN, "reviewer": C.GREEN, "fast_coder": C.MAGENTA,
+             "cuda_brain": C.RED}.get(brain_name, C.MAGENTA)
+    print(f"\n{color}[🧠 {brain_name.upper()} @ {ip}...]{C.RESET}")
     try:
-        payload = {"model": "qwen3-coder-next", "messages": [{"role": "user", "content": f"You are a master C++/Python programmer advising an autonomous agent. Provide exact code or logic. Do not use tool tags. We are running vLLM on Asahi Linux with a custom Vulkan backend.\n\nQuery: {query}"}], "max_tokens": 16384, "temperature": 0.2, "stream": True}
+        sys_msg = system_hint or f"You are an expert advising an autonomous agent. Do not use tool tags. Be precise. Project: Vulkan GPU inference on Asahi Linux."
+        payload = {"messages": [{"role": "system", "content": sys_msg}, {"role": "user", "content": query}],
+                   "max_tokens": 2000, "temperature": 0.2, "stream": True}
         full = ""
         t0 = time.time()
-        print(f"{C.GREEN}", end="", flush=True)
-        with requests.post(CODER_URL, json=payload, timeout=300, stream=True) as r:
+        print(f"{color}", end="", flush=True)
+        with requests.post(url, json=payload, timeout=300, stream=True) as r:
             r.raise_for_status()
             for line in r.iter_lines():
                 if not line: continue
@@ -143,14 +164,29 @@ def ask_coder_brain(query: str) -> str:
         elapsed = time.time() - t0
         toks = len(full.split())
         print(f"{C.RESET}")
-        print(f"{C.DIM}[🧠 Coder: ~{toks} words in {elapsed:.1f}s]{C.RESET}")
-        return f"[CODER ADVICE]:\n{full}"
-    except Exception as e: return f"Coder Call Failed: {e}"
+        print(f"{C.DIM}[🧠 {brain_name.upper()}: ~{toks} words in {elapsed:.1f}s]{C.RESET}")
+        return f"[{brain_name.upper()} ADVICE]:\n{full}"
+    except Exception as e: return f"{brain_name.upper()} Call Failed: {e}"
+
+def ask_coder_brain(query: str) -> str:
+    return _ask_brain("coder", query, "You are a master C++/Python programmer. Provide exact code or logic. Do not use tool tags.")
+
+def ask_architect(query: str) -> str:
+    return _ask_brain("architect", query, "You are THE ARCHITECT. Give high-level design decisions as numbered bullet points. No code — systems thinking only.")
+
+def ask_engineer(query: str) -> str:
+    return _ask_brain("engineer", query, "You are THE ENGINEER. Give concrete implementation plans with file paths, function signatures, and step-by-step instructions.")
+
+def ask_designer(query: str) -> str:
+    return _ask_brain("designer", query, "You are THE DESIGNER. Propose creative alternative approaches. Challenge assumptions. Think unconventionally.")
+
+def ask_reviewer(query: str) -> str:
+    return _ask_brain("reviewer", query, "You are THE REVIEWER. Review the code/approach for correctness, safety, performance, and maintainability. Be thorough but not pedantic.")
 
 def ask_minimax(query: str) -> str:
     print(f"\n{C.MAGENTA}[🧠 Pinging MiniMax Model at {MINIMAX_IP}...]{C.RESET}")
     try:
-        payload = {"model": "mlx-community/MiniMax-M2-REAP-139B", "messages": [{"role": "user", "content": f"You are a master systems architect advising an autonomous agent. Provide exact logic. Do not use tool tags. We are running vLLM on Asahi Linux with a custom Vulkan backend.\n\nQuery: {query}"}], "max_tokens": 16384, "temperature": 0.2, "stream": True}
+        payload = {"model": "mlx-community/MiniMax-M2-REAP-139B", "messages": [{"role": "user", "content": f"You are a master systems architect advising an autonomous agent. Provide exact logic. Do not use tool tags. We are running vLLM on Asahi Linux with a custom Vulkan backend.\n\nQuery: {query}"}], "max_tokens": 2000, "temperature": 0.2, "stream": True}
         full = ""
         t0 = time.time()
         print(f"{C.GREEN}", end="", flush=True)
@@ -193,7 +229,7 @@ def ask_claude(query: str) -> str:
 def claim_task(task_id: str) -> str:
     """Claim a task from the queue so other agents don't work on it."""
     import subprocess
-    agent_name = "OmniAgent [Sys4]"  # Will be overridden per-instance
+    agent_name = "OmniAgent [Main]"  # Will be overridden per-instance
     result = subprocess.run(
         ["bash", os.path.expanduser("~/AGENT/claim_task.sh"), task_id, agent_name],
         capture_output=True, text=True, timeout=5
@@ -205,7 +241,7 @@ def claim_task(task_id: str) -> str:
 def complete_task(task_id: str) -> str:
     """Mark a task as DONE in the queue."""
     import subprocess
-    agent_name = "OmniAgent [Sys4]"
+    agent_name = "OmniAgent [Main]"
     result = subprocess.run(
         ["bash", os.path.expanduser("~/AGENT/complete_task.sh"), task_id, agent_name],
         capture_output=True, text=True, timeout=5
@@ -240,8 +276,11 @@ def ask_human(question: str) -> str:
 
 TOOL_DISPATCH = {
     "execute_bash": execute_bash, "read_file": read_file, "write_file": write_file,
-    "search_web": search_web, "ask_coder_brain": ask_coder_brain, "ask_minimax": ask_minimax,
-    "ask_claude": ask_claude, "claim_task": claim_task, "complete_task": complete_task,
+    "search_web": search_web, "ask_coder_brain": ask_coder_brain,
+    "ask_architect": ask_architect, "ask_engineer": ask_engineer,
+    "ask_designer": ask_designer, "ask_reviewer": ask_reviewer,
+    "ask_minimax": ask_minimax, "ask_claude": ask_claude,
+    "claim_task": claim_task, "complete_task": complete_task,
     "restart_self": restart_self, "self_improve": self_improve, "ask_human": ask_human
 }
 
@@ -250,7 +289,11 @@ TOOLS_SCHEMA = [
     {"type": "function", "function": {"name": "read_file", "description": "Read local file.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "offset": {"type": "integer"}, "limit": {"type": "integer"}}, "required": ["path"]}}},
     {"type": "function", "function": {"name": "write_file", "description": "Write to file. Great for scripts or work packages.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}}, "required": ["path", "content"]}}},
     {"type": "function", "function": {"name": "search_web", "description": "Search the internet.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}},
-    {"type": "function", "function": {"name": "ask_coder_brain", "description": f"Ask the {CODER_IP} Coder model for deep programming/C++/Python architecture advice.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}},
+    {"type": "function", "function": {"name": "ask_coder_brain", "description": "Ask the CODER brain (mlx-4) for C++/Python code generation. FAST.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}},
+    {"type": "function", "function": {"name": "ask_architect", "description": "Ask THE ARCHITECT (mlx-2, 235B-Thinking) for high-level system design decisions. Use for big decisions.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}},
+    {"type": "function", "function": {"name": "ask_engineer", "description": "Ask THE ENGINEER (mlx-3, 122B) for implementation plans, debugging, optimization strategies.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}},
+    {"type": "function", "function": {"name": "ask_designer", "description": "Ask THE DESIGNER (mlx-5, GLM-4.7) for creative alternative approaches when stuck.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}},
+    {"type": "function", "function": {"name": "ask_reviewer", "description": "Ask THE REVIEWER (mlx-6, 122B) to review code for bugs, safety, correctness. Use before committing.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}},
     {"type": "function", "function": {"name": "ask_minimax", "description": f"Ask the {MINIMAX_IP} MiniMax model for complex systems architecture advice.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}},
     {"type": "function", "function": {"name": "ask_claude", "description": "Ask Claude Opus (smartest AI) for architecture/debugging. USE SPARINGLY — costs tokens.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}},
     {"type": "function", "function": {"name": "self_improve", "description": "Stage a self-improvement for the next agent version. Log bugs, missing features, or code patches you want applied later.", "parameters": {"type": "object", "properties": {"description": {"type": "string", "description": "What to improve"}, "code_patch": {"type": "string", "description": "Optional Python code to add/change"}}, "required": ["description"]}}},
@@ -370,6 +413,7 @@ def get_multiline_input(prompt_text="Task (Ctrl+D to submit):"):
 GO_PROMPT_PATH = os.path.expanduser("~/AGENT/GO_PROMPT.md")
 
 def load_go_prompt():
+    """Load autonomous execution prompt from GO_PROMPT.md"""
     try:
         with open(GO_PROMPT_PATH, "r") as f:
             content = f.read().strip()
@@ -379,7 +423,7 @@ def load_go_prompt():
         print(f"{C.RED}[GO] GO_PROMPT.md not found at {GO_PROMPT_PATH}{C.RESET}")
         return None
 
-def run_agent(agent_name="OmniAgent [Sys4]", auto_go=False):
+def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
     print(f"{C.BOLD}{C.CYAN}🚀 {agent_name} ONLINE | Model: {MODEL_NAME}{C.RESET}")
     history = [{"role": "system", "content": SYSTEM_PROMPT}]
 
@@ -391,6 +435,7 @@ def run_agent(agent_name="OmniAgent [Sys4]", auto_go=False):
 
     while True:
         try:
+            # Auto-go on restart (--auto-go flag), but NOT first launch
             if auto_go and first_turn:
                 print(f"{C.BOLD}{C.MAGENTA}[AUTO-GO] Restarted — auto-loading GO_PROMPT.md{C.RESET}")
                 user_input = load_go_prompt()
@@ -403,6 +448,7 @@ def run_agent(agent_name="OmniAgent [Sys4]", auto_go=False):
             if not user_input: continue
             if user_input.lower() in ['exit', 'quit']: break
 
+            # "go" keyword detection — any form: go, GO, GO!, go!, gogo, etc.
             if re.match(r'^go[!.\s]*$', user_input.strip(), re.IGNORECASE):
                 go_content = load_go_prompt()
                 if go_content:
@@ -412,7 +458,7 @@ def run_agent(agent_name="OmniAgent [Sys4]", auto_go=False):
             
             while True: 
                 # --- PERFECT CONTEXT MANAGEMENT ---
-                if sum(len(str(m.get("content", ""))) for m in history) > 100000:
+                if sum(len(str(m.get("content", ""))) for m in history) > 30000:
                     sys_prompt = history[0]
                     new_tail = history[-10:]
                     while new_tail and new_tail[0]["role"] != "user":
@@ -426,7 +472,7 @@ def run_agent(agent_name="OmniAgent [Sys4]", auto_go=False):
 
                 try:
                     t_turn_start = time.time()
-                    stream = client.chat.completions.create(model=MODEL_NAME, messages=history, stream=True, max_tokens=32768, temperature=0.3)
+                    stream = client.chat.completions.create(model=MODEL_NAME, messages=history, stream=True, max_tokens=2000, temperature=0.3)
                     t_first_token = None
                     print(f"\r{C.BOLD}{C.CYAN}[{agent_name}]: {C.RESET}", end="")
                     for chunk in stream:
