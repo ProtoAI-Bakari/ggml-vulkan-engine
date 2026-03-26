@@ -216,10 +216,11 @@ def _gpu_pct(ip, auth, node_os, chip):
 def _disk_avail(ip, auth):
     raw = ssh_cmd(ip, "df -h / 2>/dev/null | tail -1", auth, timeout=4)
     sizes = re.findall(r'[\d.]+[TGMK]i?', raw) if raw else []
-    return sizes[2] if len(sizes) >= 3 else (sizes[0] if sizes else "?")
+    val = sizes[2] if len(sizes) >= 3 else (sizes[0] if sizes else "?")
+    return val.replace("Gi", "G").replace("Ti", "T").replace("Mi", "M")  # normalize
 
 def _agent_count(ip, auth):
-    out = ssh_cmd(ip, "pgrep -c -f OMNIAGENT 2>/dev/null || echo 0", auth, timeout=SSH_AGENT_TIMEOUT)
+    out = ssh_cmd(ip, "pgrep -af OMNIAGENT 2>/dev/null | wc -l", auth, timeout=SSH_AGENT_TIMEOUT)
     try: return int(out.strip())
     except ValueError: return 0
 

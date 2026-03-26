@@ -502,7 +502,7 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
 
                 try:
                     t_turn_start = time.time()
-                    stream = client.chat.completions.create(model=MODEL_NAME, messages=history, stream=True, max_tokens=4000, temperature=0.3)
+                    stream = client.chat.completions.create(model=MODEL_NAME, messages=history, stream=True, max_tokens=2000, temperature=0.3, extra_body={"repetition_penalty": 1.1})
                     t_first_token = None
                     print(f"\r{C.BOLD}{C.CYAN}[{agent_name}]: {C.RESET}", end="")
                     for chunk in stream:
