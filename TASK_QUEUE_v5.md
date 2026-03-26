@@ -107,13 +107,13 @@
 - Success: correct output after topology change, no stale CB
 - Time: 6h
 
-### T15: [READY]]]] Move Python/ctypes hot path to C extension
+### T15: [IN_PROGRESS by OmniAgent] Move Python/ctypes hot path to C extension
 - Compiled C shim replaces ctypes for tensor dispatch
 - Eliminate numpy→ctypes→C boundary crossing per forward()
 - Success: Python overhead drops from 3ms to <0.5ms
 - Time: 8h
 
-### T16: [READY]]]] Implement fence polling optimization
+### T16: [READY]] Implement fence polling optimization
 - Insert fence at ~80% graph completion
 - Spin-wait for final fence instead of blocking
 - Reduces fence latency by 1-2ms
@@ -249,7 +249,7 @@
 - Success: both requests correct and independent
 - Time: 6h
 
-### T40: [IN_PROGRESS by OmniAgent [sys1-Main]] Implement KV cache block freeing + prevent memory leak
+### T40: [READY]] Implement KV cache block freeing + prevent memory leak
 - Release blocks on request completion, return to free pool
 - Success: stable memory after 100+ requests
 - Time: 4h
@@ -260,7 +260,7 @@
 - Success: repeated prompts reuse KV blocks
 - Time: 8h
 
-### T42: [IN_PROGRESS by OmniAgent [sys6]] Handle chunked prefill
+### T42: [READY]] Handle chunked prefill
 - Process partial prompts across multiple engine steps
 - Accumulate KV in correct blocks
 - Success: long prompts (>512 tokens) served correctly
@@ -300,12 +300,12 @@
 
 ## PHASE 3: 120B MODEL + FLEET [from Sys12 task queue]
 
-### T49: [IN_PROGRESS by OmniAgent [sys3]] Merge 120B GGUF shards
+### T49: [READY]] Merge 120B GGUF shards
 - llama-gguf-split --merge
 - Success: single merged GGUF file
 - Time: 30min (I/O bound)
 
-### T50: [IN_PROGRESS by OmniAgent [sys2]] Test 120B on standalone ggml engine
+### T50: [READY]] Test 120B on standalone ggml engine
 - Verify coherent output
 - Measure TPS
 - Success: coherent text at any TPS
@@ -332,7 +332,7 @@
 - Success: fleet_status.json with accurate info
 - Time: 2h
 
-### T55: [IN_PROGRESS by OmniAgent [sys5]] Test with Z's Streamlit telemetry deck
+### T55: [READY]] Test with Z's Streamlit telemetry deck
 - Verify: streaming works, metrics display, no crash
 - Run 10 requests from Streamlit
 - Success: Z says it works
@@ -341,12 +341,12 @@
 ## PHASE 4: PURE VULKAN ENGINE [Perspective B — speculative, 35-45 TPS]
 
 ### T56: [DONE]] Implement GGUF weight loader in C (parse header, map weights to VkBuffer)
-### T57: [READY]]] Write Q4_K_M dequant+GEMV SPIR-V shader (subgroup shuffle, SIMD 32)
-### T58: [READY]]] Benchmark T57 vs ggml GEMV
+### T57: [IN_PROGRESS by OmniAgent [sys2]] Write Q4_K_M dequant+GEMV SPIR-V shader (subgroup shuffle, SIMD 32)
+### T58: [IN_PROGRESS by OmniAgent [sys3]] Benchmark T57 vs ggml GEMV
 ### T59: [READY] Write RMSNorm, RoPE, softmax, SiLU SPIR-V shaders
 ### T60: [READY] Implement static CB recording for one transformer layer
 ### T61: [READY] Full model: chain all layers + embedding + output projection
-### T62: [READY] Push-constant-only token stepping (no CB re-recording)
+### T62: [IN_PROGRESS by OmniAgent [sys4]] Push-constant-only token stepping (no CB re-recording)
 ### T63: [READY] Benchmark pure engine vs ggml at batch=1
 ### T64: [READY] Paged KV cache in pure engine
 ### T65: [READY] Flash attention SPIR-V shader (tiled, scalar, 2-pass online softmax)
@@ -356,7 +356,7 @@
 ### T66: [READY] Numerical accuracy: logits comparison ggml vs llama.cpp for 1000 tokens
 ### T67: [READY] Memory leak testing: 10,000 requests, monitor RSS + Vulkan memory
 ### T68: [READY] Edge case testing: empty, max-length, special tokens, unicode
-### T69: [READY] M1 Max (32GB) validation: run all benchmarks on Sys12
+### T69: [IN_PROGRESS by OmniAgent [sys5]] M1 Max (32GB) validation: run all benchmarks on Sys12
 ### T70: [READY] Deployment documentation: hardware reqs, install, config, troubleshoot
 
 ## PHASE 6: DOCUMENTATION + UPSTREAM
@@ -364,7 +364,7 @@
 ### T71: [READY] Comprehensive README with architecture diagram
 ### T72: [READY] Benchmark report: all models, all quants, all batch sizes
 ### T73: [READY] Blog post: Vulkan LLM Inference on Apple Silicon Linux
-### T74: [READY] Draft PR for vLLM: Vulkan platform plugin
+### T74: [IN_PROGRESS by OmniAgent [sys6]] Draft PR for vLLM: Vulkan platform plugin
 ### T75: [READY] Draft PR for ggml: graph caching + CB optimization patches
 ### T76: [READY] File Mesa issue: VK_KHR_cooperative_matrix request with benchmark data
 
