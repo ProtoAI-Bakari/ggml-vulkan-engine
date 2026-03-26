@@ -58,8 +58,9 @@ typedef struct {
 
     struct ggml_tensor *kv_k[MAX_LAYERS], *kv_v[MAX_LAYERS];
     struct ggml_context *kv_ctx;
-    ggml_backend_buffer_t kv_buf;
-    int kv_used;
+    ggml_backend_buffer_t kv_buf[2];
+    int kv_buf_active;
+    int kv_used[2];
 
     /* GGUF-loaded weight context */
     struct ggml_context *w_ctx;
@@ -410,10 +411,8 @@ int engine_forward(engine_t *e, int n_tokens,
             struct ggml_tensor *weights = ggml_get_rows(ctx, probs, selected_experts);
             weights = ggml_soft_max(ctx, weights); /* Normalize weights */
             weights = ggml_reshape_3d(ctx, weights, 1, N_USED, n_tokens);
-            
             /* Step 5: cur_expert: [H, N_USED, n_tokens] - repeat cur for each selected expert */
-            struct ggml_tensor *cur_expert_shape = ggml_new_tensor_3d(ctx, GGML_TYPE_F32, H, N_USED, n_tokens);
-            struct ggml_tensor *cur_expert = ggml_repeat(ctx, cur, cur_expert_shape);
+            struct ggml_tensor *cur_expert = ggml_repeat_4d(ctx, cur, H, N_USED, n_tokens, 1);
             
             /* Step 6: Gate projection using expert weights */
             struct ggml_tensor *gate_expert = ggml_mul_mat_id(ctx, l->ffn_gate_exps, cur_expert, selected_experts);
