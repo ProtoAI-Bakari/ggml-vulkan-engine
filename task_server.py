@@ -84,12 +84,13 @@ def atomic_claim(task_id, agent_name):
                 return False, "NOT_FOUND_OR_NOT_READY"
 
             # Check if agent already has an active task
-            agent_pat = rf"\[IN_PROGRESS by {re.escape(agent_name)}\]"
+            # Use flexible match — agent name may be followed by ] or | or space
+            agent_pat = rf"\[IN_PROGRESS by {re.escape(agent_name)}[\]| ]"
             existing = re.search(agent_pat, content)
             if existing:
                 # Find which task they have
                 existing_task = re.search(
-                    rf"### (T\d+):.*?\[IN_PROGRESS by {re.escape(agent_name)}\]",
+                    rf"### (T\d+):.*?\[IN_PROGRESS by {re.escape(agent_name)}",
                     content,
                 )
                 tid = existing_task.group(1) if existing_task else "unknown"

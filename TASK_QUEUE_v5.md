@@ -107,13 +107,13 @@
 - Success: correct output after topology change, no stale CB
 - Time: 6h
 
-### T15: [READY] | 0% | started:2026-03-26T02:19] Move Python/ctypes hot path to C extension
+### T15: [IN_PROGRESS by OmniAgent [sys7] | 0% | started:2026-03-26T03:19] | 0% | started:2026-03-26T02:19] Move Python/ctypes hot path to C extension
 - Compiled C shim replaces ctypes for tensor dispatch
 - Eliminate numpy→ctypes→C boundary crossing per forward()
 - Success: Python overhead drops from 3ms to <0.5ms
 - Time: 8h
 
-### T16: [READY] | 0% | started:2026-03-26T02:22] Implement fence polling optimization
+### T16: [IN_PROGRESS by OmniAgent | 0% | started:2026-03-26T03:24] | 0% | started:2026-03-26T02:22] Implement fence polling optimization
 - Insert fence at ~80% graph completion
 - Spin-wait for final fence instead of blocking
 - Reduces fence latency by 1-2ms
@@ -216,7 +216,7 @@
 - Success: attention correct with paged cache
 - Time: 12h
 
-### T34: [READY] | 0% | started:2026-03-26T02:52] | 0% | started:2026-03-26T02:18] Wire _update_states()
+### T34: [IN_PROGRESS by OmniAgent [sys6] | 0% | started:2026-03-26T03:19] | 0% | started:2026-03-26T02:52] | 0% | started:2026-03-26T02:18] Wire _update_states()
 - Parse SchedulerOutput: add/remove/reorder requests
 - Success: request lifecycle correctly managed
 - Time: 8h
@@ -239,17 +239,17 @@
 - Success: vLLM sampler accepts logits
 - Time: 6h
 
-### T38: [READY] | 0% | started:2026-03-26T02:56] | 0% | started:2026-03-26T02:24] End-to-end single-request test through vLLM plugin
+### T38: [READY] | 0% | started:2026-03-26T03:21] | 0% | started:2026-03-26T02:56] | 0% | started:2026-03-26T02:24] End-to-end single-request test through vLLM plugin
 - Chat completion, verify coherent response
 - Success: matches direct ggml output quality
 - Time: 4h
 
-### T39: [READY] | 0% | started:2026-03-26T02:57] | 0% | started:2026-03-26T02:24] Enable max_num_seqs=2: two concurrent requests
+### T39: [IN_PROGRESS by OmniAgent [sys4] | 0% | started:2026-03-26T03:21] | 0% | started:2026-03-26T02:57] | 0% | started:2026-03-26T02:24] Enable max_num_seqs=2: two concurrent requests
 - Paged KV isolates requests
 - Success: both requests correct and independent
 - Time: 6h
 
-### T40: [READY] | 0% | started:2026-03-26T02:59] | 0% | started:2026-03-26T02:18] Implement KV cache block freeing + prevent memory leak
+### T40: [IN_PROGRESS by OmniAgent | 0% | started:2026-03-26T03:27] | 0% | started:2026-03-26T02:59] | 0% | started:2026-03-26T02:18] Implement KV cache block freeing + prevent memory leak
 - Release blocks on request completion, return to free pool
 - Success: stable memory after 100+ requests
 - Time: 4h
@@ -343,45 +343,45 @@
 ### T56: [DONE]] Implement GGUF weight loader in C (parse header, map weights to VkBuffer)
 ### T57: [IN_PROGRESS by OmniAgent [sys5] | 0% | started:2026-03-26T03:18] | 0% | started:2026-03-26T02:51] | 0% | started:2026-03-26T02:19] Write Q4_K_M dequant+GEMV SPIR-V shader (subgroup shuffle, SIMD 32)
 ### T58: [READY] Benchmark T57 vs ggml GEMV
-### T59: [READY] | 0% | started:2026-03-26T02:52] | 0% | started:2026-03-26T02:40] Write RMSNorm, RoPE, softmax, SiLU SPIR-V shaders
-### T60: [READY] | 0% | started:2026-03-26T02:53] | 0% | started:2026-03-26T02:43] Implement static CB recording for one transformer layer
-### T61: [READY] | 0% | started:2026-03-26T02:53] | 0% | started:2026-03-26T02:45] Full model: chain all layers + embedding + output projection
-### T62: [READY] | 0% | started:2026-03-26T02:54] | 0% | started:2026-03-26T02:46] Push-constant-only token stepping (no CB re-recording)
-### T63: [READY] | 0% | started:2026-03-26T02:54] | 0% | started:2026-03-26T02:18] Benchmark pure engine vs ggml at batch=1
-### T64: [READY] | 0% | started:2026-03-26T02:48] Paged KV cache in pure engine
-### T65: [READY] | 0% | started:2026-03-26T02:56] | 0% | started:2026-03-26T02:48] Flash attention SPIR-V shader (tiled, scalar, 2-pass online softmax)
+### T59: [READY] | 0% | started:2026-03-26T03:23] | 0% | started:2026-03-26T02:52] | 0% | started:2026-03-26T02:40] Write RMSNorm, RoPE, softmax, SiLU SPIR-V shaders
+### T60: [READY] | 0% | started:2026-03-26T03:23] | 0% | started:2026-03-26T02:53] | 0% | started:2026-03-26T02:43] Implement static CB recording for one transformer layer
+### T61: [READY] | 0% | started:2026-03-26T03:23] | 0% | started:2026-03-26T02:53] | 0% | started:2026-03-26T02:45] Full model: chain all layers + embedding + output projection
+### T62: [READY] | 0% | started:2026-03-26T03:23] | 0% | started:2026-03-26T02:54] | 0% | started:2026-03-26T02:46] Push-constant-only token stepping (no CB re-recording)
+### T63: [READY] | 0% | started:2026-03-26T03:23] | 0% | started:2026-03-26T02:54] | 0% | started:2026-03-26T02:18] Benchmark pure engine vs ggml at batch=1
+### T64: [IN_PROGRESS by OmniAgent [sys5] | 0% | started:2026-03-26T03:27] | 0% | started:2026-03-26T03:23] | 0% | started:2026-03-26T02:48] Paged KV cache in pure engine
+### T65: [READY] | 0% | started:2026-03-26T03:23] | 0% | started:2026-03-26T02:56] | 0% | started:2026-03-26T02:48] Flash attention SPIR-V shader (tiled, scalar, 2-pass online softmax)
 
 ## PHASE 5: VALIDATION + PRODUCTION HARDENING
 
-### T66: [READY] | 0% | started:2026-03-26T02:57] | 0% | started:2026-03-26T02:49] Numerical accuracy: logits comparison ggml vs llama.cpp for 1000 tokens
-### T67: [READY] | 0% | started:2026-03-26T02:57] | 0% | started:2026-03-26T02:49] Memory leak testing: 10,000 requests, monitor RSS + Vulkan memory
-### T68: [READY] | 0% | started:2026-03-26T02:58] | 0% | started:2026-03-26T02:50] Edge case testing: empty, max-length, special tokens, unicode
-### T69: [READY] | 0% | started:2026-03-26T02:50] | 0% | started:2026-03-26T02:18] M1 Max (32GB) validation: run all benchmarks on Sys12
-### T70: [READY] | 0% | started:2026-03-26T02:51] Deployment documentation: hardware reqs, install, config, troubleshoot
+### T66: [READY] | 0% | started:2026-03-26T03:23] | 0% | started:2026-03-26T02:57] | 0% | started:2026-03-26T02:49] Numerical accuracy: logits comparison ggml vs llama.cpp for 1000 tokens
+### T67: [READY] | 0% | started:2026-03-26T03:24] | 0% | started:2026-03-26T02:57] | 0% | started:2026-03-26T02:49] Memory leak testing: 10,000 requests, monitor RSS + Vulkan memory
+### T68: [READY] | 0% | started:2026-03-26T03:24] | 0% | started:2026-03-26T02:58] | 0% | started:2026-03-26T02:50] Edge case testing: empty, max-length, special tokens, unicode
+### T69: [READY] | 0% | started:2026-03-26T03:24] | 0% | started:2026-03-26T02:50] | 0% | started:2026-03-26T02:18] M1 Max (32GB) validation: run all benchmarks on Sys12
+### T70: [READY] | 0% | started:2026-03-26T03:24] | 0% | started:2026-03-26T02:51] Deployment documentation: hardware reqs, install, config, troubleshoot
 
 ## PHASE 6: DOCUMENTATION + UPSTREAM
 
-### T71: [READY] | 0% | started:2026-03-26T02:51] Comprehensive README with architecture diagram
-### T72: [READY] | 0% | started:2026-03-26T02:52] Benchmark report: all models, all quants, all batch sizes
-### T73: [READY] | 0% | started:2026-03-26T02:53] Blog post: Vulkan LLM Inference on Apple Silicon Linux
-### T74: [READY] | 0% | started:2026-03-26T02:53] Draft PR for vLLM: Vulkan platform plugin
-### T75: [READY] | 0% | started:2026-03-26T02:54] Draft PR for ggml: graph caching + CB optimization patches
-### T76: [READY] | 0% | started:2026-03-26T02:55] File Mesa issue: VK_KHR_cooperative_matrix request with benchmark data
+### T71: [READY] | 0% | started:2026-03-26T03:24] | 0% | started:2026-03-26T02:51] Comprehensive README with architecture diagram
+### T72: [READY] | 0% | started:2026-03-26T03:24] | 0% | started:2026-03-26T02:52] Benchmark report: all models, all quants, all batch sizes
+### T73: [READY] | 0% | started:2026-03-26T03:24] | 0% | started:2026-03-26T02:53] Blog post: Vulkan LLM Inference on Apple Silicon Linux
+### T74: [READY] | 0% | started:2026-03-26T03:24] | 0% | started:2026-03-26T02:53] Draft PR for vLLM: Vulkan platform plugin
+### T75: [READY] | 0% | started:2026-03-26T03:24] | 0% | started:2026-03-26T02:54] Draft PR for ggml: graph caching + CB optimization patches
+### T76: [READY] | 0% | started:2026-03-26T03:24] | 0% | started:2026-03-26T02:55] File Mesa issue: VK_KHR_cooperative_matrix request with benchmark data
 
 ## PHASE 7: ADVANCED OPTIMIZATION
 
-### T77: [READY] | 0% | started:2026-03-26T02:55] Study ThunderMittens findings: register-direct loads beat shared memory on UMA
-### T78: [READY] | 0% | started:2026-03-26T02:56] | 0% | started:2026-03-26T02:18] Profile register pressure per kernel (occupancy analysis)
-### T79: [READY] | 0% | started:2026-03-26T02:56] Test VK_EXT_memory_budget on Honeykrisp
-### T80: [READY] | 0% | started:2026-03-26T02:57] Investigate ggml_backend_sched optimization for single-backend (skip routing)
+### T77: [READY] | 0% | started:2026-03-26T03:24] | 0% | started:2026-03-26T02:55] Study ThunderMittens findings: register-direct loads beat shared memory on UMA
+### T78: [READY] | 0% | started:2026-03-26T03:24] | 0% | started:2026-03-26T02:56] | 0% | started:2026-03-26T02:18] Profile register pressure per kernel (occupancy analysis)
+### T79: [READY] | 0% | started:2026-03-26T03:24] | 0% | started:2026-03-26T02:56] Test VK_EXT_memory_budget on Honeykrisp
+### T80: [READY] | 0% | started:2026-03-26T03:24] | 0% | started:2026-03-26T02:57] Investigate ggml_backend_sched optimization for single-backend (skip routing)
 
 ## PHASE 8: AGENTIC FRAMEWORK PROTOTYPE
 
-### T81: [READY] | 0% | started:2026-03-26T02:57] Design agent-to-model routing protocol (gRPC or HTTP)
-### T82: [READY] | 0% | started:2026-03-26T02:58] Build prototype: agent → router → best model → response
-### T83: [READY] | 0% | started:2026-03-26T02:59] Multi-model serving: 0.5B fast + 8B smart + 120B reasoning on same box
-### T84: [READY] | 0% | started:2026-03-26T02:59] Agent communication bridge: cross-machine task coordination
-### T85: [READY] | 0% | started:2026-03-26T03:00] Integration with Z's v44 agent framework
+### T81: [READY] | 0% | started:2026-03-26T03:24] | 0% | started:2026-03-26T02:57] Design agent-to-model routing protocol (gRPC or HTTP)
+### T82: [READY] | 0% | started:2026-03-26T03:24] | 0% | started:2026-03-26T02:58] Build prototype: agent → router → best model → response
+### T83: [READY] | 0% | started:2026-03-26T03:24] | 0% | started:2026-03-26T02:59] Multi-model serving: 0.5B fast + 8B smart + 120B reasoning on same box
+### T84: [READY] | 0% | started:2026-03-26T03:24] | 0% | started:2026-03-26T02:59] Agent communication bridge: cross-machine task coordination
+### T85: [READY] | 0% | started:2026-03-26T03:24] | 0% | started:2026-03-26T03:00] Integration with Z's v44 agent framework
 
 ## SUMMARY
 - 85 tasks across 8 phases
