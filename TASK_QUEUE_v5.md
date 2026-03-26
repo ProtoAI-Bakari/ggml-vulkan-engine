@@ -288,7 +288,7 @@ Write the shader IMMEDIATELY. First tool call must be write_file.] | 0% | starte
 - Success: repeated prompts reuse KV blocks
 - Time: 8h
 
-### T42: [IN_PROGRESS by OmniAgent [sys5] | 60% | started:2026-03-26T04:01] | t30] | t20] | t10]Handle chunked prefill
+### T42: [IN_PROGRESS by OmniAgent [sys5] | 20% | started:2026-03-26T04:01] | t10] | t30] | t20] | t10]Handle chunked prefill
 - Process partial prompts across multiple engine steps
 - Accumulate KV in correct blocks
 - Success: long prompts (>512 tokens) served correctly
@@ -382,7 +382,7 @@ STEPS
 4. complete_task T38
 
 Write the test IMMEDIATELY. First tool call must be write_file.] | 0% | started:2026-03-26T03:41] Benchmark T57 vs ggml GEMV
-### T59: [IN_PROGRESS by OmniAgent [sys3] | 0% | started:2026-03-26T04:02]Write RMSNorm, RoPE, softmax, SiLU SPIR-V shaders
+### T59: [IN_PROGRESS by OmniAgent [sys3] | 20% | started:2026-03-26T04:02] | t10]Write RMSNorm, RoPE, softmax, SiLU SPIR-V shaders
 ### T60: [READY]Implement static CB recording for one transformer layer
 ### T61: [IN_PROGRESS by OmniAgent [sys1-Main]Full model: chain all layers + embedding + output projection
 ### T62: [READY]Push-constant-only token stepping (no CB re-recording)

@@ -226,11 +226,11 @@ def agent_activity():
 
     # Remote distributed agents
     REMOTE_AGENTS = {
-        "R2 ARCH":  ("10.255.255.2",  "mlx-2"),
-        "R3 ENGR":  ("10.255.255.3",  "mlx-3"),
-        "R5 DSGN":  ("10.255.255.5",  "mlx-5"),
-        "R6 REVW":  ("10.255.255.6",  "mlx-6"),
-        "R7 FAST":  ("10.255.255.7",  "mlx-7"),
+        "R2 ARCH":  ("10.255.255.2",  "sys2"),
+        "R3 ENGR":  ("10.255.255.3",  "sys3"),
+        "R5 DSGN":  ("10.255.255.5",  "sys5"),
+        "R6 REVW":  ("10.255.255.6",  "sys6"),
+        "R7 FAST":  ("10.255.255.7",  "sys7"),
     }
 
     # Also get task assignments from queue
@@ -364,16 +364,16 @@ def poll_fleet():
                 status[name] = {"status": "ERR", "model": "-", "role": NODES[name]["role"], "active": 0}
     return status
 
-# Map commander node names to actual server file names
+# Map node names to server script file names
 NODE_TO_SERVER = {
-    "mlx-2": "sys2", "mlx-3": "sys3", "mlx-4": "sys4",
-    "mlx-5": "sys5", "mlx-6": "sys6", "mlx-7": "sys7",
+    "sys2": "sys2", "sys3": "sys3", "sys4": "sys4",
+    "sys5": "sys5", "sys6": "sys6", "sys7": "sys7",
 }
 
 def launch_brain(name):
     """Start MLX server on a remote node."""
     node = NODES.get(name)
-    if not node or name in ("mlx-0",) or name.startswith("cuda"):
+    if not node or name in ("sys1",) or name.startswith("cuda"):
         console.print(f"[red]Cannot launch brain on {name} (use manually)[/red]")
         return
     ip = node["ip"]
@@ -453,7 +453,7 @@ def goal_all():
     console.print("[bold magenta]━━━ GOAL: LAUNCHING ENTIRE SWARM ━━━[/bold magenta]")
     # Launch all brains in parallel (skips already-running ones)
     with ThreadPoolExecutor(max_workers=6) as pool:
-        for name in ["mlx-2", "mlx-3", "mlx-4", "mlx-5", "mlx-6", "mlx-7"]:
+        for name in ["sys2", "sys3", "sys4", "sys5", "sys6", "sys7"]:
             pool.submit(launch_brain, name)
     console.print("[yellow]Brains checked. Launching agents with AUTO-GO...[/yellow]")
     # Launch ALL agents with auto-go (reads GO_PROMPT.md immediately)
@@ -468,7 +468,7 @@ def stop_all():
     """Stop all brains and agents."""
     console.print("[bold red]━━━ STOPPING ENTIRE SWARM ━━━[/bold red]")
     for name in NODES:
-        if name.startswith("mlx-") and name != "mlx-0":
+        if name.startswith("sys") and name != "sys1":
             stop_brain(name)
     for aid in AGENTS:
         stop_agent(aid)
@@ -648,7 +648,7 @@ def main():
         parts = cmd.split(maxsplit=1)
         action = parts[0].lower()
         arg = parts[1] if len(parts) > 1 else ""
-        # Resolve aliases (sys3 -> mlx-3, etc.)
+        # Resolve aliases (mlx-3 -> sys3, cuda-1 -> cuda-sys1, etc.)
         arg = NODE_ALIASES.get(arg, arg)
 
         if action in ("q", "quit", "exit"):
@@ -720,8 +720,8 @@ def main():
                 node = NODES.get(arg)
                 if not node:
                     console.print(f"[red]Unknown node: {arg}[/red]")
-                elif arg in ("mlx-0",):
-                    console.print("[dim]Tailing sys0 agent logs...[/dim]")
+                elif arg in ("sys1",):
+                    console.print("[dim]Tailing sys1 agent logs...[/dim]")
                     try:
                         os.system("tail -f ~/AGENT/LOGS/main_trace.log")
                     except KeyboardInterrupt:
@@ -733,7 +733,7 @@ def main():
                         os.system(f"sshpass -p z ssh {SSH_OPTS} z@{node['ip']} 'tail -f /tmp/ray/session_latest/logs/serve*.log 2>/dev/null || journalctl -u vllm -f 2>/dev/null || echo No vLLM logs found'")
                     except KeyboardInterrupt:
                         pass
-                elif arg.startswith("mlx-"):
+                elif arg.startswith("sys"):
                     sname = NODE_TO_SERVER.get(arg, arg)
                     console.print(f"[dim]Tailing {arg} MLX logs (Ctrl+C to stop)...[/dim]")
                     try:

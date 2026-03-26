@@ -429,7 +429,9 @@ RULES:
 - If claim returns TAKEN, try the next READY task.
 - Use execute_bash for commands, read_file for files (max 100 lines).
 - Compile+test after code changes. If broken: git checkout -- filename
-- For HARD problems: ask_cuda_brain. For code: ask_coder_brain.
+- Do NOT re-read files you already read this session. Remember file contents.
+- Call update_progress('TXX', 'NN') every few steps to report %.
+- After finishing: push_changes then complete_task.
 
 TOOL FORMAT:
 <tool_call>
