@@ -79,7 +79,7 @@ def check_node(name, node):
     tool_calls = re.findall(r'EXECUTING\]: (\w+)', raw)
     if len(tool_calls) >= 5:
         last5 = tool_calls[-5:]
-        if len(set(last5)) == 1:
+        if len(set(last5)) == 1 and last5[0] not in ("execute_bash", "read_file", "write_file"):
             issues.append(f"STUCK: calling {last5[0]} repeatedly")
     
     # DETECT: Reading task queue repeatedly
