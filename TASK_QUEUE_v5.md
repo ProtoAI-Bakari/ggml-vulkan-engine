@@ -288,7 +288,7 @@
 - Success: zero crashes, <1% error rate
 - Time: 4h
 
-### T45: [READY]Benchmark max_num_seqs=4 aggregate throughput
+### T45: [IN_PROGRESS by OmniAgent [sys5]Benchmark max_num_seqs=4 aggregate throughput
 - Compare vs single-stream
 - Success: aggregate TPS > 2x single-stream
 - Time: 3h
@@ -311,13 +311,7 @@
 
 ## PHASE 3: 120B MODEL + FLEET [from Sys12 task queue]
 
-### T49: [READY] | 20% | started:2026-03-26T05:03 | t10]Test 120B on standalone ggml engine
-- Verify coherent output
-- Measure TPS
-- Success: coherent text at any TPS
-- Time: 2h
-
-### T51: [DONE] Benchmark 120B: ggml Vulkan vs llama.cpp Vulkan vs MLX (45-60 TPS)
+### T49: [DONE by OmniAgent [sys1-Main] | completed:2026-03-26T10:10] Benchmark 120B: ggml Vulkan vs llama.cpp Vulkan vs MLX (45-60 TPS)
 - Compare all three on same hardware
 - Success: comparison table
 - Time: 2h
