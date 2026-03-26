@@ -140,6 +140,8 @@ def execute_bash(command: str, timeout: int = 30) -> str:
     except Exception as e:
         return f"[FATAL BASH ERROR]: {e}"
 
+_recent_reads = {}  # path -> first 100 chars of content
+
 def read_file(path: str, offset: int = 0, limit: int = 100000) -> str:
     try:
         p = os.path.expanduser(path)
@@ -150,7 +152,9 @@ def read_file(path: str, offset: int = 0, limit: int = 100000) -> str:
             p = p.replace("/Users/z/", "/home/z/", 1)
         with open(p, 'r', errors='ignore') as f:
             f.seek(offset)
-            return f.read(limit)
+            content = f.read(limit)
+            _recent_reads[path] = content[:80]  # Cache first 80 chars
+            return content
     except Exception as e: return f"Error reading file: {e}"
 
 def write_file(path: str, content: str) -> str:
