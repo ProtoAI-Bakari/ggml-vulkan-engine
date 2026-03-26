@@ -10,20 +10,20 @@
 
 ## PHASE 0: STABILITY + MEASUREMENT [DO FIRST — nothing else matters if broken]
 
-### T01: [IN_PROGRESS by OmniAgent [Main]] Verify standalone engine: 12+ sequential requests, all coherent
+### T01: [READY] Verify standalone engine: 12+ sequential requests, all coherent
 - Run 12 diverse prompts through GgmlLLM.generate() 
 - Include: math, factual, creative, long-gen, multi-sentence
 - Success: 12/12 coherent, no crash, consistent TPS
 - Time: 1h
 
-### T02: [IN_PROGRESS by OmniAgent [Main]] Fix standalone streaming server startup + stability
+### T02: [READY] Fix standalone streaming server startup + stability
 - Server must start in <30s, serve on 0.0.0.0:8080
 - ThreadingMixIn for concurrent HTTP (sequential engine underneath)
 - KV reset between every request (engine_reset_kv)
 - Success: 50 sequential HTTP requests without crash, all coherent
 - Time: 2h
 
-### T03: [IN_PROGRESS by OmniAgent [Main]] Coherency blast test: 50 diverse prompts through HTTP server
+### T03: [READY] Coherency blast test: 50 diverse prompts through HTTP server
 - Math: 2+2, complex arithmetic, word problems
 - Factual: capitals, dates, science, history
 - Creative: stories, poetry, code generation
@@ -41,39 +41,39 @@
 - Time: 4h
 - Files: benchmark_vulkan.py, run_benchmarks.sh
 
-### T05: [IN_PROGRESS by OmniAgent [Sys4]] Profile CPU time breakdown with py-spy + custom instrumentation
+### T05: [READY] Profile CPU time breakdown with py-spy + custom instrumentation
 - Confirm: ~6ms CB recording, ~4ms graph build, ~3ms Python overhead
 - Instrument ggml_vk_dispatch_pipeline, CB begin/end, queue submit, fence wait
 - Success: flamegraph + per-stage timing CSV matching OpR's predicted breakdown
 - Time: 3h
 
-### T06: [IN_PROGRESS by OmniAgent [Main]] Document ggml compute graph: node count, op types, tensor shapes
+### T06: [DONE]] Document ggml compute graph: node count, op types, tensor shapes
 - Dump graph at position 1, 100, 500 for Llama-3.1-8B decode
 - Count: how many nodes are views/casts vs real compute?
 - Success: graph topology document with node breakdown
 - Time: 2h
 
-### T07: [IN_PROGRESS by OmniAgent [Main]] Verify Honeykrisp capabilities matrix
+### T07: [DONE]] Verify Honeykrisp capabilities matrix
 - vulkaninfo: all extensions, subgroup properties, memory types, queue families
 - Confirm: subgroupSize=32, shaderFloat16Int8, integerDotProduct
 - Confirm: NO cooperative_matrix, NO tensor cores
 - Success: capability matrix document
 - Time: 1h
 
-### T08: [IN_PROGRESS by OmniAgent [Main]] Run llama-bench on ALL models for reference baseline
+### T08: [DONE]] Run llama-bench on ALL models for reference baseline
 - 8B Q4_K_M, Q8_0, F16
 - 0.5B, 1.5B, 3B, 32B Q4_K_M
 - 120B mxfp4 (after merge)
 - Success: llama.cpp baseline TPS table for every model
 - Time: 2h
 
-### T09: [IN_PROGRESS by OmniAgent [Main]] Create automated regression test: golden output comparison
+### T09: [DONE]] Create automated regression test: golden output comparison
 - 10 prompts with expected output patterns (regex or substring match)
 - Run before AND after every code change
 - Success: CI-ready test script that catches coherency regressions
 - Time: 3h
 
-### T10: [IN_PROGRESS by OmniAgent [Main]] Test 120B model on llama-bench (THE big number)
+### T10: [DONE]] Test 120B model on llama-bench (THE big number)
 - Merge shards first (llama-gguf-split --merge)
 - Run: llama-bench -m 120b-merged.gguf -ngl 99 -t 4 -p 64 -n 32
 - If OOM: try with HK_SYSMEM=112000000000
@@ -82,74 +82,74 @@
 
 ## PHASE 1: GGML GRAPH + CB OPTIMIZATION [Perspective A — 23→30-33 TPS]
 
-### T11: [IN_PROGRESS by OmniAgent [Main]] Implement graph topology fingerprinting
+### T11: [DONE]] Implement graph topology fingerprinting
 - Hash: node count + op types + tensor shapes
 - Detect when graph is unchanged between tokens (99%+ of decode steps)
 - Success: fingerprint matches consecutive decode tokens
 - Time: 4h
 
-### T12: [IN_PROGRESS by OmniAgent [Main]] Add graph caching via ggml_gallocr (PR #20927 pattern)
+### T12: [READY] Add graph caching via ggml_gallocr (PR #20927 pattern)
 - ggml_gallocr_reserve() at init with worst-case graph
 - ggml_gallocr_alloc_graph() each token — near-no-op when topology matches
 - Success: graph alloc time drops from 4ms to <0.5ms
 - Time: 6h
 
-### T13: [IN_PROGRESS by OmniAgent [Main]] Implement command buffer template recording
+### T13: [DONE]] Implement command buffer template recording
 - Record full pipeline once on first execution
 - Use vkCmdPushConstants for dynamic params: KV offset, seq_len, position
 - vkResetCommandPool for pool-level reset (not per-buffer)
 - Success: CB recording drops from 6ms to <1ms for stable graphs
 - Time: 12h
 
-### T14: [IN_PROGRESS by OmniAgent [Main]] Add CB invalidation logic
+### T14: [DONE]] Add CB invalidation logic
 - Detect topology changes: context size thresholds, batch size changes
 - Re-record when graph fingerprint changes
 - Success: correct output after topology change, no stale CB
 - Time: 6h
 
-### T15: [IN_PROGRESS by OmniAgent [Main]] Move Python/ctypes hot path to C extension
+### T15: [READY] Move Python/ctypes hot path to C extension
 - Compiled C shim replaces ctypes for tensor dispatch
 - Eliminate numpy→ctypes→C boundary crossing per forward()
 - Success: Python overhead drops from 3ms to <0.5ms
 - Time: 8h
 
-### T16: [IN_PROGRESS by OmniAgent [Main]] Implement fence polling optimization
+### T16: [READY] Implement fence polling optimization
 - Insert fence at ~80% graph completion
 - Spin-wait for final fence instead of blocking
 - Reduces fence latency by 1-2ms
 - Success: measurable latency reduction
 - Time: 4h
 
-### T17: [IN_PROGRESS by OmniAgent [Main]] Test flash attention scalar path on Honeykrisp
+### T17: [READY] Test flash attention scalar path on Honeykrisp
 - Enable flash_attn.comp shader (FA_SCALAR code path)
 - Fuses Q×K softmax and attention×V
 - Success: FA runs without crash on AGX, correct output
 - Time: 6h
 
-### T18: [IN_PROGRESS by OmniAgent [Main]] Benchmark FA scalar vs standard attention at various context lengths
+### T18: [DONE]] Benchmark FA scalar vs standard attention at various context lengths
 - Test: 128, 512, 2048, 8192 context
 - Success: performance comparison table
 - Time: 3h
 
-### T19: [IN_PROGRESS by OmniAgent [Main]] Optimize descriptor set allocation
+### T19: [DONE]] Optimize descriptor set allocation
 - Pre-allocate descriptor pools for worst-case graph
 - No runtime descriptor allocation
 - Success: zero runtime alloc during decode
 - Time: 4h
 
-### T20: [IN_PROGRESS by OmniAgent [Main]] Profile memory bandwidth utilization
+### T20: [DONE]] Profile memory bandwidth utilization
 - Custom compute shader doing pure reads
 - Measure actual GB/s vs theoretical 800 GB/s
 - Success: measured bandwidth utilization percentage
 - Time: 4h
 
-### T21: [IN_PROGRESS by OmniAgent [Main]] Tune workgroup sizes for AGX
+### T21: [DONE]] Tune workgroup sizes for AGX
 - Test 64, 128, 256, 512 threads for GEMV kernels
 - AGX has 8KB L1 (tiny!), 32KB shared memory
 - Success: optimal workgroup size identified per kernel type
 - Time: 4h
 
-### T22: [IN_PROGRESS by OmniAgent [Main]] Implement double-buffering for KV cache writes
+### T22: [DONE]] Implement double-buffering for KV cache writes
 - Overlap current token KV write with next dispatch
 - Pipeline bubble reduction
 - Success: measurable overlap in GPU timeline
