@@ -100,8 +100,7 @@ def execute_bash(command: str, timeout: int = 30) -> str:
     if destructive:
         try:
             with open(os.path.expanduser("~/AGENT/LOGS/audit.log"), "a") as af:
-                af.write(f"{time.strftime('%Y-%m-%dT%H:%M:%S')}|{_AGENT_NAME}|DESTRUCTIVE|{command[:200]}
-")
+                af.write(f"{time.strftime('%Y-%m-%dT%H:%M:%S')}|{_AGENT_NAME}|DESTRUCTIVE|{command[:200]}\n")
         except: pass
     try:
         cmd_str = command.strip()
