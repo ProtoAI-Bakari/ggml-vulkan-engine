@@ -710,3 +710,202 @@ void vk_template_with_push_constants_destroy(VkTemplateWithPushConstants* wrappe
     
     free(wrapper);
 }
+
+/* ============================================================================
+ * COMMAND POOL RESET SUPPORT
+ * ============================================================================
+ * T13: Use vkResetCommandPool for pool-level reset (not per-buffer)
+ * This is more efficient than vkFreeCommandBuffers + vkAllocateCommandBuffers
+ */
+
+/* Reset command pool and all associated templates */
+int vk_template_pool_reset(VkTemplatePool* pool) {
+    if (!pool) return -1;
+    
+    for (uint32_t i = 0; i < pool->template_count; i++) {
+        VkCommandBufferTemplate* template = pool->templates[i];
+        
+        /* Reset the command pool - this frees all command buffers */
+        VkResult result = vkResetCommandPool(pool->device, template->command_pool, 0);
+        if (result != VK_SUCCESS) {
+            fprintf(stderr, "Warning: Failed to reset command pool for template %u\n", 
+                    template->template_id);
+            continue;
+        }
+        
+        /* Reallocate command buffer */
+        VkCommandBufferAllocateInfo alloc_info = {0};
+        alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        alloc_info.commandPool = template->command_pool;
+        alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        alloc_info.commandBufferCount = 1;
+        
+        result = vkAllocateCommandBuffers(pool->device, &alloc_info, &template->cmd_buffer);
+        if (result != VK_SUCCESS) {
+            fprintf(stderr, "Error: Failed to reallocate command buffer for template %u\n",
+                    template->template_id);
+            return -1;
+        }
+        
+        /* Reset template state */
+        template->is_recording = 0;
+        template->op_count = 0;
+        template->memory_barrier_count = 0;
+        template->buffer_copy_count = 0;
+    }
+    
+    return 0;
+}
+
+/* Reset specific template's command pool */
+int vk_template_reset(VkCommandBufferTemplate* template) {
+    if (!template) return -1;
+    
+    /* Reset command pool */
+    VkResult result = vkResetCommandPool(template->device, template->command_pool, 0);
+    if (result != VK_SUCCESS) {
+        return -1;
+    }
+    
+    /* Reallocate command buffer */
+    VkCommandBufferAllocateInfo alloc_info = {0};
+    alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    alloc_info.commandPool = template->command_pool;
+    alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    alloc_info.commandBufferCount = 1;
+    
+    result = vkAllocateCommandBuffers(template->device, &alloc_info, &template->cmd_buffer);
+    if (result != VK_SUCCESS) {
+        return -1;
+    }
+    
+    /* Reset template state */
+    template->is_recording = 0;
+    template->op_count = 0;
+    template->memory_barrier_count = 0;
+    template->buffer_copy_count = 0;
+    
+    return 0;
+}
+
+/* ============================================================================
+ * CB INVALIDATION LOGIC (T14 PREVIEW)
+ * ============================================================================
+ * Detect topology changes and invalidate stale templates
+ */
+
+/* Graph fingerprint for topology detection */
+typedef struct {
+    uint32_t num_layers;
+    uint32_t hidden_dim;
+    uint32_t intermediate_dim;
+    uint32_t num_heads;
+    uint32_t head_dim;
+    uint32_t vocab_size;
+    uint32_t max_context;
+    uint32_t moe_experts;      // For MoE models
+    uint32_t moe_active_experts;
+    uint64_t hash;             // Combined hash of all params
+} GraphFingerprint;
+
+/* Compute graph fingerprint hash */
+uint64_t graph_fingerprint_hash(GraphFingerprint* fp) {
+    uint64_t hash = 0;
+    hash ^= (uint64_t)fp->num_layers << 0;
+    hash ^= (uint64_t)fp->hidden_dim << 8;
+    hash ^= (uint64_t)fp->intermediate_dim << 16;
+    hash ^= (uint64_t)fp->num_heads << 24;
+    hash ^= (uint64_t)fp->head_dim << 32;
+    hash ^= (uint64_t)fp->vocab_size << 40;
+    hash ^= (uint64_t)fp->max_context << 48;
+    hash ^= (uint64_t)fp->moe_experts << 56;
+    hash ^= (uint64_t)fp->moe_active_experts << 60;
+    return hash;
+}
+
+/* Template invalidation state */
+typedef struct {
+    GraphFingerprint current_fingerprint;
+    uint64_t last_valid_hash;
+    int is_valid;
+    uint32_t invalidation_count;
+    uint64_t last_invalidation_frame;
+} TemplateInvalidationState;
+
+/* Initialize invalidation state */
+TemplateInvalidationState* template_invalidation_create(void) {
+    TemplateInvalidationState* state = (TemplateInvalidationState*)calloc(1, sizeof(TemplateInvalidationState));
+    if (!state) return NULL;
+    
+    state->is_valid = 1;
+    state->last_valid_hash = 0;
+    state->invalidation_count = 0;
+    
+    return state;
+}
+
+/* Check if templates need re-recording */
+int template_needs_re_recording(TemplateInvalidationState* state, GraphFingerprint* new_fp) {
+    if (!state || !new_fp) return 0;
+    
+    uint64_t new_hash = graph_fingerprint_hash(new_fp);
+    
+    if (state->last_valid_hash == 0) {
+        /* First time, accept this fingerprint */
+        state->last_valid_hash = new_hash;
+        state->current_fingerprint = *new_fp;
+        return 0;
+    }
+    
+    if (new_hash != state->last_valid_hash) {
+        /* Topology changed, need re-recording */
+        state->invalidation_count++;
+        state->last_valid_hash = new_hash;
+        state->current_fingerprint = *new_fp;
+        return 1;
+    }
+    
+    return 0;
+}
+
+/* Mark templates as invalid */
+void template_invalidate_all(VkTemplatePool* pool, TemplateInvalidationState* state) {
+    if (!pool || !state) return;
+    
+    for (uint32_t i = 0; i < pool->template_count; i++) {
+        VkCommandBufferTemplate* template = pool->templates[i];
+        
+        /* Mark template as needing re-recording */
+        template->is_recording = 0; /* Force re-recording on next use */
+        template->total_executions = 0; /* Reset stats */
+    }
+    
+    state->is_valid = 0;
+}
+
+/* Re-record all templates after topology change */
+int template_re_record_all(VkTemplatePool* pool, TemplateInvalidationState* state,
+                          void (*re_record_callback)(VkTemplatePool*)) {
+    if (!pool || !state || !re_record_callback) return -1;
+    
+    if (!state->is_valid) {
+        /* Re-record all templates */
+        re_record_callback(pool);
+        state->is_valid = 1;
+        return 0;
+    }
+    
+    return -1; /* No re-recording needed */
+}
+
+/* Get invalidation statistics */
+void template_invalidation_get_stats(TemplateInvalidationState* state,
+                                    uint32_t* invalidation_count,
+                                    uint64_t* last_hash,
+                                    int* is_valid) {
+    if (!state) return;
+    
+    if (invalidation_count) *invalidation_count = state->invalidation_count;
+    if (last_hash) *last_hash = state->last_valid_hash;
+    if (is_valid) *is_valid = state->is_valid;
+}
