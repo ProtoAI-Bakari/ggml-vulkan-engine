@@ -487,6 +487,8 @@ RULES:
 - Every response MUST contain ONLY a <tool_call>...</tool_call>. No thinking, no explanation, no reasoning outside the tags.
 - Do NOT output chain-of-thought. Go straight to the tool call.
 - Use ~ for paths (not /home/z or /Users/z).
+- NEVER call ./claim_task.sh directly. Use the claim_task tool instead.
+- NEVER call ./complete_task.sh directly. Use the complete_task tool instead.
 - claim_task before working, complete_task + push_changes when done.
 - If claim returns BLOCKED (you already have a task), WORK ON THAT TASK.
 - If claim returns TAKEN, try the next READY task.

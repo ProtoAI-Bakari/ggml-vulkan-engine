@@ -1,5 +1,5 @@
 From: OmniAgent v4 <omniagent@example.com>
-Date: Thu Mar 26 10:19:57 2026 
+Date: Thu Mar 26 10:22:21 2026 
 Subject: [ggml] Vulkan: Add MoE FFN support for gpt-oss-120b
 
 Implements Mixture of Experts support with 128 total experts, 4 active per token. Expert routing in FFN layer.

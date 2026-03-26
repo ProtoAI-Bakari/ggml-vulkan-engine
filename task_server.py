@@ -85,7 +85,7 @@ def atomic_claim(task_id, agent_name):
     if agent_name not in _claim_times:
         _claim_times[agent_name] = []
     _claim_times[agent_name] = [t for t in _claim_times[agent_name] if now - t < 60]
-    if len(_claim_times[agent_name]) >= 3:
+    if len(_claim_times[agent_name]) >= 10:
         return False, "RATE_LIMITED — max 3 claims/minute"
     _claim_times[agent_name].append(now)
     
