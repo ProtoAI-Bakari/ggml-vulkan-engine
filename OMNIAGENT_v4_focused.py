@@ -253,6 +253,12 @@ def claim_task(task_id: str) -> str:
     )
     out = result.stdout.strip()
     print(f"{C.YELLOW}[📋 {out}]{C.RESET}")
+    # If BLOCKED, tell agent to WORK on the task they already have
+    if "BLOCKED" in out:
+        existing = re.search(r'already has (T\d+)', out)
+        if existing:
+            return f"BLOCKED — you already have {existing.group(1)}. STOP claiming. WORK on {existing.group(1)} NOW using execute_bash."
+        return f"BLOCKED — you already have a task. STOP claiming. Use execute_bash to work on it."
     return out
 
 def complete_task(task_id: str) -> str:
