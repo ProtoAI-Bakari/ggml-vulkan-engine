@@ -5,7 +5,7 @@
 
 ## CURRENT PRIORITY: VULKAN GPU ENGINE OPTIMIZATION
 
-### T06: [READY] Integrate graph caching into ggml_llama_gguf.c
+### T06: [IN_PROGRESS by OmniAgent [Sys4]] Integrate graph caching into ggml_llama_gguf.c
 **Goal:** Eliminate 3ms/token graph rebuild overhead
 **Method:**
 1. Read ~/AGENT/ggml_vulkan_engine_optimized.py for the graph caching pattern
@@ -19,7 +19,7 @@
 5. Target: 22 TPS → 28+ TPS
 **Files:** ~/AGENT/ggml_llama_gguf.c, ~/AGENT/libggml_llama_gguf.so
 
-### T07: [READY] Add MoE FFN support to ggml_llama_gguf.c for gpt-oss-120b
+### T07: [IN_PROGRESS by Main] Add MoE FFN support to ggml_llama_gguf.c for gpt-oss-120b
 **Goal:** Load and run 120B MoE model through our engine
 **Architecture (from GGUF analysis):**
 - 36 layers, hidden=2880, 128 experts, 4 active per token
@@ -47,7 +47,7 @@
 **Reference:** ~/GITDEV/llama.cpp/src/models/openai-moe-iswa.cpp
 **Model:** ~/models/gguf/gpt-oss-120b-mxfp4.gguf (60GB, merged)
 
-### T08: [READY] Fix tokenizer discovery for all model families
+### T08: [IN_PROGRESS by OmniAgent [Main]] Fix tokenizer discovery for all model families
 **Goal:** ggml_vllm_backend.py _find_tokenizer() only finds Llama-3.1-8B
 **Method:**
 1. Make _find_tokenizer() search for ANY matching HF model in cache
@@ -55,11 +55,11 @@
 3. If no local tokenizer, try downloading from HF
 **Test:** All models in ~/models/gguf/ should auto-find tokenizers
 
-### T09: [READY] Benchmark 32B Qwen with tokenizer fix
+### T09: [IN_PROGRESS by OmniAgent [Sys4]] Benchmark 32B Qwen with tokenizer fix
 **Goal:** Verify Qwen2.5-32B produces coherent output at 7+ TPS
 **Test:** python -c "from ggml_vllm_backend import GgmlLLM, SamplingParams; llm = GgmlLLM('~/models/gguf/Qwen2.5-32B-Instruct-Q4_K_M.gguf'); r = llm.generate('What is quantum computing?', params=SamplingParams(temperature=0, max_tokens=30)); print(f'{r.tps:.0f} TPS: {r.text}')"
 
-### T10: [READY] Run 50-request stress test on standalone server
+### T10: [IN_PROGRESS by OmniAgent [Main]] Run 50-request stress test on standalone server
 **Goal:** Verify server handles 50 diverse sequential requests without crash
 **Method:** Start server, run curl loop with diverse prompts, verify all responses coherent
 **Test:** All 50 responses must be non-empty and relevant

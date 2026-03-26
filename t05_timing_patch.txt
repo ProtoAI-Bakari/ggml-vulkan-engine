@@ -1,0 +1,197 @@
+/* T05 PROFILING PATCH - Add timing instrumentation to ggml_llama_gguf.c
+ * 
+ * Apply this patch to add microsecond-precision timing around key operations:
+ * 1. Graph build time
+ * 2. Tensor set (input upload) time  
+ * 3. Graph compute time
+ * 4. Result download time
+ * 
+ * Usage:
+ *   patch -p1 < t05_timing_patch.txt
+ *   gcc -shared -O2 -fPIC ... (rebuild)
+ *   python3 profile_t05_granular.py --tokens 50
+ */
+
+--- a/ggml_llama_gguf.c
++++ b/ggml_llama_gguf.c
+@@ -1,5 +1,37 @@
+ /*
++ * T05 TIMING INSTRUMENTATION
++ * 
++ * High-precision timing macros for CPU-side profiling.
++ * Measures:
++ * - Graph build time (ggml_build_forward_expand)
++ * - Input upload time (ggml_backend_tensor_set for inputs)
++ * - Compute time (ggml_backend_sched_graph_compute)
++ * - Output download time (ggml_backend_tensor_get)
++ * 
++ * Output: CSV file with per-token timing breakdown
++ */
++
++#include <time.h>
++#include <stdio.h>
++
++#ifdef __APPLE__
++#include <mach/mach_time.h>
++static inline uint64_t get_time_ns(void) {
++    static mach_timebase_info_data_t info = {0, 0};
++    if (info.denom == 0) mach_timebase_info(&info);
++    return mach_absolute_time() * info.numer / info.denom;
++}
++#else
++#include <time.h>
++static inline uint64_t get_time_ns(void) {
++    struct timespec ts;
++    clock_gettime(CLOCK_MONOTONIC, &ts);
++    return (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
++}
++#endif
++
++/* Global timing accumulator (for CSV output) */
++static FILE *timing_log = NULL;
++static int timing_initialized = 0;
++
+ /*
+  * ggml_llama_gguf.c - Standalone LLM inference engine
+  * 
+@@ -274,6 +306,32 @@ typedef struct {
+     uint8_t *compute_buf;           /* Persistent compute buffer (256MB) */
+     size_t   compute_buf_size;      /* Size of compute buffer */
+     struct ggml_context *_persistent_ctx; /* Persistent ggml context */
++    
++    /* T05: Timing accumulators */
++    uint64_t t_graph_build_ns;      /* Accumulated graph build time */
++    uint64_t t_input_upload_ns;     /* Accumulated input upload time */
++    uint64_t t_compute_ns;          /* Accumulated compute time */
++    uint64_t t_output_download_ns;  /* Accumulated output download time */
++    int      n_samples;             /* Number of samples accumulated */
+ } engine_t;
+ 
+ static engine_t g_engine = {0};
+@@ -302,6 +360,38 @@ int engine_load(const char *model_path, int n_ctx) {
+     return 0;
+ }
+ 
++/* T05: Initialize timing log file */
++static void timing_init(void) {
++    if (timing_initialized) return;
++    timing_log = fopen("~/AGENT/t05_timing_log.csv", "w");
++    if (timing_log) {
++        fprintf(timing_log, "token_idx,graph_build_us,input_upload_us,compute_us,output_download_us,total_us\n");
++        fflush(timing_log);
++    }
++    timing_initialized = 1;
++}
++
++/* T05: Log timing for a single token */
++static void timing_log_token(int token_idx, uint64_t graph_ns, uint64_t input_ns, 
++                              uint64_t compute_ns, uint64_t output_ns) {
++    if (!timing_log) return;
++    fprintf(timing_log, "%d,%.3f,%.3f,%.3f,%.3f,%.3f\n",
++            token_idx,
++            graph_ns / 1000.0,
++            input_ns / 1000.0,
++            compute_ns / 1000.0,
++            output_ns / 1000.0,
++            (graph_ns + input_ns + compute_ns + output_ns) / 1000.0);
++    fflush(timing_log);
++}
++
++/* T05: Finalize timing and print summary */
++static void timing_finalize(engine_t *e) {
++    if (timing_log) fclose(timing_log);
++    timing_log = NULL;
++}
++
+ int engine_forward(engine_t *e, int n_tokens,
+                    const int32_t *tokens, const int32_t *positions,
+                    float *logits_out) {
+@@ -360,6 +450,16 @@ int engine_forward(engine_t *e, int n_tokens,
+     struct ggml_tensor *inp_pos = ggml_new_tensor_1d(ctx, GGML_TYPE_I32, n_tokens);
+     ggml_set_name(inp_pos, "positions");
+ 
++    /* T05: Start graph build timing */
++    uint64_t t0_graph = get_time_ns();
++    (void)t0_graph; /* Suppress unused warning if timing disabled */
++
+     struct ggml_tensor *cur = ggml_get_rows(ctx, e->tok_embd, inp_tokens);
+     struct ggml_tensor *inpL = cur;
+     float kq_scale = 1.0f / sqrtf((float)HD);
+@@ -459,16 +559,40 @@ int engine_forward(engine_t *e, int n_tokens,
+     ggml_backend_sched_reset(e->sched);
+     ggml_build_forward_expand(graph, cur);
++    
++    /* T05: End graph build timing */
++    uint64_t t1_graph = get_time_ns();
++    uint64_t graph_build_ns = t1_graph - t0_graph;
++    e->t_graph_build_ns += graph_build_ns;
++    e->n_samples++;
++
+     if (!ggml_backend_sched_alloc_graph(e->sched, graph)) {
+         return -2;
+     }
++    
++    /* T05: Start input upload timing */
++    uint64_t t0_input = get_time_ns();
++
+     ggml_backend_tensor_set(inp_tokens, tokens, 0, n_tokens * sizeof(int32_t));
+     ggml_backend_tensor_set(inp_pos, positions, 0, n_tokens * sizeof(int32_t));
++    
++    /* T05: End input upload timing */
++    uint64_t t1_input = get_time_ns();
++    uint64_t input_upload_ns = t1_input - t0_input;
++    e->t_input_upload_ns += input_upload_ns;
++
++    /* T05: Start compute timing */
++    uint64_t t0_compute = get_time_ns();
++
+     enum ggml_status status = ggml_backend_sched_graph_compute(e->sched, graph);
+     if (status != GGML_STATUS_SUCCESS) {
+         fprintf(stderr, "[engine] compute failed: %d\n", status);
+         return -3;
+     }
++    
++    /* T05: End compute timing */
++    uint64_t t1_compute = get_time_ns();
++    uint64_t compute_ns = t1_compute - t0_compute;
++    e->t_compute_ns += compute_ns;
+ 
+     size_t out_dim = e->return_hidden ? e->hidden_dim : e->vocab_size;
+     size_t out_size = (size_t)n_tokens * out_dim * sizeof(float);
++    
++    /* T05: Start output download timing */
++    uint64_t t0_output = get_time_ns();
++
+     ggml_backend_tensor_get(cur, logits_out, 0, out_size);
++    
++    /* T05: End output download timing */
++    uint64_t t1_output = get_time_ns();
++    uint64_t output_download_ns = t1_output - t0_output;
++    e->t_output_download_ns += output_download_ns;
+ 
+     e->kv_used += n_tokens;
++    
++    /* T05: Log per-token timing (use token_idx=0 for simplicity) */
++    timing_log_token(0, graph_build_ns, input_upload_ns, compute_ns, output_download_ns);
++
+     /* Context persists — will be reset on next call via ggml_reset */
+     return 0;
+ }
+@@ -510,6 +634,16 @@ void engine_free(engine_t *e) {
+     if (e->w_buf) ggml_backend_buffer_free(e->w_buf);
+     if (e->kv_buf) ggml_backend_buffer_free(e->kv_buf);
+     if (e->sched) ggml_backend_sched_free(e->sched);
++    
++    /* T05: Print timing summary */
++    if (e->n_samples > 0) {
++        printf("\n[T05 TIMING SUMMARY]\n");
++        printf("  Graph build:      %.2f us avg\n", e->t_graph_build_ns / e->n_samples / 1000.0);
++        printf("  Input upload:     %.2f us avg\n", e->t_input_upload_ns / e->n_samples / 1000.0);
++        printf("  Compute:          %.2f us avg\n", e->t_compute_ns / e->n_samples / 1000.0);
++        printf("  Output download:  %.2f us avg\n", e->t_output_download_ns / e->n_samples / 1000.0);
++        printf("  Samples:          %d\n", e->n_samples);
++        timing_finalize(e);
++    }
+ }
+ 
+ void engine_set_return_hidden(engine_t *e, int flag) {

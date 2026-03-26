@@ -109,29 +109,69 @@ def write_file(path: str, content: str) -> str:
     except Exception as e: return f"Error writing file: {e}"
 
 def search_web(query: str) -> str:
+    print(f"\n{C.MAGENTA}[🔍 Web Search: {query[:60]}...]{C.RESET}")
     try:
         from ddgs import DDGS
         results = DDGS().text(query, max_results=5)
         if not results: return "No results found."
-        return "\n\n".join(f"Title: {r.get('title')}\nSnippet: {r.get('body')}\nURL: {r.get('href')}" for r in results)
+        out = "\n\n".join(f"Title: {r.get('title')}\nSnippet: {r.get('body')}\nURL: {r.get('href')}" for r in results)
+        print(f"{C.GREEN}{out}{C.RESET}")
+        return out
     except Exception as e: return f"Web Search Error: {e}"
 
 def ask_coder_brain(query: str) -> str:
     print(f"\n{C.MAGENTA}[🧠 Pinging Coder Model at {CODER_IP}...]{C.RESET}")
     try:
-        payload = {"model": "qwen3-coder-next", "messages": [{"role": "user", "content": f"You are a master C++/Python programmer advising an autonomous agent. Provide exact code or logic. Do not use tool tags. We are running vLLM on Asahi Linux with a custom Vulkan backend.\n\nQuery: {query}"}], "max_tokens": 16384, "temperature": 0.2}
-        r = requests.post(CODER_URL, json=payload, timeout=300)
-        r.raise_for_status()
-        return f"[CODER ADVICE]:\n{r.json()['choices'][0]['message']['content']}"
+        payload = {"model": "qwen3-coder-next", "messages": [{"role": "user", "content": f"You are a master C++/Python programmer advising an autonomous agent. Provide exact code or logic. Do not use tool tags. We are running vLLM on Asahi Linux with a custom Vulkan backend.\n\nQuery: {query}"}], "max_tokens": 16384, "temperature": 0.2, "stream": True}
+        full = ""
+        t0 = time.time()
+        print(f"{C.GREEN}", end="", flush=True)
+        with requests.post(CODER_URL, json=payload, timeout=300, stream=True) as r:
+            r.raise_for_status()
+            for line in r.iter_lines():
+                if not line: continue
+                line = line.decode("utf-8")
+                if line.startswith("data: [DONE]"): break
+                if line.startswith("data: "):
+                    try:
+                        chunk = json.loads(line[6:])
+                        delta = chunk.get("choices", [{}])[0].get("delta", {}).get("content", "")
+                        if delta:
+                            print(delta, end="", flush=True)
+                            full += delta
+                    except: pass
+        elapsed = time.time() - t0
+        toks = len(full.split())
+        print(f"{C.RESET}")
+        print(f"{C.DIM}[🧠 Coder: ~{toks} words in {elapsed:.1f}s]{C.RESET}")
+        return f"[CODER ADVICE]:\n{full}"
     except Exception as e: return f"Coder Call Failed: {e}"
 
 def ask_minimax(query: str) -> str:
     print(f"\n{C.MAGENTA}[🧠 Pinging MiniMax Model at {MINIMAX_IP}...]{C.RESET}")
     try:
-        payload = {"model": "mlx-community/MiniMax-M2-REAP-139B", "messages": [{"role": "user", "content": f"You are a master systems architect advising an autonomous agent. Provide exact logic. Do not use tool tags. We are running vLLM on Asahi Linux with a custom Vulkan backend.\n\nQuery: {query}"}], "max_tokens": 16384, "temperature": 0.2}
-        r = requests.post(MINIMAX_URL, json=payload, timeout=300)
-        r.raise_for_status()
-        return f"[MINIMAX ADVICE]:\n{r.json()['choices'][0]['message']['content']}"
+        payload = {"model": "mlx-community/MiniMax-M2-REAP-139B", "messages": [{"role": "user", "content": f"You are a master systems architect advising an autonomous agent. Provide exact logic. Do not use tool tags. We are running vLLM on Asahi Linux with a custom Vulkan backend.\n\nQuery: {query}"}], "max_tokens": 16384, "temperature": 0.2, "stream": True}
+        full = ""
+        t0 = time.time()
+        print(f"{C.GREEN}", end="", flush=True)
+        with requests.post(MINIMAX_URL, json=payload, timeout=300, stream=True) as r:
+            r.raise_for_status()
+            for line in r.iter_lines():
+                if not line: continue
+                line = line.decode("utf-8")
+                if line.startswith("data: [DONE]"): break
+                if line.startswith("data: "):
+                    try:
+                        chunk = json.loads(line[6:])
+                        delta = chunk.get("choices", [{}])[0].get("delta", {}).get("content", "")
+                        if delta:
+                            print(delta, end="", flush=True)
+                            full += delta
+                    except: pass
+        elapsed = time.time() - t0
+        print(f"{C.RESET}")
+        print(f"{C.DIM}[🧠 MiniMax: ~{len(full.split())} words in {elapsed:.1f}s]{C.RESET}")
+        return f"[MINIMAX ADVICE]:\n{full}"
     except Exception as e: return f"MiniMax Call Failed: {e}"
 
 def ask_claude(query: str) -> str:
@@ -149,6 +189,36 @@ def ask_claude(query: str) -> str:
         return f"[CLAUDE ADVICE]:\n{response}"
     except Exception as ex:
         return f"Claude error: {ex}"
+
+def claim_task(task_id: str) -> str:
+    """Claim a task from the queue so other agents don't work on it."""
+    import subprocess
+    agent_name = "OmniAgent [Main]"  # Will be overridden per-instance
+    result = subprocess.run(
+        ["bash", os.path.expanduser("~/AGENT/claim_task.sh"), task_id, agent_name],
+        capture_output=True, text=True, timeout=5
+    )
+    out = result.stdout.strip()
+    print(f"{C.YELLOW}[📋 {out}]{C.RESET}")
+    return out
+
+def complete_task(task_id: str) -> str:
+    """Mark a task as DONE in the queue."""
+    import subprocess
+    agent_name = "OmniAgent [Main]"
+    result = subprocess.run(
+        ["bash", os.path.expanduser("~/AGENT/complete_task.sh"), task_id, agent_name],
+        capture_output=True, text=True, timeout=5
+    )
+    out = result.stdout.strip()
+    print(f"{C.GREEN}[✅ {out}]{C.RESET}")
+    return out
+
+def restart_self(reason: str = "update") -> str:
+    """Gracefully restart this agent. The bash launcher will respawn it."""
+    print(f"\n{C.YELLOW}[🔄 RESTARTING: {reason}]{C.RESET}")
+    import sys
+    sys.exit(42)  # Exit code 42 = intentional restart
 
 def self_improve(description: str, code_patch: str = "") -> str:
     """Stage a self-improvement suggestion for the next agent version."""
@@ -171,7 +241,8 @@ def ask_human(question: str) -> str:
 TOOL_DISPATCH = {
     "execute_bash": execute_bash, "read_file": read_file, "write_file": write_file,
     "search_web": search_web, "ask_coder_brain": ask_coder_brain, "ask_minimax": ask_minimax,
-    "ask_claude": ask_claude, "self_improve": self_improve, "ask_human": ask_human
+    "ask_claude": ask_claude, "claim_task": claim_task, "complete_task": complete_task,
+    "restart_self": restart_self, "self_improve": self_improve, "ask_human": ask_human
 }
 
 TOOLS_SCHEMA = [
@@ -183,6 +254,8 @@ TOOLS_SCHEMA = [
     {"type": "function", "function": {"name": "ask_minimax", "description": f"Ask the {MINIMAX_IP} MiniMax model for complex systems architecture advice.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}},
     {"type": "function", "function": {"name": "ask_claude", "description": "Ask Claude Opus (smartest AI) for architecture/debugging. USE SPARINGLY — costs tokens.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}},
     {"type": "function", "function": {"name": "self_improve", "description": "Stage a self-improvement for the next agent version. Log bugs, missing features, or code patches you want applied later.", "parameters": {"type": "object", "properties": {"description": {"type": "string", "description": "What to improve"}, "code_patch": {"type": "string", "description": "Optional Python code to add/change"}}, "required": ["description"]}}},
+    {"type": "function", "function": {"name": "claim_task", "description": "BEFORE starting any task: claim it so other agents don't work on it. Returns CLAIMED or TAKEN.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string", "description": "Task ID like T07, T08"}}, "required": ["task_id"]}}},
+    {"type": "function", "function": {"name": "complete_task", "description": "AFTER finishing a task: mark it DONE in the queue.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string", "description": "Task ID like T07"}}, "required": ["task_id"]}}},
     {"type": "function", "function": {"name": "ask_human", "description": "Ask the human for help. LAST RESORT only.", "parameters": {"type": "object", "properties": {"question": {"type": "string"}}, "required": ["question"]}}}
 ]
 
@@ -198,7 +271,13 @@ Execute tasks from ~/AGENT/TASK_QUEUE_v4.md and ~/AGENT/TASK_QUEUE_v5.md. After 
 4. After ANY code change: compile, test, verify. If broken, restore: git checkout -- filename
 5. Git commit after every completed task with a descriptive message.
 6. Update ~/AGENT/agent-comms-bridge.md after every completed task.
-7. If stuck for more than 2 tool calls, ask for help using ask_coder_brain or ask_claude.
+7. CONSULT BRAINS FREQUENTLY — do NOT make major decisions alone:
+   - BEFORE writing or modifying any C code: ask_coder_brain for the implementation
+   - BEFORE any architecture decision: ask_coder_brain or ask_claude
+   - AFTER any failed compile or test: ask_coder_brain with the error
+   - Every 5-10 tool calls: consult a brain about your approach
+   - ask_coder_brain is FREE and FAST — use it liberally
+   - ask_claude is EXPENSIVE — use only for hard architecture problems
 
 ## YOUR BRAINS (use them!)
 - ask_coder_brain: Fast code questions, C/Python fixes, shader code
@@ -230,11 +309,20 @@ Execute tasks from ~/AGENT/TASK_QUEUE_v4.md and ~/AGENT/TASK_QUEUE_v5.md. After 
 CORRECT: {{"name": "execute_bash", "arguments": {{"command": "pwd"}}}}
 WRONG:   {{"name"="execute_bash", "arguments"={{"command": "pwd"}}}}
 
+## MULTI-AGENT COORDINATION
+- BEFORE starting any task: call claim_task("T07") — if it returns TAKEN, skip to next READY task
+- AFTER completing any task: call complete_task("T07")
+- Check TASK_QUEUE_v4.md for [IN_PROGRESS by ...] to see what other agents are doing
+- Do NOT work on tasks claimed by other agents
+
 ## ON STARTUP
-1. Read ~/AGENT/TASK_QUEUE_v4.md to find your current task
-2. Read ~/AGENT/KNOWLEDGE_BASE.md for context
-3. Check git status to see what's changed
-4. Start executing the next READY task immediately
+1. Read ~/AGENT/TASK_QUEUE_v4.md — check for tasks [IN_PROGRESS by YOUR NAME]
+2. If you have an IN_PROGRESS task, RESUME it (don't re-claim)
+3. If no IN_PROGRESS task, find next [READY] task and claim_task it
+4. Also check ~/AGENT/TASK_QUEUE_v5.md for additional READY tasks
+5. Read ~/AGENT/KNOWLEDGE_BASE.md for context
+6. NEVER work on tasks claimed by other agents
+7. Only use ONE queue — prefer v4 tasks first, then v5
 
 ## AVAILABLE TOOLS
 {json.dumps(TOOLS_SCHEMA, indent=2)}
@@ -279,7 +367,20 @@ def get_multiline_input(prompt_text="Task (Ctrl+D to submit):"):
         except EOFError: break
     return "\n".join(lines).strip()
 
-def run_agent(agent_name="OmniAgent [Main]"):
+GO_PROMPT_PATH = os.path.expanduser("~/AGENT/GO_PROMPT.md")
+
+def load_go_prompt():
+    """Load autonomous execution prompt from GO_PROMPT.md"""
+    try:
+        with open(GO_PROMPT_PATH, "r") as f:
+            content = f.read().strip()
+        print(f"{C.BOLD}{C.GREEN}[GO] Loaded autonomous execution prompt from GO_PROMPT.md{C.RESET}")
+        return content
+    except FileNotFoundError:
+        print(f"{C.RED}[GO] GO_PROMPT.md not found at {GO_PROMPT_PATH}{C.RESET}")
+        return None
+
+def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
     print(f"{C.BOLD}{C.CYAN}🚀 {agent_name} ONLINE | Model: {MODEL_NAME}{C.RESET}")
     history = [{"role": "system", "content": SYSTEM_PROMPT}]
 
@@ -287,12 +388,29 @@ def run_agent(agent_name="OmniAgent [Main]"):
     session_total_tokens = 0
     session_total_turns = 0
     session_start_time = time.time()
+    first_turn = True
 
     while True:
         try:
-            user_input = get_multiline_input()
+            # Auto-go on restart (--auto-go flag), but NOT first launch
+            if auto_go and first_turn:
+                print(f"{C.BOLD}{C.MAGENTA}[AUTO-GO] Restarted — auto-loading GO_PROMPT.md{C.RESET}")
+                user_input = load_go_prompt()
+                if not user_input:
+                    user_input = get_multiline_input()
+            else:
+                user_input = get_multiline_input()
+
+            first_turn = False
             if not user_input: continue
             if user_input.lower() in ['exit', 'quit']: break
+
+            # "go" keyword detection — any form: go, GO, GO!, go!, gogo, etc.
+            if re.match(r'^go[!.\s]*$', user_input.strip(), re.IGNORECASE):
+                go_content = load_go_prompt()
+                if go_content:
+                    user_input = go_content
+
             history.append({"role": "user", "content": user_input})
             
             while True: 
@@ -337,7 +455,15 @@ def run_agent(agent_name="OmniAgent [Main]"):
                     print()
                 except InterruptSignal:
                     print(f"\n{C.RED}[🛑 INTERRUPTED BY USER]{C.RESET}")
-                    break 
+                    break
+                except Exception as stream_err:
+                    print(f"\n{C.RED}[⚠️ STREAM ERROR: {stream_err}]{C.RESET}")
+                    print(f"{C.YELLOW}[🔄 Retrying in 5s...]{C.RESET}")
+                    time.sleep(5)
+                    if full_content:
+                        history.append({"role": "assistant", "content": full_content + "\n[TRUNCATED BY CONNECTION ERROR]"})
+                    history.append({"role": "user", "content": "[SYSTEM]: Previous response was cut off by a connection error. Continue where you left off. Use a tool call."})
+                    continue
                 
                 history.append({"role": "assistant", "content": full_content})
                 tool_calls, parse_errors = extract_tool_calls(full_content)
@@ -398,5 +524,6 @@ def run_agent(agent_name="OmniAgent [Main]"):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="OmniAgent v4")
     parser.add_argument("--name", type=str, default="OmniAgent [Main]", help="Name of the agent instance")
+    parser.add_argument("--auto-go", action="store_true", help="Auto-load GO_PROMPT.md on startup (used by restart loop)")
     args = parser.parse_args()
-    run_agent(agent_name=args.name)
+    run_agent(agent_name=args.name, auto_go=args.auto_go)

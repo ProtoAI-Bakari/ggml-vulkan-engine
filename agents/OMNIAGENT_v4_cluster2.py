@@ -49,8 +49,8 @@ signal.signal(signal.SIGINT, sigint_handler)
 # =====================================================
 # CONFIGURATION
 # =====================================================
-PRIMARY_IP   = "10.255.255.4" # 122B cluster
-CODER_IP     = "10.255.255.11"  # Coder brain
+PRIMARY_IP   = "10.255.255.11" # 122B cluster
+CODER_IP     = "10.255.255.4"  # Coder brain
 MINIMAX_IP   = "192.168.1.164" # MiniMax
 PORT         = "8000"
 
@@ -193,7 +193,7 @@ def ask_claude(query: str) -> str:
 def claim_task(task_id: str) -> str:
     """Claim a task from the queue so other agents don't work on it."""
     import subprocess
-    agent_name = "OmniAgent [Sys4]"  # Will be overridden per-instance
+    agent_name = "OmniAgent [Cluster2]"  # Will be overridden per-instance
     result = subprocess.run(
         ["bash", os.path.expanduser("~/AGENT/claim_task.sh"), task_id, agent_name],
         capture_output=True, text=True, timeout=5
@@ -205,7 +205,7 @@ def claim_task(task_id: str) -> str:
 def complete_task(task_id: str) -> str:
     """Mark a task as DONE in the queue."""
     import subprocess
-    agent_name = "OmniAgent [Sys4]"
+    agent_name = "OmniAgent [Cluster2]"
     result = subprocess.run(
         ["bash", os.path.expanduser("~/AGENT/complete_task.sh"), task_id, agent_name],
         capture_output=True, text=True, timeout=5
@@ -379,7 +379,7 @@ def load_go_prompt():
         print(f"{C.RED}[GO] GO_PROMPT.md not found at {GO_PROMPT_PATH}{C.RESET}")
         return None
 
-def run_agent(agent_name="OmniAgent [Sys4]", auto_go=False):
+def run_agent(agent_name="OmniAgent [Cluster2]", auto_go=False):
     print(f"{C.BOLD}{C.CYAN}🚀 {agent_name} ONLINE | Model: {MODEL_NAME}{C.RESET}")
     history = [{"role": "system", "content": SYSTEM_PROMPT}]
 
@@ -520,7 +520,7 @@ def run_agent(agent_name="OmniAgent [Sys4]", auto_go=False):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="OmniAgent v4")
-    parser.add_argument("--name", type=str, default="OmniAgent [Sys4]", help="Name of the agent instance")
+    parser.add_argument("--name", type=str, default="OmniAgent [Cluster2]", help="Name of the agent instance")
     parser.add_argument("--auto-go", action="store_true", help="Auto-load GO_PROMPT.md on startup (used by restart loop)")
     args = parser.parse_args()
     run_agent(agent_name=args.name, auto_go=args.auto_go)

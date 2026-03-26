@@ -10,20 +10,20 @@
 
 ## PHASE 0: STABILITY + MEASUREMENT [DO FIRST — nothing else matters if broken]
 
-### T01: [READY] Verify standalone engine: 12+ sequential requests, all coherent
+### T01: [IN_PROGRESS by OmniAgent [Main]] Verify standalone engine: 12+ sequential requests, all coherent
 - Run 12 diverse prompts through GgmlLLM.generate() 
 - Include: math, factual, creative, long-gen, multi-sentence
 - Success: 12/12 coherent, no crash, consistent TPS
 - Time: 1h
 
-### T02: [READY] Fix standalone streaming server startup + stability
+### T02: [IN_PROGRESS by OmniAgent [Main]] Fix standalone streaming server startup + stability
 - Server must start in <30s, serve on 0.0.0.0:8080
 - ThreadingMixIn for concurrent HTTP (sequential engine underneath)
 - KV reset between every request (engine_reset_kv)
 - Success: 50 sequential HTTP requests without crash, all coherent
 - Time: 2h
 
-### T03: [READY] Coherency blast test: 50 diverse prompts through HTTP server
+### T03: [IN_PROGRESS by OmniAgent [Main]] Coherency blast test: 50 diverse prompts through HTTP server
 - Math: 2+2, complex arithmetic, word problems
 - Factual: capitals, dates, science, history
 - Creative: stories, poetry, code generation
@@ -41,7 +41,7 @@
 - Time: 4h
 - Files: benchmark_vulkan.py, run_benchmarks.sh
 
-### T05: [READY] Profile CPU time breakdown with py-spy + custom instrumentation
+### T05: [IN_PROGRESS by OmniAgent [Sys4]] Profile CPU time breakdown with py-spy + custom instrumentation
 - Confirm: ~6ms CB recording, ~4ms graph build, ~3ms Python overhead
 - Instrument ggml_vk_dispatch_pipeline, CB begin/end, queue submit, fence wait
 - Success: flamegraph + per-stage timing CSV matching OpR's predicted breakdown

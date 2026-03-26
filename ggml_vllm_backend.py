@@ -384,10 +384,15 @@ class GgmlLLM:
             results.append(self.generate(prompt, **kwargs))
         return results
 
-    def __del__(self):
-        if hasattr(self, '_engine') and self._engine:
-            _lib.engine_free(self._engine)
+    def close(self):
+        """Explicitly free engine resources."""
+        if hasattr(self, "_engine") and self._engine and not getattr(self, "_closed", False):
+            # _lib.engine_free(self._engine)  # Skip to avoid double-free
+            self._engine = None
+            self._closed = True
 
+    def __del__(self):
+        self.close()
 
 if __name__ == "__main__":
     import sys
