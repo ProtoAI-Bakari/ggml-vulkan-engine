@@ -79,7 +79,7 @@ class GenerationResult:
 class GgmlLLM:
     """vLLM-compatible LLM interface backed by ggml Vulkan engine."""
 
-    def __init__(self, model_path, n_ctx=2048, tokenizer_path=None):
+    def __init__(self, model_path, n_ctx=8192, tokenizer_path=None):
         self.model_path = os.path.expanduser(model_path)
         self.n_ctx = n_ctx
 

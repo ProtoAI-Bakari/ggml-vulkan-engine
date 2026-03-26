@@ -126,12 +126,12 @@
 - Success: FA runs without crash on AGX, correct output
 - Time: 6h
 
-### T18: [READY] Benchmark FA scalar vs standard attention at various context lengths
+### T18: [IN_PROGRESS by OmniAgent [Main]] Benchmark FA scalar vs standard attention at various context lengths
 - Test: 128, 512, 2048, 8192 context
 - Success: performance comparison table
 - Time: 3h
 
-### T19: [READY] Optimize descriptor set allocation
+### T19: [IN_PROGRESS by OmniAgent [Main]] Optimize descriptor set allocation
 - Pre-allocate descriptor pools for worst-case graph
 - No runtime descriptor allocation
 - Success: zero runtime alloc during decode

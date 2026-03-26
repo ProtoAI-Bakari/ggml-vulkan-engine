@@ -41,9 +41,12 @@ NODES = {
 }
 
 AGENTS = {
-    "agent1": {"script": "OMNIAGENT_v4_focused.py",        "log": "LOGS/main_trace.log",     "alias": "a1"},
-    "agent2": {"script": "agents/OMNIAGENT_v4_sys4.py",    "log": "LOGS/sys4_trace.log",     "alias": "a2"},
-    "agent3": {"script": "agents/OMNIAGENT_v4_cluster2.py", "log": "LOGS/cluster2_trace.log", "alias": "a3"},
+    "agent1": {"script": "OMNIAGENT_v4_focused.py",         "log": "LOGS/main_trace.log",     "name": "OmniAgent [Main]"},
+    "agent2": {"script": "agents/OMNIAGENT_v4_sys4.py",     "log": "LOGS/sys4_trace.log",     "name": "OmniAgent [Sys4]"},
+    "agent3": {"script": "agents/OMNIAGENT_v4_cluster2.py", "log": "LOGS/cluster2_trace.log", "name": "OmniAgent [Cluster2]"},
+    "agent4": {"script": "OMNIAGENT_v4_focused.py",         "log": "LOGS/agent4_trace.log",   "name": "OmniAgent [Worker4]"},
+    "agent5": {"script": "OMNIAGENT_v4_focused.py",         "log": "LOGS/agent5_trace.log",   "name": "OmniAgent [Worker5]"},
+    "agent6": {"script": "OMNIAGENT_v4_focused.py",         "log": "LOGS/agent6_trace.log",   "name": "OmniAgent [Worker6]"},
 }
 
 console = Console()
