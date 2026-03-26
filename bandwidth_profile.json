@@ -1,8 +1,31 @@
 {
   "theoretical_peak_gb_s": 800,
-  "measured_bandwidth_gb_s": 11.358585613663719,
-  "utilization_percent": 1.4198232017079648,
-  "model": "Apple M1 Ultra",
-  "tps_22_bandwidth_gb_s": 101.19999999999999,
-  "tps_30_bandwidth_gb_s": 138.0
+  "measured_results": [
+    [
+      256,
+      12.698275457066478
+    ],
+    [
+      512,
+      12.845657259168357
+    ],
+    [
+      1024,
+      13.40292706442295
+    ],
+    [
+      2048,
+      12.851101002056152
+    ],
+    [
+      4096,
+      12.821805321570602
+    ]
+  ],
+  "best_bandwidth_gb_s": 13.40292706442295,
+  "utilization_percent": 1.6753658830528688,
+  "model": "Apple M1 Ultra (Honeykrisp)",
+  "backend": "CPU (Vulkan GPU measurement requires C integration)",
+  "tps_based_estimate_22": 101.19999999999999,
+  "tps_based_estimate_30": 138.0
 }

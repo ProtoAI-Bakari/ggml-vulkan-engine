@@ -19,7 +19,7 @@
 5. Target: 22 TPS → 28+ TPS
 **Files:** ~/AGENT/ggml_llama_gguf.c, ~/AGENT/libggml_llama_gguf.so
 
-### T07: [IN_PROGRESS by Main] Add MoE FFN support to ggml_llama_gguf.c for gpt-oss-120b
+### T07: [DONE by OmniAgent [Sys4]] Add MoE FFN support to ggml_llama_gguf.c for gpt-oss-120b
 **Goal:** Load and run 120B MoE model through our engine
 **Architecture (from GGUF analysis):**
 - 36 layers, hidden=2880, 128 experts, 4 active per token

@@ -1,0 +1,21 @@
+{
+  "task": "T22: Double-buffering for KV cache writes",
+  "goal": "Overlap KV write with next token compute",
+  "expected_gain": "22 TPS \u2192 25-27 TPS (15-25%)",
+  "memory_overhead": "2\u00d7 KV cache size",
+  "complexity": "Medium (requires Vulkan synchronization)",
+  "implementation_steps": [
+    "Allocate 2\u00d7 KV buffers",
+    "Track active buffer index",
+    "Write to active, read from inactive",
+    "Swap buffers after each token",
+    "Add Vulkan pipeline barriers"
+  ],
+  "challenges": [
+    "Memory usage doubles",
+    "Synchronization complexity",
+    "Graph rebuild for buffer switching",
+    "Multi-token batch handling"
+  ],
+  "recommendation": "Implement after T12 (graph caching) for maximum benefit"
+}

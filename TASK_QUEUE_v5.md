@@ -137,19 +137,19 @@
 - Success: zero runtime alloc during decode
 - Time: 4h
 
-### T20: [READY] Profile memory bandwidth utilization
+### T20: [IN_PROGRESS by OmniAgent [Main]] Profile memory bandwidth utilization
 - Custom compute shader doing pure reads
 - Measure actual GB/s vs theoretical 800 GB/s
 - Success: measured bandwidth utilization percentage
 - Time: 4h
 
-### T21: [READY] Tune workgroup sizes for AGX
+### T21: [IN_PROGRESS by OmniAgent [Main]] Tune workgroup sizes for AGX
 - Test 64, 128, 256, 512 threads for GEMV kernels
 - AGX has 8KB L1 (tiny!), 32KB shared memory
 - Success: optimal workgroup size identified per kernel type
 - Time: 4h
 
-### T22: [READY] Implement double-buffering for KV cache writes
+### T22: [IN_PROGRESS by OmniAgent [Main]] Implement double-buffering for KV cache writes
 - Overlap current token KV write with next dispatch
 - Pipeline bubble reduction
 - Success: measurable overlap in GPU timeline

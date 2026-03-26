@@ -37,7 +37,10 @@ NODES = {
     "sys5":  {"ip": "10.255.255.5",    "port": 8000, "role": "DESIGNER",    "chip": "M1 Ultra",  "ram": "128G", "os": "macOS"},
     "sys6":  {"ip": "10.255.255.6",    "port": 8000, "role": "REVIEWER",    "chip": "M1 Ultra",  "ram": "128G", "os": "macOS"},
     "sys7":  {"ip": "10.255.255.7",    "port": 8000, "role": "FAST-CODER",  "chip": "M1 Ultra",  "ram": "128G", "os": "macOS"},
-    "cluster": {"ip": "10.255.255.11", "port": 8000, "role": "GPU-CLUSTER", "chip": "8x3090",    "ram": "256G", "os": "Linux"},
+    "cluster1": {"ip": "10.255.255.11", "port": 8000, "role": "CUDA-HEAD",   "chip": "2x3090",  "ram": "256G",  "os": "Linux"},
+    "cluster2": {"ip": "10.255.255.12", "port": 0,    "role": "CUDA-NODE",   "chip": "2x3090",  "ram": "128G",  "os": "Linux"},
+    "cluster3": {"ip": "10.255.255.13", "port": 0,    "role": "CUDA-NODE",   "chip": "2x3090",  "ram": "64G",  "os": "Linux"},
+    "cluster4": {"ip": "10.255.255.14", "port": 0,    "role": "CUDA-NODE",   "chip": "2x3090",  "ram": "64G",  "os": "Linux"},
 }
 
 AGENTS = {
@@ -69,9 +72,16 @@ def ssh_cmd(ip, cmd, timeout=5):
         return ""
 
 def health_check(name, node):
-    """Check brain server health endpoint."""
+    """Check brain server health endpoint, or ping for cluster nodes."""
     import requests
     ip, port = node["ip"], node["port"]
+    if port == 0:
+        # Ping-only node (no HTTP server)
+        try:
+            r = subprocess.run(f"ping -c1 -W1 {ip}", shell=True, capture_output=True, timeout=3)
+            return {"status": "UP" if r.returncode == 0 else "DOWN", "model": "(no LLM)", "role": node["role"], "active": 0}
+        except Exception:
+            return {"status": "DOWN", "model": "-", "role": node["role"], "active": 0}
     try:
         r = requests.get(f"http://{ip}:{port}/health", timeout=3)
         d = r.json()
@@ -80,6 +90,13 @@ def health_check(name, node):
         active = d.get("active", 0)
         return {"status": "UP", "model": model, "role": role, "active": active}
     except Exception:
+        # Try ping as fallback
+        try:
+            r = subprocess.run(f"ping -c1 -W1 {ip}", shell=True, capture_output=True, timeout=3)
+            if r.returncode == 0:
+                return {"status": "PING", "model": "(reachable, no LLM)", "role": node["role"], "active": 0}
+        except Exception:
+            pass
         return {"status": "DOWN", "model": "-", "role": node["role"], "active": 0}
 
 def get_mem_usage(ip):
@@ -167,41 +184,54 @@ def stop_brain(name):
     ssh_cmd(node["ip"], "pkill -f mlx_server", timeout=5)
     console.print(f"[red]{name}: brain stopped[/red]")
 
-def launch_agent(agent_id):
-    """Start an agent on sys0 in a tmux session."""
+def launch_agent(agent_id, auto_go=False):
+    """Start an agent on sys0 in a tmux session with optional auto-go."""
     agent = AGENTS.get(agent_id)
     if not agent:
         console.print(f"[red]Unknown agent: {agent_id}[/red]")
         return
+    # Check if already running
+    r = subprocess.run(f"tmux has-session -t {agent_id} 2>/dev/null", shell=True)
+    if r.returncode == 0:
+        console.print(f"[yellow]{agent_id}: already running (attach: tmux attach -t {agent_id})[/yellow]")
+        return
     script = agent["script"]
     log = agent["log"]
-    # Launch in tmux so it persists
+    name = agent["name"]
+    go_flag = " --auto-go" if auto_go else ""
     subprocess.Popen(
         f"tmux new-session -d -s {agent_id} 'cd ~/AGENT && source ~/.venv-vLLM_0.17.1_Stable/bin/activate && "
-        f"python3 {script} 2>&1 | tee -a {log}'",
+        f"python3 {script} --name \"{name}\"{go_flag} 2>&1 | tee -a {log}'",
         shell=True
     )
-    console.print(f"[green]{agent_id}: launched in tmux session '{agent_id}'[/green]")
-    console.print(f"[dim]  Attach: tmux attach -t {agent_id}[/dim]")
+    mode = "[bold green]AUTO-GO[/bold green]" if auto_go else "interactive"
+    console.print(f"[green]{agent_id}: launched ({mode}) → tmux attach -t {agent_id}[/green]")
 
 def stop_agent(agent_id):
     """Stop an agent tmux session."""
+    if agent_id == "all":
+        for aid in AGENTS:
+            subprocess.run(f"tmux kill-session -t {aid} 2>/dev/null", shell=True)
+        console.print(f"[red]All agents stopped[/red]")
+        return
     subprocess.run(f"tmux kill-session -t {agent_id} 2>/dev/null", shell=True)
     console.print(f"[red]{agent_id}: stopped[/red]")
 
 def goal_all():
-    """GO ALL — launch all brains and agents."""
+    """GO ALL — launch all brains, then launch all agents with auto-go."""
     console.print("[bold magenta]━━━ GOAL: LAUNCHING ENTIRE SWARM ━━━[/bold magenta]")
-    # Launch all brains in parallel
+    # Launch all brains in parallel (skips already-running ones)
     with ThreadPoolExecutor(max_workers=6) as pool:
-        for name in ["sys2", "sys3", "sys5", "sys6", "sys7"]:  # sys4 usually already running
+        for name in ["sys2", "sys3", "sys4", "sys5", "sys6", "sys7"]:
             pool.submit(launch_brain, name)
-    console.print("[yellow]Waiting 20s for models to load...[/yellow]")
-    time.sleep(20)
-    # Launch agents
+    console.print("[yellow]Brains checked. Launching agents with AUTO-GO...[/yellow]")
+    # Launch ALL agents with auto-go (reads GO_PROMPT.md immediately)
     for aid in AGENTS:
-        launch_agent(aid)
-    console.print("[bold green]━━━ SWARM LAUNCHED ━━━[/bold green]")
+        launch_agent(aid, auto_go=True)
+    console.print("[bold green]━━━ SWARM LAUNCHED — ALL AGENTS IN AUTO-GO MODE ━━━[/bold green]")
+    console.print("[dim]  Agents reading GO_PROMPT.md and claiming tasks autonomously[/dim]")
+    console.print("[dim]  Attach to any: tmux attach -t agent1[/dim]")
+    console.print("[dim]  List sessions: tmux ls[/dim]")
 
 def stop_all():
     """Stop all brains and agents."""
@@ -274,6 +304,8 @@ def build_dashboard(fleet_status):
 
         if status == "UP":
             st_str = "[green]UP[/green]"
+        elif status == "PING":
+            st_str = "[yellow]OK[/yellow]"
         elif status == "DOWN":
             st_str = "[red]DN[/red]"
         else:
@@ -314,16 +346,18 @@ def show_dashboard():
 def show_help():
     help_text = """[bold cyan]Commands:[/bold cyan]
   [bold]fleet[/bold] / [bold]status[/bold]    — Refresh dashboard
-  [bold]goal[/bold]              — GO ALL: launch all brains + agents
+  [bold]goal[/bold]              — GO ALL: launch brains + ALL 6 agents (auto-go)
+  [bold]go[/bold]                — Launch ALL agents with auto-go (brains must be up)
+  [bold]go[/bold] <1-6>          — Launch specific agent with auto-go
   [bold]stop[/bold]              — Stop all brains + agents
   [bold]launch[/bold] <node>     — Start brain on node (sys2-sys7)
   [bold]kill[/bold] <node>       — Stop brain on node
-  [bold]agent[/bold] <1|2|3>     — Start agent on sys0 (in tmux)
-  [bold]agentstop[/bold] <1|2|3> — Stop agent
+  [bold]agent[/bold] <1-6>       — Start agent interactively (no auto-go)
+  [bold]agentstop[/bold] <1-6|all> — Stop agent(s)
   [bold]council[/bold] <question> — Ask architect+engineer+designer
   [bold]logs[/bold] <node>       — Tail node's MLX log (Ctrl+C to stop)
   [bold]tasks[/bold]             — Show task queue summary
-  [bold]swap[/bold] <node> <model> — Change model on node (TODO v2)
+  [bold]tmux[/bold]              — List active tmux sessions
   [bold]q[/bold] / [bold]quit[/bold]          — Exit"""
     console.print(Panel(help_text, title="[bold]ProtoAI-Bakari Commander[/bold]", border_style="blue"))
 
@@ -373,12 +407,31 @@ def main():
                 stop_brain(arg)
             else:
                 console.print("[red]Usage: kill <node>[/red]")
+        elif action == "go":
+            # GO — launch agents with auto-go (reads GO_PROMPT.md)
+            if arg and arg.isdigit():
+                launch_agent(f"agent{arg}", auto_go=True)
+            elif not arg:
+                console.print("[bold magenta]━━━ GO: ALL AGENTS AUTO-GO ━━━[/bold magenta]")
+                for aid in AGENTS:
+                    launch_agent(aid, auto_go=True)
+                console.print("[bold green]All agents launched with GO_PROMPT.md[/bold green]")
+            else:
+                console.print("[red]Usage: go [1-6][/red]")
         elif action in ("agent",):
             aid = f"agent{arg}" if arg.isdigit() else arg
             launch_agent(aid)
         elif action == "agentstop":
             aid = f"agent{arg}" if arg.isdigit() else arg
             stop_agent(aid)
+        elif action == "tmux":
+            os.system("tmux ls 2>/dev/null || echo 'No tmux sessions'")
+        elif action == "attach":
+            aid = f"agent{arg}" if arg and arg.isdigit() else arg
+            if aid:
+                os.system(f"tmux attach -t {aid}")
+            else:
+                console.print("[red]Usage: attach <1-6>[/red]")
         elif action == "council":
             if arg:
                 council_query(arg)

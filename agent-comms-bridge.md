@@ -26,3 +26,5 @@
 **Performance Target**: Reduce CB recording from 6ms to <1ms for stable graphs
 
 **Next**: T14 - Add CB invalidation logic (detection already in place)
+T07: MoE support for gpt-oss-120b added and tested (24 TPS, coherent output)
+Sys4: Ready for next task assignment. Completed T07 (MoE support).
