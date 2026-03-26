@@ -509,6 +509,53 @@ def analyze_node(name, node):
     if result["turns"] > 30 and productive == 0:
         result["warnings"].append("NO PRODUCTIVE OUTPUT despite many turns")
 
+    # NEW DETECTION: Zero-token turns (model returning empty responses)
+    zero_tok = len(re.findall(r'0 tok \| 0\.0 t/s', raw[-3000:]))
+    if zero_tok >= 5:
+        result["issues"].append(f"ZERO-TOKEN LOOP x{zero_tok} — model returning empty responses")
+
+    # NEW DETECTION: Mock/stub server responses
+    if "simulated inference" in raw or "ggml-vllm-mock" in raw:
+        result["issues"].append("MOCK SERVER — agent hitting stub, not real model")
+
+    # NEW DETECTION: STUCK escalation (asking Claude/brain repeatedly)
+    stuck_count = raw.count("[STUCK]") + raw.count("Asking Claude")
+    if stuck_count >= 3:
+        result["issues"].append(f"STUCK ESCALATION x{stuck_count} — agent can't produce tool calls")
+
+    # NEW DETECTION: ALREADY_DONE loop (trying to claim finished tasks)
+    already_done = raw[-2000:].count("ALREADY_DONE")
+    if already_done >= 3:
+        result["issues"].append(f"DONE-TASK LOOP x{already_done} — claiming finished tasks")
+
+    # NEW DETECTION: NOT_FOUND_OR_NOT_READY (hallucinating task IDs)
+    not_found = raw[-2000:].count("NOT_FOUND_OR_NOT_READY")
+    if not_found >= 3:
+        result["issues"].append(f"PHANTOM TASKS x{not_found} — claiming non-existent tasks")
+
+    # NEW DETECTION: Rapid turn cycling (100+ turns in a short log = spinning)
+    if result["turns"] > 1000:
+        # Check if turns are cycling too fast (>10 turns/sec = empty responses)
+        turn_nums = re.findall(r'Turn (\d+)', raw[-2000:])
+        if len(turn_nums) >= 2:
+            span = int(turn_nums[-1]) - int(turn_nums[0])
+            if span > 100:
+                result["warnings"].append(f"RAPID CYCLING: {span} turns in recent log window")
+
+    # NEW DETECTION: Agent calling ./claim_task.sh directly (bypassing Python tool)
+    direct_claims = raw.count("claim_task.sh")
+    if direct_claims >= 5:
+        result["warnings"].append(f"DIRECT CLAIM CALLS x{direct_claims} — agent using bash for claims")
+
+    # NEW DETECTION: TAKEN loop (all tasks claimed by others)
+    taken = raw[-2000:].count("TAKEN by")
+    if taken >= 5:
+        result["issues"].append(f"ALL-TAKEN LOOP x{taken} — no tasks available for this agent")
+
+    # NEW DETECTION: Agent not updating progress (IN_PROGRESS but 0% for long time)
+    if result["turns"] > 50 and result["progress_pct"] == 0 and result["task"] != "-":
+        result["warnings"].append("STALE PROGRESS: task claimed but 0% after 50+ turns")
+
     # Multi-claim detection
     claimed = re.findall(r'CLAIMED (T\d+)', raw)
     unique = set(claimed[-10:]) if claimed else set()
