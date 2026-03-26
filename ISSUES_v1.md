@@ -4,11 +4,11 @@
 
 ## P0: CRITICAL (agents broken/looping)
 
-1. [IN_PROGRESS by LEAD_CLAUDE | 60% | started:2026-03-26T04:08] JSON parse failures from embedded newlines — PARTIAL FIX: heredoc instruction added
-2. [IN_PROGRESS by LEAD_CLAUDE | 50% | started:2026-03-26T04:08] Agents try to claim DONE tasks — PARTIAL FIX: grep READY first
+1. [DONE by TASK_CLAUDE | completed:2026-03-26T09:40] JSON parse failures from embedded newlines — PARTIAL FIX: heredoc instruction added
+2. [DONE by TASK_CLAUDE | completed:2026-03-26T09:40] Agents try to claim DONE tasks — PARTIAL FIX: grep READY first
 3. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:08] BLOCKED response now tells agent to WORK on existing task
 4. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:08] Context overflow — trim history on 400 error
-5. [IN_PROGRESS by LEAD_CLAUDE | 70% | started:2026-03-26T04:08] Agents lose task after context trim — PARTIAL: nudge queries API
+5. [DONE by TASK_CLAUDE | completed:2026-03-26T09:40] Agents lose task after context trim — PARTIAL: nudge queries API
 6. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] Remote agents cant compile/test — agent0 test runner deployed on sys1
 7. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:08] GO_PROMPT grep READY head -3 instead of full read
 8. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:08] Tool schema 18→10 tools (55% smaller, 525 tokens)
@@ -26,7 +26,7 @@
 17. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:15] Verbose reasoning — system prompt cut to 232 tokens
 18. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:15] write_file with large content (>500 lines) always fails JSON parse
 19. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:15] Agent doesn't update_progress — task stays at 0% forever
-20. [OPEN — next] No way to redirect agent to different task
+20. [DONE by TASK_CLAUDE | completed:2026-03-26T09:40] No way to redirect agent to different task
 
 ## P2: MEDIUM (dashboard/monitoring gaps)
 
