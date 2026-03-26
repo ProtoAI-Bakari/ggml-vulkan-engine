@@ -481,6 +481,20 @@ int engine_forward(engine_t *e, int n_tokens,
     }
     ggml_backend_tensor_set(inp_tokens, tokens, 0, n_tokens * sizeof(int32_t));
     ggml_backend_tensor_set(inp_pos, positions, 0, n_tokens * sizeof(int32_t));
+    /* T06: Print graph topology for documentation */
+    if (n_tokens == 1 && positions[0] < 2) {
+        fprintf(stderr, "=== GGML Graph Topology (pos=%d, n_tokens=%d) ===\n", positions[0], n_tokens);
+        fprintf(stderr, "Graph nodes: %d\n", ggml_graph_n_nodes(graph));
+        int views=0, compute=0;
+        for (int i = 0; i < ggml_graph_n_nodes(graph); i++) {
+            struct ggml_tensor *node = ggml_graph_node(graph, i);
+            if (node->op == GGML_OP_CPY || node->op == GGML_OP_VIEW) views++;
+            /* CAST ops not tracked in this ggml version */
+            else compute++;
+        }
+        fprintf(stderr, "Breakdown: views=%d, compute=%d\n", views, compute);
+    }
+
     enum ggml_status status = ggml_backend_sched_graph_compute(e->sched, graph);
     if (status != GGML_STATUS_SUCCESS) {
         fprintf(stderr, "[engine] compute failed: %d\n", status);

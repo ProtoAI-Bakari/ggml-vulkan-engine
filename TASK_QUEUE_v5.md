@@ -47,13 +47,13 @@
 - Success: flamegraph + per-stage timing CSV matching OpR's predicted breakdown
 - Time: 3h
 
-### T06: [READY] Document ggml compute graph: node count, op types, tensor shapes
+### T06: [IN_PROGRESS by OmniAgent [Main]] Document ggml compute graph: node count, op types, tensor shapes
 - Dump graph at position 1, 100, 500 for Llama-3.1-8B decode
 - Count: how many nodes are views/casts vs real compute?
 - Success: graph topology document with node breakdown
 - Time: 2h
 
-### T07: [READY] Verify Honeykrisp capabilities matrix
+### T07: [IN_PROGRESS by OmniAgent [Main]] Verify Honeykrisp capabilities matrix
 - vulkaninfo: all extensions, subgroup properties, memory types, queue families
 - Confirm: subgroupSize=32, shaderFloat16Int8, integerDotProduct
 - Confirm: NO cooperative_matrix, NO tensor cores
