@@ -2,6 +2,8 @@
 OmniAgent v4 - The Focused Architect
 Features: Zero visual truncation, perfect context window, Asahi/Vulkan environmental anchoring.
 """
+VERSION = "v4.2"
+
 import os
 import sys
 import time

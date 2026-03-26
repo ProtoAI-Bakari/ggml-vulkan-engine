@@ -153,19 +153,6 @@ def test_server_alive():
         log("  SERVER: DOWN")
         return False
 
-def test_pushed_files():
-    """Check for files recently pushed by remote agents via push_changes."""
-    log("Checking for pushed files...")
-    import subprocess
-    r = subprocess.run("git diff --name-only HEAD~1 2>/dev/null", shell=True, capture_output=True, text=True, timeout=5)
-    if r.stdout.strip():
-        for f in r.stdout.strip().split('
-'):
-            if f.endswith('.py') or f.endswith('.c'):
-                log(f"  New: {f}")
-    return r.stdout.strip().split('
-') if r.stdout.strip() else []
-
 def test_new_files():
     """Check for new files pushed by remote agents and test them."""
     log("Checking for new agent-pushed files...")
