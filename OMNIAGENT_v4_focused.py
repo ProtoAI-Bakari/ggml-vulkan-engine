@@ -526,9 +526,10 @@ def _try_parse_tool_json(raw):
     cleaned = cleaned.replace("\u2018", "'").replace("\u2019", "'")
     cleaned = cleaned.replace("\u201c", '"').replace("\u201d", '"')
 
-    # Fix missing colon after key names: "arguments { → "arguments": {
+    # Fix missing colon/quote after key names: "arguments { → "arguments": {
+    # Handles: "arguments": x (correct), "arguments: x (missing "), "arguments" { (missing :)
     cleaned = re.sub(
-        r'"(name|arguments|command|path|query|task_id|pct|note|content|files|message|description|code_patch|question|offset|limit)"?\s*:\s',
+        r'"(name|arguments|command|path|query|task_id|pct|note|content|files|message|description|code_patch|question|offset|limit)"?\s*:?\s(?=[{\["\'-\dtfn])',
         r'"\1": ', cleaned)
 
     # Progressive attempts — try least-destructive fixups first
@@ -650,6 +651,33 @@ def _fix_single_quoted_json(raw):
         i += 1
     return ''.join(result)
 
+def _extract_brace_block(text, start):
+    """Extract a balanced {...} block starting at position start, respecting strings."""
+    if start >= len(text) or text[start] != '{':
+        return None
+    depth = 0
+    in_string = False
+    escaped = False
+    for i in range(start, len(text)):
+        ch = text[i]
+        if escaped:
+            escaped = False
+            continue
+        if ch == '\\' and in_string:
+            escaped = True
+            continue
+        if ch == '"' and not escaped:
+            in_string = not in_string
+            continue
+        if not in_string:
+            if ch == '{':
+                depth += 1
+            elif ch == '}':
+                depth -= 1
+                if depth == 0:
+                    return text[start:i+1]
+    return None
+
 def extract_tool_calls(text):
     calls = []
     errors = []
@@ -662,13 +690,15 @@ def extract_tool_calls(text):
             errors.append(err)
     # Fallback: bare JSON with "name" and "arguments" keys (no tags)
     if not calls:
-        for m in re.finditer(r'\{[^{}]*"name"\s*:\s*"[^"]+"\s*,\s*"arguments"\s*:\s*\{[^}]*\}[^}]*\}', text):
-            tc, err = _try_parse_tool_json(m.group(0).strip())
-            if tc:
-                calls.append(tc)
-                break  # only take the first bare match to avoid false positives
-            elif err:
-                errors.append(err)
+        for m in re.finditer(r'\{', text):
+            candidate = _extract_brace_block(text, m.start())
+            if candidate and '"name"' in candidate and '"argument' in candidate:
+                tc, err = _try_parse_tool_json(candidate.strip())
+                if tc:
+                    calls.append(tc)
+                    break  # only take the first bare match to avoid false positives
+                elif err:
+                    errors.append(err)
     return calls, errors
 
 def get_multiline_input(prompt_text="Task (Ctrl+D to submit):"):
