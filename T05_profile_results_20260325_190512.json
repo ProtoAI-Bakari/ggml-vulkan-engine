@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-25T19:05:12.699123",
+  "model": "/home/z/models/gguf/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
+  "num_tokens_requested": 50,
+  "num_tokens_generated": 50,
+  "load_time_ms": 6865.914664995216,
+  "warmup_tps": 13.861730101744158,
+  "total_time_ms": 4785.064384006546,
+  "avg_tps": 13.861730101744158,
+  "per_token_ms": 95.70128768013092,
+  "output_text": " 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20"
+}

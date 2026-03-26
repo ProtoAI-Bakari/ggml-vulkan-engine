@@ -1,15 +1,7 @@
 #!/usr/bin/env python3
-from pathlib import Path
 """T05: Profile CPU time breakdown in ggml Vulkan inference engine.
 
-Measures:
-- Graph build time
-- Command buffer recording time  
-- Python/ctypes overhead
-- Vulkan queue submit + fence wait
-- Total tokens/sec
-
-Run: python3 profile_cpu_breakdown.py --model ~/models/gguf/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf --tokens 50
+Measures per-token timing with a single continuous generation.
 """
 
 import sys
@@ -17,11 +9,10 @@ import time
 import json
 import argparse
 from datetime import datetime
+from pathlib import Path
 
-# Add parent dir to path
 sys.path.insert(0, str(Path.home()))
 
-from pathlib import Path
 from ggml_vllm_backend import GgmlLLM, SamplingParams
 
 def profile_inference(model_path: str, num_tokens: int = 50):
@@ -44,83 +35,41 @@ def profile_inference(model_path: str, num_tokens: int = 50):
     
     # Warmup
     print("Warmup (5 tokens)...")
-    warmup_prompt = "The capital of France is"
+    warmup_prompt = "The capital of France is Paris and it is"
     r = llm.generate(warmup_prompt, params=SamplingParams(temperature=0, max_tokens=5))
     print(f"Warmup TPS: {r.tps:.1f}\n")
     
-    # Profile with detailed timing
-    print("Profiling generation...")
+    # Profile with detailed timing - generate ALL tokens in ONE request
+    print("Profiling generation (all tokens in single request)...")
     print("-" * 70)
     
-    results = []
-    total_tokens = 0
-    total_time = 0
+    prompt = "Count from 1 to 100: 1, 2, 3,"
     
-    for i in range(num_tokens):
-        start_token = time.perf_counter()
-        
-        # Generate one token at a time to measure per-token breakdown
-        prompt = f"Token {i}: " if i > 0 else "Count from 1 to 10:"
-        
-        # This will call forward() which we'll profile
-        r = llm.generate(prompt, params=SamplingParams(temperature=0, max_tokens=1))
-        
-        token_time = time.perf_counter() - start_token
-        total_time += token_time
-        total_tokens += 1
-        
-        results.append({
-            'token': i,
-            'time_ms': token_time * 1000,
-            'tps': 1.0 / token_time if token_time > 0 else 0
-        })
-        
-        if i < 5 or i >= num_tokens - 5 or i % 10 == 0:
-            print(f"Token {i:3d}: {token_time*1000:6.1f}ms ({r.tps:5.1f} TPS) - {r.text.strip()[:40]}")
+    start_gen = time.perf_counter()
+    r = llm.generate(prompt, params=SamplingParams(temperature=0, max_tokens=num_tokens))
+    total_time = time.perf_counter() - start_gen
     
-    # Calculate statistics
-    times_ms = [r['time_ms'] for r in results]
-    avg_time = sum(times_ms) / len(times_ms)
-    min_time = min(times_ms)
-    max_time = max(times_ms)
-    p50_time = sorted(times_ms)[len(times_ms)//2]
-    p99_time = sorted(times_ms)[int(len(times_ms)*0.99)]
+    actual_tokens = len(r.token_ids)
+    avg_tps = r.tps
     
-    avg_tps = total_tokens / total_time if total_time > 0 else 0
-    
-    print("\n" + "="*70)
-    print("PROFILE RESULTS")
-    print("="*70)
-    print(f"Total tokens generated: {total_tokens}")
-    print(f"Total time: {total_time*1000:.1f}ms")
+    print(f"\nGenerated {actual_tokens} tokens in {total_time*1000:.1f}ms")
     print(f"Average TPS: {avg_tps:.1f}")
-    print(f"\nPer-token timing (ms):")
-    print(f"  Min:    {min_time:6.1f}ms")
-    print(f"  Max:    {max_time:6.1f}ms")
-    print(f"  Avg:    {avg_time:6.1f}ms")
-    print(f"  P50:    {p50_time:6.1f}ms")
-    print(f"  P99:    {p99_time:6.1f}ms")
-    print("="*70)
+    print(f"Per-token average: {total_time/actual_tokens*1000:.1f}ms")
+    print(f"\nOutput: {r.text[:200]}...")
     
     # Save results
     output_file = f"T05_profile_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
     profile_data = {
         'timestamp': datetime.now().isoformat(),
         'model': model_path,
-        'num_tokens': num_tokens,
+        'num_tokens_requested': num_tokens,
+        'num_tokens_generated': actual_tokens,
         'load_time_ms': load_time * 1000,
         'warmup_tps': r.tps,
-        'total_tokens': total_tokens,
         'total_time_ms': total_time * 1000,
         'avg_tps': avg_tps,
-        'timing_ms': {
-            'min': min_time,
-            'max': max_time,
-            'avg': avg_time,
-            'p50': p50_time,
-            'p99': p99_time
-        },
-        'per_token': results
+        'per_token_ms': total_time / actual_tokens * 1000 if actual_tokens > 0 else 0,
+        'output_text': r.text
     }
     
     with open(output_file, 'w') as f:

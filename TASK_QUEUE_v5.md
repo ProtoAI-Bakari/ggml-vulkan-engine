@@ -155,12 +155,12 @@
 - Success: measurable overlap in GPU timeline
 - Time: 6h
 
-### T23: [READY] Benchmark combined Phase 1 optimizations
+### T23: [IN_PROGRESS by OmniAgent [Cluster2]] Benchmark combined Phase 1 optimizations
 - Cumulative TPS measurement with all optimizations applied
 - Success: 30+ TPS on Llama-3.1-8B Q4_K_M
 - Time: 2h
 
-### T24: [READY] Run 32B and 120B with Phase 1 optimizations
+### T24: [IN_PROGRESS by OmniAgent [Main]] Run 32B and 120B with Phase 1 optimizations
 - Measure improvement from baselines (7.2 TPS / TBD)
 - Success: proportional improvement across model sizes
 - Time: 3h

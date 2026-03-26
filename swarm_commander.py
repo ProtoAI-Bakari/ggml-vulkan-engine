@@ -505,6 +505,20 @@ def main():
             break
         elif action in ("fleet", "status", "s", "f"):
             show_dashboard()
+        elif action in ("activity", "act", "a"):
+            agent_activity()
+        elif action == "reconcile":
+            reconcile_tasks()
+        elif action == "kick":
+            if arg and arg.isdigit():
+                aid = f"agent{arg}"
+                console.print(f"[yellow]Kicking {aid}...[/yellow]")
+                subprocess.run(f"tmux kill-session -t {aid} 2>/dev/null", shell=True)
+                time.sleep(2)
+                launch_agent(aid, auto_go=True)
+                console.print(f"[green]{aid} restarted with AUTO-GO[/green]")
+            else:
+                console.print("[red]Usage: kick <1-6>[/red]")
         elif action == "goal":
             goal_all()
             time.sleep(5)
