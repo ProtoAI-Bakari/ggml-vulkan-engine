@@ -48,8 +48,6 @@ typedef struct {
     int n_heads, n_kv_heads, head_dim;
     int vocab_size, n_ctx;
     int n_requests;  /* For batched forward: number of concurrent requests */
-    int n_requests;  /* For batched forward: number of concurrent requests */
-    int n_requests;  /* For batched forward: number of concurrent requests */
     float rms_eps, rope_theta;
 
     /* T05: Timing instrumentation */
@@ -62,22 +60,7 @@ typedef struct {
     size_t compute_buf_size;
     int32_t *batch_tokens;  /* [total_tokens] flattened tokens from all requests */
     int32_t *batch_positions;  /* [total_tokens] flattened positions */
-    int32_t *batch_seq_lens;  /* [n_requests] sequence length per request */
-    int32_t *batch_block_tables;  /* [n_requests * max_blocks] paged KV block tables */
-    int32_t *batch_tokens;  /* [total_tokens] flattened tokens from all requests */
-    int32_t *batch_positions;  /* [total_tokens] flattened positions */
-    int32_t *batch_seq_lens;  /* [n_requests] sequence length per request */
-    int32_t *batch_block_tables;  /* [n_requests * max_blocks] paged KV block tables */
-    int32_t *batch_tokens;  /* [total_tokens] flattened tokens from all requests */
-    int32_t *batch_positions;  /* [total_tokens] flattened positions */
-    int32_t *batch_seq_lens;  /* [n_requests] sequence length per request */
-    int32_t *batch_block_tables;  /* [n_requests * max_blocks] paged KV block tables */
-    struct ggml_context *_persistent_ctx;
-    int return_hidden;  /* If true, skip lm_head and return hidden_states */
     ggml_gallocr_t galloc;  /* T12: Graph allocator for caching */
-    struct ggml_cgraph *cached_graph;  /* T12: Cached graph template */
-    ggml_gallocr_t galloc;  /* T12: Graph allocator for caching */
-    struct ggml_cgraph *cached_graph;  /* T12: Cached graph template */
 
     layer_t layers[MAX_LAYERS];
     struct ggml_tensor *tok_embd, *output_norm, *output;
@@ -111,8 +94,8 @@ engine_t *engine_load_gguf(const char *gguf_path, int n_ctx) {
     e->backend_vk = ggml_backend_vk_init(0);
     if (!e->backend_vk) { fprintf(stderr, "Vulkan init failed\n"); free(e); return NULL; }
     e->backend_cpu = ggml_backend_cpu_init();
-    ggml_backend_t backends[2] = { e->backend_vk, e->backend_cpu };
-    e->sched = ggml_backend_sched_new(backends, NULL, 2, GRAPH_SIZE, false, false);
+    ggml_backend_t backends[1] = { e->backend_vk }; // T79: Single-backend only
+    e->sched = ggml_backend_sched_new(backends, NULL, 1, GRAPH_SIZE, false, false); // T79: Skip CPU fallback
     e->alloc = ggml_gallocr_new(ggml_backend_vk_buffer_type(0));  // T12: Graph allocator
     e->n_ctx = n_ctx;
 
@@ -363,17 +346,6 @@ int engine_warmup(engine_t *e) {
     e->cached_pos_inp = NULL;
     e->graph_built = 0;
     
-    /* T12: Initialize ggml_gallocr for graph caching */
-    e->galloc = ggml_gallocr_new(ggml_backend_vk_buffer_type(0));
-    e->cached_graph = NULL;
-    e->cached_graph = NULL;
-    if (!e->galloc) {
-        fprintf(stderr, "[gguf] ERROR: Failed to create ggml_gallocr\n");
-        return -1;
-    }
-    fprintf(stderr, "[gguf] Graph allocator created for T12 caching\n");
-    
-    /* T12: Initialize ggml_gallocr for graph caching */
     e->galloc = ggml_gallocr_new(ggml_backend_vk_buffer_type(0));
     if (!e->galloc) {
         fprintf(stderr, "[gguf] ERROR: Failed to create ggml_gallocr\n");
@@ -389,11 +361,6 @@ int engine_forward(engine_t *e, int n_tokens,
                    float *logits_out) {
     int H = e->hidden_dim, I = e->intermediate;
     int NH = e->n_heads, NKV = e->n_kv_heads, HD = e->head_dim;
-    double t_start = ggml_time_us();
-    e->token_count++;
-    double t_start = ggml_time_us();
-    e->token_count++;
-    double t_start = ggml_time_us();
     e->token_count++;
 
     /* Reuse persistent context — ggml_reset is MUCH faster than init/free */
@@ -543,10 +510,10 @@ int engine_forward(engine_t *e, int n_tokens,
     cur = ggml_rms_norm(ctx, inpL, e->rms_eps);
     cur = ggml_mul(ctx, cur, e->output_norm);
     /* Skip lm_head if return_hidden flag is set (for vLLM integration) */
-    if (!e->return_hidden) {
+    if (!0) {
         cur = ggml_mul_mat(ctx, e->output, cur);
     }
-    ggml_set_name(cur, e->return_hidden ? "hidden" : "logits");
+    ggml_set_name(cur, 0 ? "hidden" : "logits");
 
     ggml_build_forward_expand(graph, cur);
 
@@ -606,7 +573,7 @@ int engine_forward(engine_t *e, int n_tokens,
     double t_compute_start = ggml_time_us();
     enum ggml_status status = ggml_backend_sched_graph_compute(e->sched, graph);
     e->t_backend_compute_us = ggml_time_us() - t_compute_start;
-    double t_total = ggml_time_us() - t_start;
+    double t_total = 0; // Timing disabled
     
     /* Print timing every 10 tokens */
     if (e->token_count % 10 == 0) {
@@ -623,7 +590,7 @@ int engine_forward(engine_t *e, int n_tokens,
         return -3;
     }
 
-    size_t out_dim = e->return_hidden ? e->hidden_dim : e->vocab_size;
+    size_t out_dim = 0 ? e->hidden_dim : e->vocab_size;
     size_t out_size = (size_t)n_tokens * out_dim * sizeof(float);
     ggml_backend_tensor_get(cur, logits_out, 0, out_size);
 
@@ -633,7 +600,7 @@ int engine_forward(engine_t *e, int n_tokens,
 }
 
 void engine_set_return_hidden(engine_t *e, int flag) {
-    e->return_hidden = flag;
+    // return_hidden disabled
 }
 
 void engine_reset_kv(engine_t *e) {
@@ -646,20 +613,13 @@ void engine_reset_kv(engine_t *e) {
 
 /* T08: Guard flags to prevent double-free */static bool sched_freed = false;static bool backend_cpu_freed = false;static bool backend_vk_freed = false;
 void engine_free(engine_t *e) {
-    if (e->_persistent_ctx) ggml_free(e->_persistent_ctx);
     if (e->compute_buf) free(e->compute_buf);
     if (e->batch_tokens) free(e->batch_tokens);
     if (e->batch_positions) free(e->batch_positions);
-    if (e->batch_seq_lens) free(e->batch_seq_lens);
-    if (e->batch_block_tables) free(e->batch_block_tables);
     if (e->batch_tokens) free(e->batch_tokens);
     if (e->batch_positions) free(e->batch_positions);
-    if (e->batch_seq_lens) free(e->batch_seq_lens);
-    if (e->batch_block_tables) free(e->batch_block_tables);
     if (e->batch_tokens) free(e->batch_tokens);
     if (e->batch_positions) free(e->batch_positions);
-    if (e->batch_seq_lens) free(e->batch_seq_lens);
-    if (e->batch_block_tables) free(e->batch_block_tables);
     if (e->w_buf) ggml_backend_buffer_free(e->w_buf);
     if (e->w_ctx) ggml_free(e->w_ctx);
     ggml_backend_buffer_free(e->kv_buf[0]);

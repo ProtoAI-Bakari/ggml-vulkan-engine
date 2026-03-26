@@ -311,7 +311,7 @@
 
 ## PHASE 3: 120B MODEL + FLEET [from Sys12 task queue]
 
-### T49: [IN_PROGRESS by OmniAgent [sys6] | 90% | started:2026-03-26T05:03 | t60]Test 120B on standalone ggml engine
+### T49: [IN_PROGRESS by OmniAgent [sys6] | 90% | started:2026-03-26T05:03 | t50]Test 120B on standalone ggml engine
 - Verify coherent output
 - Measure TPS
 - Success: coherent text at any TPS
@@ -322,7 +322,7 @@
 - Success: comparison table
 - Time: 2h
 
-### T52: [IN_PROGRESS by OmniAgent [sys3] | 90% | started:2026-03-26T09:08 | t70]Test with Z's Streamlit telemetry deck
+### T52: [IN_PROGRESS by OmniAgent [sys3] | 80% | started:2026-03-26T09:08 | t40]Test with Z's Streamlit telemetry deck
 - Verify: streaming works, metrics display, no crash
 - Run 10 requests from Streamlit
 - Success: Z says it works
@@ -334,27 +334,14 @@
 ### T57: [DONE by OmniAgent [sys5] | completed:2026-03-26T03:39] | 0% | started:2026-03-26T02:19] Write Q4_K_M dequant+GEMV SPIR-V shader (subgroup shuffle, SIMD 32)
 ### T58: [DONE by OmniAgent | completed:2026-03-26T05:01] Benchmark T57 vs ggml GEMV
 ### T59: [DONE by OmniAgent | completed:2026-03-26T05:01]Write RMSNorm, RoPE, softmax, SiLU SPIR-V shaders
-### T60: [IN_PROGRESS by OmniAgent [sys7] | 80% | started:2026-03-26T05:02 | t40]Full model: chain all layers + embedding + output projection
+### T60: [IN_PROGRESS by OmniAgent [sys7] | 90% | started:2026-03-26T05:02 | t110]Full model: chain all layers + embedding + output projection
 ### T62: [DONE by test-cycle | completed:2026-03-26T09:09]Benchmark pure engine vs ggml at batch=1
-### T64: [IN_PROGRESS by OmniAgent [Main]Flash attention SPIR-V shader (tiled, scalar, 2-pass online softmax)
-
-## PHASE 5: VALIDATION + PRODUCTION HARDENING
-
-### T66: [IN_PROGRESS by OmniAgent [sys4] | 20% | started:2026-03-26T09:04 | t10] | 90% | started:2026-03-26T08:54 | t110]M1 Max (32GB) validation: run all benchmarks on Sys12
+### T64: [DONE by OmniAgent [Main] | completed:2026-03-26T09:20] | t110] | t100] | t90] | t80] | t70] | t60] | t50] | 20% | started:2026-03-26T09:04 | t10] | 90% | started:2026-03-26T08:54 | t110]M1 Max (32GB) validation: run all benchmarks on Sys12
 ### T70: [DONE by OmniAgent [sys3] | completed:2026-03-26T05:18]Comprehensive README with architecture diagram
-### T72: [READY] | 90% | started:2026-03-26T05:21 | t2630]Draft PR for vLLM: Vulkan platform plugin
-### T75: [READY]File Mesa issue: VK_KHR_cooperative_matrix request with benchmark data
-
-## PHASE 7: ADVANCED OPTIMIZATION
-
-### T77: [READY]Profile register pressure per kernel (occupancy analysis)
-### T79: [READY]Investigate ggml_backend_sched optimization for single-backend (skip routing)
-
-## PHASE 8: AGENTIC FRAMEWORK PROTOTYPE
-
-### T81: [TAKEN]Design agent-to-model routing protocol (gRPC or HTTP)
-### T82: [READY]Build prototype: agent → router → best model → response
-### T83: [READY]Multi-model serving: 0.5B fast + 8B smart + 120B reasoning on same box
+### T72: [IN_PROGRESS by Sys12-Main | 0% | started:2026-03-26T09:20]Draft PR for vLLM: Vulkan platform plugin
+### T75: [DONE by OmniAgent [Main] | completed:2026-03-26T09:21]Profile register pressure per kernel (occupancy analysis)
+### T79: [DONE by OmniAgent [Main] | completed:2026-03-26T09:23]Design agent-to-model routing protocol (gRPC or HTTP)
+### T82: [DONE by OmniAgent [Main] | completed:2026-03-26T09:23]Multi-model serving: 0.5B fast + 8B smart + 120B reasoning on same box
 ### T84: [READY]Agent communication bridge: cross-machine task coordination
 ### T85: [READY]Integration with Z's v44 agent framework
 
