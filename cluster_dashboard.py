@@ -254,17 +254,14 @@ def _agent_task(ip, auth):
     return f"[{M.OVERLAY}]-[/]"
 
 def _req_count(ip, auth):
-    # Search MLX logs, vLLM logs, and ggml server logs for completed POST requests
-    out = ssh_cmd(ip, "grep -rch 'POST.*200' ~/AGENT/LOGS/ /tmp/ray/session_latest/logs/ 2>/dev/null | paste -sd+ | bc 2>/dev/null || echo 0", auth, timeout=5)
+    # Count POST 200 requests — use strings for binary logs, search all log locations
+    out = ssh_cmd(ip, "strings ~/AGENT/LOGS/*_mlx.log ~/AGENT/LOGS/ggml_server.log 2>/dev/null | grep -c 'POST.*200' || echo 0", auth, timeout=5)
     try: return int(out.strip())
     except (ValueError, AttributeError): return 0
 
 def _tps_recent(ip, auth):
-    # Parse "TPS:47.9" from MLX server logs (last 5 entries, average)
-    out = ssh_cmd(ip, "grep -ohE 'TPS:[0-9]+\\.?[0-9]*' ~/AGENT/LOGS/*_mlx.log 2>/dev/null | tail -5 | grep -oE '[0-9]+\\.[0-9]+'", auth, timeout=5)
-    if not out:
-        # Fallback: try other TPS formats
-        out = ssh_cmd(ip, "grep -ohE 'tps.*[0-9]+\\.[0-9]+' ~/AGENT/LOGS/*_mlx.log 2>/dev/null | tail -5 | grep -oE '[0-9]+\\.[0-9]+'", auth, timeout=5)
+    # Parse "TPS:47.9" from MLX server logs — use strings to handle binary/ANSI logs
+    out = ssh_cmd(ip, "strings ~/AGENT/LOGS/*_mlx.log 2>/dev/null | grep -ohE 'TPS:[0-9]+\\.?[0-9]*' | tail -5 | grep -oE '[0-9]+\\.[0-9]+'", auth, timeout=5)
     if not out: return 0.0
     try:
         vals = [float(x) for x in out.strip().split("\n") if x.strip()]
