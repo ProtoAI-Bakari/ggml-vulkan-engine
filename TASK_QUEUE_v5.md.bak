@@ -239,7 +239,7 @@
 - Success: vLLM sampler accepts logits
 - Time: 6h
 
-### T38: [IN_PROGRESS by OmniAgent [Main]]] End-to-end single-request test through vLLM plugin
+### T38: [READY]] End-to-end single-request test through vLLM plugin
 - Chat completion, verify coherent response
 - Success: matches direct ggml output quality
 - Time: 4h

@@ -184,7 +184,7 @@ def reconcile_tasks():
 def agent_activity():
     """Show what each agent is doing right now."""
     import re
-    console.print("\n[bold cyan]━━━ AGENT ACTIVITY ━━━[/bold cyan]")
+    console.print("\n[bold cyan]━━━ AGENT ACTIVITY (Local) ━━━[/bold cyan]")
     logs = {
         "A1 Main":     "LOGS/main_trace.log",
         "A2 Sys4":     "LOGS/sys4_trace.log",
@@ -192,6 +192,15 @@ def agent_activity():
         "A4 Work4":    "LOGS/agent4_trace.log",
         "A5 Work5":    "LOGS/agent5_trace.log",
         "A6 Work6":    "LOGS/agent6_trace.log",
+    }
+
+    # Remote distributed agents
+    REMOTE_AGENTS = {
+        "R2 ARCH":  ("10.255.255.2",  "mlx-2"),
+        "R3 ENGR":  ("10.255.255.3",  "mlx-3"),
+        "R5 DSGN":  ("10.255.255.5",  "mlx-5"),
+        "R6 REVW":  ("10.255.255.6",  "mlx-6"),
+        "R7 FAST":  ("10.255.255.7",  "mlx-7"),
     }
 
     # Also get task assignments from queue
@@ -266,6 +275,33 @@ def agent_activity():
             console.print(f"  [red]DEAD[/red] {name} [--] No log file")
         except Exception as e:
             console.print(f"  [red]ERR[/red]  {name} [--] {e}")
+
+    # Remote distributed agents
+    console.print(f"\n[bold cyan]━━━ DISTRIBUTED AGENTS ━━━[/bold cyan]")
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        def check_remote(rname, ip, node_label):
+            try:
+                out = ssh_cmd(ip, "tail -c 8192 ~/AGENT/LOGS/agent_trace.log 2>/dev/null", timeout=5)
+                if not out:
+                    return f"  [red]DEAD[/red] {rname} [{node_label}] No log"
+                clean = re.sub(r'\x1b\[[0-9;]*m', '', out)
+                turns = clean.count("[Thinking...]")
+                tools = re.findall(r'EXECUTING\]: (\w+)', clean)
+                tool_count = len(tools)
+                last_3 = tools[-3:] if tools else []
+                brains = len(re.findall(r'Pinging|ARCHITECT|ENGINEER|DESIGNER|REVIEWER|CODER', clean))
+                claims = re.findall(r'CLAIMED (T\d+)', clean)
+                task = claims[-1] if claims else "?"
+                task_str = f"[bold yellow]{task}[/bold yellow]" if task != "?" else "[dim]?[/dim]"
+                tools_str = " → ".join(last_3) if last_3 else "starting"
+                brain_str = f" [cyan]🧠{brains}[/cyan]" if brains else ""
+                return f"  [green]ACT[/green] {rname} [{task_str}] T{turns} 🔧{tool_count}{brain_str} | {tools_str}"
+            except Exception as e:
+                return f"  [red]ERR[/red]  {rname} [{node_label}] {e}"
+
+        futures = {pool.submit(check_remote, rn, ip, nl): rn for rn, (ip, nl) in REMOTE_AGENTS.items()}
+        for f in as_completed(futures):
+            console.print(f.result())
 
 def check_agents():
     """Check which agents are running on sys0."""
@@ -347,10 +383,7 @@ def launch_agent(agent_id, auto_go=False):
     if r.returncode == 0:
         console.print(f"[yellow]{agent_id}: already running in tmux (attach: tmux attach -t {agent_id})[/yellow]")
         return
-    r2 = subprocess.run(f"pgrep -f '{agent['script']}' >/dev/null 2>&1", shell=True)
-    if r2.returncode == 0:
-        console.print(f"[yellow]{agent_id}: running in a terminal (not tmux). Use 'agentstop {agent_id.replace('agent','')}' to kill it first.[/yellow]")
-        return
+    # Skip bare-process check — tmux check above is sufficient
     script = agent["script"]
     log = agent["log"]
     name = agent["name"]
@@ -693,6 +726,17 @@ def main():
                         console.print(f"  {line.strip()}")
             except FileNotFoundError:
                 pass
+        elif action == "watch":
+            # Live agent monitor — refreshes every 5s, Ctrl+C to stop
+            console.print("[bold cyan]Live agent monitor (Ctrl+C to stop)...[/bold cyan]")
+            try:
+                while True:
+                    os.system("clear" if os.name == "posix" else "cls")
+                    console.print(f"[bold cyan]━━━ LIVE AGENT MONITOR — {datetime.now().strftime('%H:%M:%S')} (Ctrl+C to stop) ━━━[/bold cyan]")
+                    agent_activity()
+                    time.sleep(5)
+            except KeyboardInterrupt:
+                console.print("\n[dim]Watch stopped.[/dim]")
         elif action in ("help", "?", "h"):
             show_help()
         else:

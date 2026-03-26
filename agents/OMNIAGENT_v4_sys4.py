@@ -443,14 +443,25 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
     session_start_time = time.time()
     first_turn = True
 
+    # Detect non-interactive (detached/nohup/screen) session — no TTY on stdin
+    import sys as _sys
+    no_tty = not _sys.stdin.isatty()
+
     while True:
         try:
-            # Auto-go on restart (--auto-go flag), but NOT first launch
+            # Auto-go on first turn if --auto-go flag is set
             if auto_go and first_turn:
                 print(f"{C.BOLD}{C.MAGENTA}[AUTO-GO] Restarted — auto-loading GO_PROMPT.md{C.RESET}")
                 user_input = load_go_prompt()
                 if not user_input:
                     user_input = get_multiline_input()
+            elif no_tty:
+                # No TTY (detached session): re-load GO_PROMPT.md for continuous autonomous operation
+                print(f"{C.BOLD}{C.MAGENTA}[AUTO-GO] No TTY detected — re-loading GO_PROMPT.md for next task{C.RESET}")
+                user_input = load_go_prompt()
+                if not user_input:
+                    print(f"{C.RED}[AUTO-GO] GO_PROMPT.md missing and no TTY — agent halting.{C.RESET}")
+                    break
             else:
                 user_input = get_multiline_input()
 
