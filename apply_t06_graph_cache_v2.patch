@@ -1,0 +1,59 @@
+--- a/ggml_llama_gguf.c
++++ b/ggml_llama_gguf.c
+@@ -328,6 +328,9 @@ int engine_init_backend(engine_t *e) {
+ 
+ int engine_forward(engine_t *e, int n_tokens,
+                    const int32_t *tokens, const int32_t *positions,
+                    float *logits_out) {
++    /* T06: Graph caching for decode - reuse graph structure on single-token decode */
++    bool reuse_cached_graph = (n_tokens == 1 && e->cached_decode_graph != NULL);
++
+     int H = e->hidden_dim, I = e->intermediate;
+     int NH = e->n_heads, NKV = e->n_kv_heads, HD = e->head_dim;
+ 
+@@ -347,7 +350,15 @@ int engine_forward(engine_t *e, int n_tokens,
+     struct ggml_context *ctx = e->_persistent_ctx;
+     if (!ctx) return -1;
+ 
+-    struct ggml_cgraph *graph = ggml_new_graph_custom(ctx, GRAPH_SIZE, false);
++    struct ggml_cgraph *graph;
++    
++    if (reuse_cached_graph) {
++        /* Reuse cached decode graph - skip rebuilding */
++        graph = e->cached_decode_graph;
++    } else {
++        /* Build new graph (prefill or first decode) */
++        graph = ggml_new_graph_custom(ctx, GRAPH_SIZE, false);
++    }
+ 
+     struct ggml_tensor *inp_tokens = ggml_new_tensor_1d(ctx, GGML_TYPE_I32, n_tokens);
+     ggml_set_name(inp_tokens, "tokens");
+@@ -476,8 +487,23 @@ int engine_forward(engine_t *e, int n_tokens,
+     ggml_set_name(cur, e->return_hidden ? "hidden" : "logits");
+ 
+     ggml_backend_sched_reset(e->sched);
+-    ggml_build_forward_expand(graph, cur);
+-    if (!ggml_backend_sched_alloc_graph(e->sched, graph)) {
++    
++    /* T06: Cache the graph if this is first decode pass */
++    if (!reuse_cached_graph && n_tokens == 1 && e->cached_decode_graph == NULL) {
++        /* Build graph and cache it for future decode passes */
++        ggml_build_forward_expand(graph, cur);
++        
++        /* Duplicate graph into persistent context for caching */
++        size_t graph_size = ggml_graph_overhead_custom(graph->size, false);
++        e->cached_graph_ctx = ggml_init((struct ggml_init_params){
++            .mem_size   = graph_size,
++            .mem_buffer = NULL,
++            .no_alloc   = false
++        });
++        e->cached_decode_graph = ggml_graph_dup(e->cached_graph_ctx, graph);
++    } else if (!reuse_cached_graph) {
++        /* Non-cached path (prefill or batch > 1) */
++        ggml_build_forward_expand(graph, cur);
++    }
++    
++    if (!ggml_backend_sched_alloc_graph(e->sched, graph)) {
+         return -2;
+     }
+     ggml_backend_tensor_set(inp_tokens, tokens, 0, n_tokens * sizeof(int32_t));
