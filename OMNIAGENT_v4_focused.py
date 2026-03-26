@@ -320,7 +320,12 @@ def claim_task(task_id: str) -> str:
     return out
 
 def complete_task(task_id: str) -> str:
-    """Mark a task as DONE in the queue."""
+    """Mark a task as DONE. Saves agent state for resume."""
+    # Save current task to state file for resume capability
+    try:
+        json.dump({"agent": _AGENT_NAME, "task": task_id, "time": time.time(), "action": "completed"}, 
+                  open(os.path.expanduser("~/AGENT/.agent_state"), "w"))
+    except: pass
     import subprocess
     result = subprocess.run(
         ["bash", os.path.expanduser("~/AGENT/complete_task.sh"), task_id, _AGENT_NAME],
@@ -790,7 +795,7 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
 
                 try:
                     t_turn_start = time.time()
-                    stream = client.chat.completions.create(model=MODEL_NAME, messages=history, stream=True, max_tokens=2000, temperature=0.3, extra_body={"repetition_penalty": 1.1})
+                    stream = client.chat.completions.create(model=MODEL_NAME, messages=history, stream=True, max_tokens=1500, temperature=0.3, extra_body={"repetition_penalty": 1.1})
                     t_first_token = None
                     print(f"\r{C.BOLD}{C.CYAN}[{agent_name}]: {C.RESET}", end="")
                     for chunk in stream:
