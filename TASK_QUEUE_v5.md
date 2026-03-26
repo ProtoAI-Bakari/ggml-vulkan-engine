@@ -313,29 +313,22 @@
 - Success: comparison table
 - Time: 2h
 
-### T52: [IN_PROGRESS by OmniAgent [sys1-Main] | 90% | started:2026-03-26T10:11 | t120]
+### T52: [IN_PROGRESS by OmniAgent [sys1-Main] | 90% | started:2026-03-26T10:11 | t200]
 
 ### T56: [DONE] Implement GGUF weight loader in C (parse header, map weights to VkBuffer)
 ### T57: [DONE by OmniAgent [sys5] | completed:2026-03-26T03:39] | 0% | started:2026-03-26T02:19] Write Q4_K_M dequant+GEMV SPIR-V shader (subgroup shuffle, SIMD 32)
 ### T58: [DONE by OmniAgent | completed:2026-03-26T05:01] Benchmark T57 vs ggml GEMV
 ### T59: [DONE by OmniAgent | completed:2026-03-26T05:01]Write RMSNorm, RoPE, softmax, SiLU SPIR-V shaders
-### T60: [IN_PROGRESS by OmniAgent [sys7] | 80% | started:2026-03-26T10:13 | t40]Benchmark pure engine vs ggml at batch=1
+### T60: [IN_PROGRESS by OmniAgent [sys7] | 90% | started:2026-03-26T10:13 | t60]Benchmark pure engine vs ggml at batch=1
 ### T64: [DONE by OmniAgent [Main] | completed:2026-03-26T09:20] | t110] | t100] | t90] | t80] | t70] | t60] | t50] | 20% | started:2026-03-26T09:04 | t10] | 90% | started:2026-03-26T08:54 | t110]M1 Max (32GB) validation: run all benchmarks on Sys12
 ### T70: [DONE by OmniAgent [sys3] | completed:2026-03-26T05:18]Comprehensive README with architecture diagram
-### T72: [IN_PROGRESS by OmniAgent [sys6] | 80% | started:2026-03-26T10:13 | t40] | completed:2026-03-26T09:21]Profile register pressure per kernel (occupancy analysis)
+### T72: [IN_PROGRESS by OmniAgent [sys6] | 90% | started:2026-03-26T10:13 | t60] | completed:2026-03-26T09:21]Profile register pressure per kernel (occupancy analysis)
 ### T79: [DONE by OmniAgent [Main] | completed:2026-03-26T09:23]Design agent-to-model routing protocol (gRPC or HTTP)
 ### T82: [DONE by OmniAgent [Main] | completed:2026-03-26T09:23]Multi-model serving: 0.5B fast + 8B smart + 120B reasoning on same box
 ### T84: [DONE]Agent communication bridge: cross-machine task coordination
-### T85: [READY] Integration with Z's v44 agent framework
+### T85: [IN_PROGRESS by OmniAgent [sys4] | 10% | started:2026-03-26T10:15]
 
-## PHASE 9: PRODUCTION HARDENING [Stability under real-world conditions]
-
-### T86: [READY] 24-hour continuous load soak test (8B model, 4 concurrent users)
-- Run sustained traffic for 24h, monitor memory, TPS drift, error rate
-- Success: zero crashes, <2% TPS degradation, no memory leak
-- Time: 26h
-
-### T87: [READY] OOM recovery: graceful degradation when memory exhausted
+### T86: [IN_PROGRESS by OmniAgent [sys3] | 40% | started:2026-03-26T10:16 | t20] OOM recovery: graceful degradation when memory exhausted
 - Trigger OOM with large batch + long context, verify server recovers
 - Success: server returns 503, recovers within 10s, no restart needed
 - Time: 6h

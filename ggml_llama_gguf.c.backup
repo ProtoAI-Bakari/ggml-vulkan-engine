@@ -307,6 +307,18 @@ engine_t *engine_load_gguf(const char *gguf_path, int n_ctx) {
 /* Forward declaration */
 int engine_forward(engine_t *e, int n_tokens, const int32_t *tokens, const int32_t *positions, float *logits_out);
 
+/* Batched forward pass for vLLM integration (T37) */
+int engine_forward_batch(engine_t *e, int n_tokens, const int32_t *tokens, const int32_t *positions,
+                         const int32_t *seq_lens, const int32_t *block_tables, float *logits_out);
+
+/* Batched forward pass for vLLM integration (T37) */
+int engine_forward_batch(engine_t *e, int n_tokens, const int32_t *tokens, const int32_t *positions,
+                         const int32_t *seq_lens, const int32_t *block_tables, float *logits_out);
+
+/* Batched forward pass for vLLM integration (T37) */
+int engine_forward_batch(engine_t *e, int n_tokens, const int32_t *tokens, const int32_t *positions,
+                         const int32_t *seq_lens, const int32_t *block_tables, float *logits_out);
+
 /* Warmup: run multiple forward passes to fully prime scheduler buffers.
  * The first pass is slow (allocation), subsequent passes reuse buffers. */
 int engine_warmup(engine_t *e) {
@@ -517,3 +529,126 @@ int engine_forward(engine_t *e, int n_tokens,
     ggml_backend_tensor_set(inp_tokens, tokens, 0, n_tokens * sizeof(int32_t));
     ggml_backend_tensor_set(inp_pos, positions, 0, n_tokens * sizeof(int32_t));
     /* T06: Print graph topology for documentation */
+    if (n_tokens == 1 && positions[0] < 2) {
+        fprintf(stderr, "=== GGML Graph Topology (pos=%d, n_tokens=%d) ===\n", positions[0], n_tokens);
+        fprintf(stderr, "Graph nodes: %d\n", ggml_graph_n_nodes(graph));
+        int views=0, compute=0;
+        for (int i = 0; i < ggml_graph_n_nodes(graph); i++) {
+            struct ggml_tensor *node = ggml_graph_node(graph, i);
+            if (node->op == GGML_OP_CPY || node->op == GGML_OP_VIEW) views++;
+            /* CAST ops not tracked in this ggml version */
+            else compute++;
+        }
+        fprintf(stderr, "Breakdown: views=%d, compute=%d\n", views, compute);
+    }
+
+    /* T06: Print graph topology for documentation */
+    if (n_tokens == 1 && positions[0] < 2) {
+        fprintf(stderr, "=== GGML Graph Topology (pos=%d, n_tokens=%d) ===\n", positions[0], n_tokens);
+        fprintf(stderr, "Graph nodes: %d\n", ggml_graph_n_nodes(graph));
+        int views=0, compute=0;
+        for (int i = 0; i < ggml_graph_n_nodes(graph); i++) {
+            struct ggml_tensor *node = ggml_graph_node(graph, i);
+            if (node->op == GGML_OP_CPY || node->op == GGML_OP_VIEW) views++;
+            /* CAST ops not tracked in this ggml version */
+            else compute++;
+        }
+        fprintf(stderr, "Breakdown: views=%d, compute=%d\n", views, compute);
+    }
+
+    /* T06: Print graph topology for documentation */
+    if (n_tokens == 1 && positions[0] < 2) {
+        fprintf(stderr, "=== GGML Graph Topology (pos=%d, n_tokens=%d) ===\n", positions[0], n_tokens);
+        fprintf(stderr, "Graph nodes: %d\n", ggml_graph_n_nodes(graph));
+        int views=0, compute=0;
+        for (int i = 0; i < ggml_graph_n_nodes(graph); i++) {
+            struct ggml_tensor *node = ggml_graph_node(graph, i);
+            if (node->op == GGML_OP_CPY || node->op == GGML_OP_VIEW) views++;
+            /* CAST ops not tracked in this ggml version */
+            else compute++;
+        }
+        fprintf(stderr, "Breakdown: views=%d, compute=%d\n", views, compute);
+    }
+
+    double t_compute_start = ggml_time_us();
+    enum ggml_status status = ggml_backend_sched_graph_compute(e->sched, graph);
+    e->t_backend_compute_us = ggml_time_us() - t_compute_start;
+    double t_total = 0; // Timing disabled
+    
+    /* Print timing every 10 tokens */
+    if (e->token_count % 10 == 0) {
+        fprintf(stderr, "[Timing @ %ld tokens] Graph: %.1f\u03bcs, Compute: %.1f\u03bcs, Total: %.1f\u03bcs (%.1f TPS)\n",
+                (long)e->token_count,
+                e->t_graph_build_us,
+                e->t_backend_compute_us,
+                t_total,
+                1e6 / t_total);
+    }
+    
+    if (status != GGML_STATUS_SUCCESS) {
+        fprintf(stderr, "[engine] compute failed: %d\n", status);
+        return -3;
+    }
+
+    size_t out_dim = 0 ? e->hidden_dim : e->vocab_size;
+    size_t out_size = (size_t)n_tokens * out_dim * sizeof(float);
+    ggml_backend_tensor_get(cur, logits_out, 0, out_size);
+
+    e->kv_used[e->kv_buf_active] += n_tokens;
+    /* Context persists — will be reset on next call via ggml_reset */
+    return 0;
+}
+
+void engine_set_return_hidden(engine_t *e, int flag) {
+    // return_hidden disabled
+}
+
+void engine_reset_kv(engine_t *e) {
+    e->kv_used[0] = 0;
+        e->kv_used[1] = 0;
+        e->kv_buf_active = 0;
+    ggml_backend_buffer_clear(e->kv_buf[0], 0);
+    ggml_backend_buffer_clear(e->kv_buf[1], 0);
+}
+
+/* T08: Guard flags to prevent double-free */static bool sched_freed = false;static bool backend_cpu_freed = false;static bool backend_vk_freed = false;
+void engine_free(engine_t *e) {
+    if (e->compute_buf) free(e->compute_buf);
+    if (e->batch_tokens) free(e->batch_tokens);
+    if (e->batch_positions) free(e->batch_positions);
+    if (e->batch_tokens) free(e->batch_tokens);
+    if (e->batch_positions) free(e->batch_positions);
+    if (e->batch_tokens) free(e->batch_tokens);
+    if (e->batch_positions) free(e->batch_positions);
+    if (e->w_buf) ggml_backend_buffer_free(e->w_buf);
+    if (e->w_ctx) ggml_free(e->w_ctx);
+    ggml_backend_buffer_free(e->kv_buf[0]);
+    ggml_backend_buffer_free(e->kv_buf[1]);
+    if (e->kv_ctx) ggml_free(e->kv_ctx);
+    /* T08: Guard against double-free */
+    if (e->alloc) {
+        ggml_gallocr_free(e->alloc);
+        e->alloc = NULL;
+    }
+    if (e->sched && !sched_freed) {
+        ggml_backend_sched_free(e->sched);
+        e->sched = NULL;
+        sched_freed = true;
+    }
+    if (e->backend_cpu && !backend_cpu_freed) {
+        ggml_backend_free(e->backend_cpu);
+        e->backend_cpu = NULL;
+        backend_cpu_freed = true;
+    }
+    if (e->backend_vk && !backend_vk_freed) {
+        ggml_backend_free(e->backend_vk);
+        e->backend_vk = NULL;
+        backend_vk_freed = true;
+    }
+    free(e);
+}
+
+/* T36: Get vocab size from engine */
+int engine_get_vocab_size(engine_t *e) {
+    return e->vocab_size;
+}

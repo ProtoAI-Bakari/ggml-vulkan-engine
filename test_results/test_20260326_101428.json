@@ -1,0 +1,450 @@
+{
+  "timestamp": "20260326_101428",
+  "agent": "agent0-tester",
+  "tests": {
+    "server": true,
+    "compilation": {
+      "ok": true,
+      "error": ""
+    },
+    "python_import": {
+      "ok": false,
+      "output": "File \"<string>\", line 1\n    from ggml_vllm_backend import GgmlLLM, SamplingParams; llm = GgmlLLM(~/models/gguf/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf); r = llm.generate(Hello, params=SamplingParams(te"
+    },
+    "coherency": {
+      "passed": 5,
+      "total": 5,
+      "details": [
+        {
+          "prompt": "What is 2+2?",
+          "response": "2+2 = 4",
+          "ok": true
+        },
+        {
+          "prompt": "Name the capital of Japan.",
+          "response": "Tokyo is the capital of Japan.",
+          "ok": true
+        },
+        {
+          "prompt": "Write one sentence about dogs.",
+          "response": "Dogs are loyal and loving companions that bring joy and comfort to people all over the world.",
+          "ok": true
+        },
+        {
+          "prompt": "What color is the sky?",
+          "response": "The color of the sky can vary depending on the time of day and atmospheric conditions. Here are some",
+          "ok": true
+        },
+        {
+          "prompt": "Who wrote Romeo and Juliet?",
+          "response": "William Shakespeare wrote Romeo and Juliet.",
+          "ok": true
+        }
+      ]
+    },
+    "new_files": [
+      {
+        "file": "verify_fix.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "benchmark_all.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "ggml_server.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "bench_server.py",
+        "test": "import",
+        "ok": false,
+        "error": "TIMEOUT"
+      },
+      {
+        "file": "fleet_register.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "ggml_model_wrapper.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "ask_big_brain.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "ask_coder_brain.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "profile_t05_granular.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "bridge-comms.py",
+        "test": "import",
+        "ok": false,
+        "error": ""
+      },
+      {
+        "file": "apply_moe_fix.py",
+        "test": "import",
+        "ok": false,
+        "error": ""
+      },
+      {
+        "file": "apply_moe_fix_v2.py",
+        "test": "import",
+        "ok": false,
+        "error": ""
+      },
+      {
+        "file": "stress_test_50.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "test_t01_stability.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "test_t02_server_stability.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "test_t03_blast_test.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "apply_t12_patch.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "apply_t12_clean.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "apply_t12_full.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "regression_test.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "test_fa_scalar_vs_standard.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "patch_t19_descriptor_prealloc.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "apply_t19_patch.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "bandwidth_profiler.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "workgroup_tuner.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "double_buffer_design.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "apply_t06_patch.py",
+        "test": "import",
+        "ok": false,
+        "error": ""
+      },
+      {
+        "file": "apply_t06_logging.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "fix_cast_op.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "fix_double_free.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "benchmark_phase1.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "profile_cpu_breakdown.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "create_upstream_patches.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "apply_t05_timing.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "brain_bridge.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "T35_prepare_inputs_patch.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "gguf_vocab_parser.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "debug_gguf.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "apply_t37_patch.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "cluster_deployer.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "cluster_orchestrator.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "ggml_vllm_backend.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "mlx_server_sys2.py",
+        "test": "import",
+        "ok": false,
+        "error": ""
+      },
+      {
+        "file": "mlx_server_sys3.py",
+        "test": "import",
+        "ok": false,
+        "error": ""
+      },
+      {
+        "file": "mlx_server_sys4.py",
+        "test": "import",
+        "ok": false,
+        "error": ""
+      },
+      {
+        "file": "mlx_server_sys5.py",
+        "test": "import",
+        "ok": false,
+        "error": ""
+      },
+      {
+        "file": "test_qwen_32b.py",
+        "test": "import",
+        "ok": false,
+        "error": "TIMEOUT"
+      },
+      {
+        "file": "test_import.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "cluster_dashboard.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "setup.py",
+        "test": "import",
+        "ok": false,
+        "error": ""
+      },
+      {
+        "file": "agent0_test_runner.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "router_service.py",
+        "test": "import",
+        "ok": false,
+        "error": ""
+      },
+      {
+        "file": "test_simple.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "test_vllm_e2e.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "test_vllm_single_request.py",
+        "test": "import",
+        "ok": false,
+        "error": ""
+      },
+      {
+        "file": "test_chat_completion.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "test_full_cycle.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "task_t84_bridge.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "mlx_server_sys6.py",
+        "test": "import",
+        "ok": false,
+        "error": ""
+      },
+      {
+        "file": "mlx_server_sys7.py",
+        "test": "import",
+        "ok": false,
+        "error": ""
+      },
+      {
+        "file": "autonomous_watchdog.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "count_fleet_tokens.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "swarm_commander.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "fix_task_queue.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "fleet_health_check.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "task_server.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "file": "OMNIAGENT_v4_focused.py",
+        "test": "import",
+        "ok": true,
+        "error": ""
+      }
+    ]
+  }
+}

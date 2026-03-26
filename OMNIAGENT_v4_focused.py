@@ -384,8 +384,13 @@ def complete_task(task_id: str) -> str:
     print(f"{C.GREEN}[✅ {out}]{C.RESET}")
     return out
 
-def update_progress(task_id: str, pct: str, note: str = "") -> str:
+def update_progress(task_id: str = "", pct: str = "0", note: str = "", **kwargs) -> str:
     """Update task progress (0-100%) via central API. Call periodically to show progress."""
+    # Accept common wrong kwarg names gracefully
+    task_id = task_id or kwargs.get("id", kwargs.get("id1", kwargs.get("task", "")))
+    pct = pct or kwargs.get("progress", kwargs.get("percentage", kwargs.get("status", "0")))
+    if not task_id:
+        return "update_progress needs task_id and pct. Example: update_progress('T42', '50')"
     import subprocess
     try:
         cmd = f'curl -s --max-time 3 -X POST http://10.255.255.128:9091/progress -d "task={task_id}&agent={_AGENT_NAME}&pct={pct}&note={note}"'
