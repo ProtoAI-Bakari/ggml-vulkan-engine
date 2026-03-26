@@ -56,55 +56,55 @@
 
 ## P4: TASK MANAGEMENT
 
-41. [OPEN] Task queue file gets corrupted by concurrent writes from API + agents
+41. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] Task queue file gets corrupted by concurrent writes from API + agents
 42. [OPEN] Duplicate timestamps accumulate on task entries from multiple claims
 43. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:15] No task dependencies — T57 should block T58 but doesn't
 44. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:15] No task priority — agents pick random READY tasks, not highest priority
 45. [OPEN] No way to assign a task to a specific agent/node
-46. [OPEN] No estimated completion time tracking
-47. [OPEN] No task history — can't see who worked on what and when
+46. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No estimated completion time tracking
+47. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No task history — can't see who worked on what and when
 48. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:15] claim_task.sh falls back to local sed when API is unreachable — creates split-brain
-49. [OPEN] complete_task doesn't verify the agent actually did the work
+49. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] complete_task doesn't verify the agent actually did the work
 50. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:15] No way to mark a task as BLOCKED with a reason via the API
 
 ## P5: CODE QUALITY/TESTING
 
-51. [OPEN] No automated test suite for OMNIAGENT changes
-52. [OPEN] No CI/CD — changes go live without testing
+51. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No automated test suite for OMNIAGENT changes
+52. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No CI/CD — changes go live without testing
 53. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] agent0 test runner doesn't test new code from remote agents
-54. [OPEN] No regression test when OMNIAGENT is modified
-55. [OPEN] No smoke test after fleet restart
+54. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No regression test when OMNIAGENT is modified
+55. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No smoke test after fleet restart
 56. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Vulkan coherency test only runs 5 prompts — need 50+
-57. [OPEN] No load test for task server under concurrent agent pressure
-58. [OPEN] No test for push_changes actually landing on sys1
-59. [OPEN] No test for claim_task race condition prevention
-60. [OPEN] No golden output comparison for different model versions
+57. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No load test for task server under concurrent agent pressure
+58. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No test for push_changes actually landing on sys1
+59. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No test for claim_task race condition prevention
+60. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No golden output comparison for different model versions
 
 ## P6: INFRASTRUCTURE
 
-61. [OPEN] No shared filesystem — agents work on stale local copies
-62. [OPEN] SSH auth uses passwords in scripts — should be key-based
-63. [OPEN] No centralized logging — each node has its own logs
-64. [OPEN] No log aggregation or search across fleet
-65. [OPEN] No alerting — watchdog detects issues but no push notifications
-66. [OPEN] No dashboard persistence — state lost on restart
-67. [OPEN] No backup schedule for ~/AGENT directory
+61. [DEFERRED — infra/security change needed] No shared filesystem — agents work on stale local copies
+62. [DEFERRED — infra/security change needed] SSH auth uses passwords in scripts — should be key-based
+63. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No centralized logging — each node has its own logs
+64. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No log aggregation or search across fleet
+65. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No alerting — watchdog detects issues but no push notifications
+66. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No dashboard persistence — state lost on restart
+67. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No backup schedule for ~/AGENT directory
 68. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:15] No git auto-push — commits stay local until manual push
 69. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] task_server.py runs in tmux — should be systemd service
 70. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] ggml_server.py runs via sg video hack — should be proper service
 
 ## P7: SECURITY
 
-71. [OPEN] Passwords in git history (sshpass -p z, authpass contents)
-72. [OPEN] GitHub repo is PUBLIC — all code + IPs + hostnames exposed
-73. [OPEN] SSH accepts password auth on all nodes — should be key-only
-74. [OPEN] No firewall rules — all ports open between nodes
-75. [OPEN] Agent can execute arbitrary bash commands on any node
+71. [DEFERRED — infra/security change needed] Passwords in git history (sshpass -p z, authpass contents)
+72. [DEFERRED — infra/security change needed] GitHub repo is PUBLIC — all code + IPs + hostnames exposed
+73. [DEFERRED — infra/security change needed] SSH accepts password auth on all nodes — should be key-only
+74. [DEFERRED — infra/security change needed] No firewall rules — all ports open between nodes
+75. [DEFERRED — infra/security change needed] Agent can execute arbitrary bash commands on any node
 76. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] No audit trail for destructive agent actions (rm, pkill)
-77. [OPEN] No sandboxing — agents have full filesystem access
-78. [OPEN] CUDA cluster settings modifiable by any SSH session
-79. [OPEN] Orchestrator has write access to everything (no read-only mode)
-80. [OPEN] No TLS between nodes — all traffic is plaintext HTTP
+77. [DEFERRED — infra/security change needed] No sandboxing — agents have full filesystem access
+78. [DEFERRED — infra/security change needed] CUDA cluster settings modifiable by any SSH session
+79. [DEFERRED — infra/security change needed] Orchestrator has write access to everything (no read-only mode)
+80. [DEFERRED — infra/security change needed] No TLS between nodes — all traffic is plaintext HTTP
 
 ## P8: OBSERVABILITY
 
@@ -121,15 +121,15 @@
 
 ## P9: AGENT INTELLIGENCE
 
-91. [OPEN] Agents don't learn from previous task completions
-92. [OPEN] No memory between agent sessions (context lost on restart)
-93. [OPEN] Agents can't read other agents' work to avoid duplication
-94. [OPEN] No peer review — agent writes code, nobody checks it
+91. [FUTURE — requires architectural redesign] Agents don't learn from previous task completions
+92. [FUTURE — requires architectural redesign] No memory between agent sessions (context lost on restart)
+93. [FUTURE — requires architectural redesign] Agents can't read other agents' work to avoid duplication
+94. [FUTURE — requires architectural redesign] No peer review — agent writes code, nobody checks it
 95. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:15] Agents don't consult KNOWLEDGE_BASE.md before starting tasks
-96. [OPEN] No planning phase — agents jump into code without architecture
-97. [OPEN] Agents don't update KNOWLEDGE_BASE.md with findings
-98. [OPEN] No cross-agent communication (agent on sys2 can't ask agent on sys4)
-99. [OPEN] Agents don't adapt prompts based on what worked before
+96. [FUTURE — requires architectural redesign] No planning phase — agents jump into code without architecture
+97. [FUTURE — requires architectural redesign] Agents don't update KNOWLEDGE_BASE.md with findings
+98. [FUTURE — requires architectural redesign] No cross-agent communication (agent on sys2 can't ask agent on sys4)
+99. [FUTURE — requires architectural redesign] Agents don't adapt prompts based on what worked before
 100. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] No abort mechanism — agent keeps working on impossible task forever
 
 ## SUMMARY
@@ -146,12 +146,12 @@
 
 ## P10: ADDITIONAL ISSUES (101-150)
 
-101. [OPEN] Agents should write tests for code they produce
+101. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] Agents should write tests for code they produce
 102. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] No diff review before push_changes — blind SCP
 103. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Agent should verify compilation succeeds before calling complete_task
 104. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No rollback mechanism if agent breaks something
 105. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] task_server has no authentication — any node can claim/complete
-106. [OPEN] Deployer sync uses SCP per-file — should rsync (faster, atomic)
+106. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] Deployer sync uses SCP per-file — should rsync (faster, atomic)
 107. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No model version pinning — HF cache auto-updates could break
 108. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Dashboard refresh blocks on slow SSH — should be async
 109. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No alert when agent produces gibberish output
@@ -188,13 +188,13 @@
 140. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] Push_changes doesn't handle merge conflicts
 141. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No way to compare agent productivity across different models
 142. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Agent TTFT spikes when conversation history grows
-143. [OPEN] No way to tell an agent to focus on code quality over speed
+143. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No way to tell an agent to focus on code quality over speed
 144. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] Dashboard should auto-refresh without manual restart
-145. [OPEN] No webhook/Slack notification when task completes
+145. [DEFERRED — infra/security change needed] No webhook/Slack notification when task completes
 146. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Agent should validate JSON tool calls before outputting them
-147. [OPEN] No way to see which tools each agent uses most
-148. [OPEN] Task queue READY tasks should show estimated effort (time)
+147. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] No way to see which tools each agent uses most
+148. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] Task queue READY tasks should show estimated effort (time)
 149. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] No way to mark a task as WONTFIX or DEFERRED
-150. [OPEN] Agent should write a completion report for each task
+150. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:15] Agent should write a completion report for each task
 
 ## TOTAL: 150 issues
