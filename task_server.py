@@ -35,8 +35,7 @@ def log_history(event, task_id, agent, detail=""):
     entry = {"ts": datetime.now().isoformat(), "event": event, "task": task_id, "agent": agent, "detail": detail}
     try:
         with open(HISTORY_FILE, "a") as f:
-            f.write(json.dumps(entry) + "
-")
+            f.write(json.dumps(entry) + "\n")
     except: pass
 
 

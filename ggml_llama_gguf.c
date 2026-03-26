@@ -49,6 +49,7 @@ typedef struct {
     int vocab_size, n_ctx;
     int n_requests;  /* For batched forward: number of concurrent requests */
     int n_requests;  /* For batched forward: number of concurrent requests */
+    int n_requests;  /* For batched forward: number of concurrent requests */
     float rms_eps, rope_theta;
 
     /* T05: Timing instrumentation */
@@ -67,8 +68,14 @@ typedef struct {
     int32_t *batch_positions;  /* [total_tokens] flattened positions */
     int32_t *batch_seq_lens;  /* [n_requests] sequence length per request */
     int32_t *batch_block_tables;  /* [n_requests * max_blocks] paged KV block tables */
+    int32_t *batch_tokens;  /* [total_tokens] flattened tokens from all requests */
+    int32_t *batch_positions;  /* [total_tokens] flattened positions */
+    int32_t *batch_seq_lens;  /* [n_requests] sequence length per request */
+    int32_t *batch_block_tables;  /* [n_requests * max_blocks] paged KV block tables */
     struct ggml_context *_persistent_ctx;
     int return_hidden;  /* If true, skip lm_head and return hidden_states */
+    ggml_gallocr_t galloc;  /* T12: Graph allocator for caching */
+    struct ggml_cgraph *cached_graph;  /* T12: Cached graph template */
     ggml_gallocr_t galloc;  /* T12: Graph allocator for caching */
     struct ggml_cgraph *cached_graph;  /* T12: Cached graph template */
 
@@ -325,6 +332,10 @@ int engine_forward_batch(engine_t *e, int n_tokens, const int32_t *tokens, const
 int engine_forward_batch(engine_t *e, int n_tokens, const int32_t *tokens, const int32_t *positions,
                          const int32_t *seq_lens, const int32_t *block_tables, float *logits_out);
 
+/* Batched forward pass for vLLM integration (T37) */
+int engine_forward_batch(engine_t *e, int n_tokens, const int32_t *tokens, const int32_t *positions,
+                         const int32_t *seq_lens, const int32_t *block_tables, float *logits_out);
+
 /* Warmup: run multiple forward passes to fully prime scheduler buffers.
  * The first pass is slow (allocation), subsequent passes reuse buffers. */
 int engine_warmup(engine_t *e) {
@@ -355,6 +366,15 @@ int engine_warmup(engine_t *e) {
     /* T12: Initialize ggml_gallocr for graph caching */
     e->galloc = ggml_gallocr_new(ggml_backend_vk_buffer_type(0));
     e->cached_graph = NULL;
+    e->cached_graph = NULL;
+    if (!e->galloc) {
+        fprintf(stderr, "[gguf] ERROR: Failed to create ggml_gallocr\n");
+        return -1;
+    }
+    fprintf(stderr, "[gguf] Graph allocator created for T12 caching\n");
+    
+    /* T12: Initialize ggml_gallocr for graph caching */
+    e->galloc = ggml_gallocr_new(ggml_backend_vk_buffer_type(0));
     if (!e->galloc) {
         fprintf(stderr, "[gguf] ERROR: Failed to create ggml_gallocr\n");
         return -1;
@@ -369,6 +389,8 @@ int engine_forward(engine_t *e, int n_tokens,
                    float *logits_out) {
     int H = e->hidden_dim, I = e->intermediate;
     int NH = e->n_heads, NKV = e->n_kv_heads, HD = e->head_dim;
+    double t_start = ggml_time_us();
+    e->token_count++;
     double t_start = ggml_time_us();
     e->token_count++;
     double t_start = ggml_time_us();
@@ -567,6 +589,20 @@ int engine_forward(engine_t *e, int n_tokens,
         fprintf(stderr, "Breakdown: views=%d, compute=%d\n", views, compute);
     }
 
+    /* T06: Print graph topology for documentation */
+    if (n_tokens == 1 && positions[0] < 2) {
+        fprintf(stderr, "=== GGML Graph Topology (pos=%d, n_tokens=%d) ===\n", positions[0], n_tokens);
+        fprintf(stderr, "Graph nodes: %d\n", ggml_graph_n_nodes(graph));
+        int views=0, compute=0;
+        for (int i = 0; i < ggml_graph_n_nodes(graph); i++) {
+            struct ggml_tensor *node = ggml_graph_node(graph, i);
+            if (node->op == GGML_OP_CPY || node->op == GGML_OP_VIEW) views++;
+            /* CAST ops not tracked in this ggml version */
+            else compute++;
+        }
+        fprintf(stderr, "Breakdown: views=%d, compute=%d\n", views, compute);
+    }
+
     double t_compute_start = ggml_time_us();
     enum ggml_status status = ggml_backend_sched_graph_compute(e->sched, graph);
     e->t_backend_compute_us = ggml_time_us() - t_compute_start;
@@ -612,6 +648,10 @@ void engine_reset_kv(engine_t *e) {
 void engine_free(engine_t *e) {
     if (e->_persistent_ctx) ggml_free(e->_persistent_ctx);
     if (e->compute_buf) free(e->compute_buf);
+    if (e->batch_tokens) free(e->batch_tokens);
+    if (e->batch_positions) free(e->batch_positions);
+    if (e->batch_seq_lens) free(e->batch_seq_lens);
+    if (e->batch_block_tables) free(e->batch_block_tables);
     if (e->batch_tokens) free(e->batch_tokens);
     if (e->batch_positions) free(e->batch_positions);
     if (e->batch_seq_lens) free(e->batch_seq_lens);

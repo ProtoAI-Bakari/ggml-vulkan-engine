@@ -759,8 +759,7 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
                     # Write token stats for monitoring
                     try:
                         with open(os.path.expanduser('~/AGENT/.token_stats'), 'w') as _ts:
-                            _ts.write(f'{_AGENT_NAME}|{session_total_tokens}|{session_total_turns}|{time.time()-session_start_time:.0f}s
-')
+                            _ts.write(f'{_AGENT_NAME}|{session_total_tokens}|{session_total_turns}|{time.time()-session_start_time:.0f}s\n')
                     except: pass
                     turn_elapsed = t_turn_end - t_turn_start
                     ttft = (t_first_token - t_turn_start) if t_first_token else 0

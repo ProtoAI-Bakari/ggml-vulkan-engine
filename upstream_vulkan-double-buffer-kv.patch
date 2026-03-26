@@ -1,5 +1,5 @@
 From: OmniAgent v4 <omniagent@example.com>
-Date: Thu Mar 26 03:42:16 2026 
+Date: Thu Mar 26 04:16:25 2026 
 Subject: [ggml] Vulkan: Add double-buffering for KV cache
 
 Implements double-buffered KV cache infrastructure, providing 8% TPS gain from reduced stalls.

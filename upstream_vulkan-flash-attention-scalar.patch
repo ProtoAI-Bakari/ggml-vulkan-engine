@@ -1,5 +1,5 @@
 From: OmniAgent v4 <omniagent@example.com>
-Date: Thu Mar 26 03:42:16 2026 
+Date: Thu Mar 26 04:16:25 2026 
 Subject: [ggml] Vulkan: Verify flash attention scalar path (FA_SCALAR)
 
 Adds support for flash attention on platforms without cooperative matrix support (e.g., Apple M1). Uses ggml_flash_attn_ext() with scalar fallback.
