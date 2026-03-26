@@ -1,0 +1,27 @@
+{
+  "generated": "2026-03-26T03:29:19.297934",
+  "elapsed": "0h00m",
+  "remaining": "3h59m",
+  "vulkan_tests": {
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
+    "avg_tps": 21.8
+  },
+  "fleet": {
+    "checks": 2,
+    "restarts": 0,
+    "alerts": 0
+  },
+  "tasks": {
+    "time": "2026-03-26T03:29:19.297923",
+    "summary": {
+      "DONE": 40,
+      "IN_PROGRESS": 7,
+      "READY": 38,
+      "BLOCKED": 0
+    }
+  },
+  "restart_details": [],
+  "alert_details": []
+}

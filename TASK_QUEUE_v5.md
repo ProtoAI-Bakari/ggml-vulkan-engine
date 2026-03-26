@@ -107,7 +107,18 @@
 - Success: correct output after topology change, no stale CB
 - Time: 6h
 
-### T15: [IN_PROGRESS by OmniAgent [sys7] | 0% | started:2026-03-26T03:19] | 0% | started:2026-03-26T02:19] Move Python/ctypes hot path to C extension
+### T15: [IN_PROGRESS by OmniAgent [sys6
+
+TASK T38
+Send a chat completion request through the full vLLM pipeline. Verify coherent response.
+
+STEPS
+1. write_file
+2. execute_bash
+3. push_changes
+4. complete_task T38
+
+Write the test IMMEDIATELY. First tool call must be write_file.] | 0% | started:2026-03-26T03:34] | 0% | started:2026-03-26T02:19] Move Python/ctypes hot path to C extension
 - Compiled C shim replaces ctypes for tensor dispatch
 - Eliminate numpy→ctypes→C boundary crossing per forward()
 - Success: Python overhead drops from 3ms to <0.5ms
@@ -216,7 +227,7 @@
 - Success: attention correct with paged cache
 - Time: 12h
 
-### T34: [IN_PROGRESS by OmniAgent [sys6] | 0% | started:2026-03-26T03:19] | 0% | started:2026-03-26T02:52] | 0% | started:2026-03-26T02:18] Wire _update_states()
+### T34: [READY] | 0% | started:2026-03-26T02:52] | 0% | started:2026-03-26T02:18] Wire _update_states()
 - Parse SchedulerOutput: add/remove/reorder requests
 - Success: request lifecycle correctly managed
 - Time: 8h
@@ -239,7 +250,7 @@
 - Success: vLLM sampler accepts logits
 - Time: 6h
 
-### T38: [READY] | 0% | started:2026-03-26T03:21] | 0% | started:2026-03-26T02:56] | 0% | started:2026-03-26T02:24] End-to-end single-request test through vLLM plugin
+### T38: [IN_PROGRESS by Cluster2 | 0% | started:2026-03-26T03:29] | 0% | started:2026-03-26T03:21] | 0% | started:2026-03-26T02:56] | 0% | started:2026-03-26T02:24] End-to-end single-request test through vLLM plugin
 - Chat completion, verify coherent response
 - Success: matches direct ggml output quality
 - Time: 4h
@@ -249,7 +260,7 @@
 - Success: both requests correct and independent
 - Time: 6h
 
-### T40: [IN_PROGRESS by OmniAgent | 0% | started:2026-03-26T03:27] | 0% | started:2026-03-26T02:59] | 0% | started:2026-03-26T02:18] Implement KV cache block freeing + prevent memory leak
+### T40: [DONE by OmniAgent | completed:2026-03-26T03:27] | 0% | started:2026-03-26T02:59] | 0% | started:2026-03-26T02:18] Implement KV cache block freeing + prevent memory leak
 - Release blocks on request completion, return to free pool
 - Success: stable memory after 100+ requests
 - Time: 4h
@@ -341,14 +352,14 @@
 ## PHASE 4: PURE VULKAN ENGINE [Perspective B — speculative, 35-45 TPS]
 
 ### T56: [DONE]] Implement GGUF weight loader in C (parse header, map weights to VkBuffer)
-### T57: [IN_PROGRESS by OmniAgent [sys5] | 0% | started:2026-03-26T03:18] | 0% | started:2026-03-26T02:51] | 0% | started:2026-03-26T02:19] Write Q4_K_M dequant+GEMV SPIR-V shader (subgroup shuffle, SIMD 32)
+### T57: [IN_PROGRESS by OmniAgent [sys5] | 0% | started:2026-03-26T03:34] | 0% | started:2026-03-26T02:51] | 0% | started:2026-03-26T02:19] Write Q4_K_M dequant+GEMV SPIR-V shader (subgroup shuffle, SIMD 32)
 ### T58: [READY] Benchmark T57 vs ggml GEMV
 ### T59: [READY] | 0% | started:2026-03-26T03:23] | 0% | started:2026-03-26T02:52] | 0% | started:2026-03-26T02:40] Write RMSNorm, RoPE, softmax, SiLU SPIR-V shaders
 ### T60: [READY] | 0% | started:2026-03-26T03:23] | 0% | started:2026-03-26T02:53] | 0% | started:2026-03-26T02:43] Implement static CB recording for one transformer layer
 ### T61: [READY] | 0% | started:2026-03-26T03:23] | 0% | started:2026-03-26T02:53] | 0% | started:2026-03-26T02:45] Full model: chain all layers + embedding + output projection
 ### T62: [READY] | 0% | started:2026-03-26T03:23] | 0% | started:2026-03-26T02:54] | 0% | started:2026-03-26T02:46] Push-constant-only token stepping (no CB re-recording)
 ### T63: [READY] | 0% | started:2026-03-26T03:23] | 0% | started:2026-03-26T02:54] | 0% | started:2026-03-26T02:18] Benchmark pure engine vs ggml at batch=1
-### T64: [IN_PROGRESS by OmniAgent [sys5] | 0% | started:2026-03-26T03:27] | 0% | started:2026-03-26T03:23] | 0% | started:2026-03-26T02:48] Paged KV cache in pure engine
+### T64: [READY] | 0% | started:2026-03-26T03:23] | 0% | started:2026-03-26T02:48] Paged KV cache in pure engine
 ### T65: [READY] | 0% | started:2026-03-26T03:23] | 0% | started:2026-03-26T02:56] | 0% | started:2026-03-26T02:48] Flash attention SPIR-V shader (tiled, scalar, 2-pass online softmax)
 
 ## PHASE 5: VALIDATION + PRODUCTION HARDENING

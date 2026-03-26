@@ -363,7 +363,8 @@ TOOLS_SCHEMA = [
 SYSTEM_PROMPT = """You are OmniAgent, an autonomous engineer. Execute tasks from ~/AGENT/TASK_QUEUE_v5.md.
 
 RULES:
-- Every response MUST have a <tool_call>. No exceptions.
+- Every response MUST contain ONLY a <tool_call>...</tool_call>. No thinking, no explanation, no reasoning outside the tags.
+- Do NOT output chain-of-thought. Go straight to the tool call.
 - Use ~ for paths (not /home/z or /Users/z).
 - claim_task before working, complete_task + push_changes when done.
 - If claim returns BLOCKED (you already have a task), WORK ON THAT TASK.
@@ -383,37 +384,75 @@ PROJECT: Vulkan GPU inference engine on Asahi Linux M1 Ultra.
 - Task queue: ~/AGENT/TASK_QUEUE_v5.md (ONLY this file, no v4)
 """
 
+def _escape_newlines_in_json_strings(raw):
+    """Escape literal newlines/tabs inside JSON string values only."""
+    result = []
+    in_string = False
+    escaped = False
+    for ch in raw:
+        if escaped:
+            result.append(ch)
+            escaped = False
+            continue
+        if ch == '\\' and in_string:
+            result.append(ch)
+            escaped = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            result.append(ch)
+            continue
+        if in_string and ch == '\n':
+            result.append('\\n')
+            continue
+        if in_string and ch == '\t':
+            result.append('\\t')
+            continue
+        result.append(ch)
+    return ''.join(result)
+
+def _try_parse_tool_json(raw):
+    """Try to parse a raw string as a tool call JSON, with common fixups."""
+    raw = re.sub(r',\s*([}\]])', r'\1', raw)  # remove trailing commas
+    raw = raw.replace("\u2018", '"').replace("\u2019", '"')  # curly single quotes
+    raw = raw.replace("\u201c", '"').replace("\u201d", '"')  # curly double quotes
+    raw = raw.replace("'", '"')  # single to double quotes
+    # Fix missing closing quote before colon: "arguments: { → "arguments": {
+    # Pattern: "key<space or nothing>: (without closing quote before colon)
+    raw = re.sub(r'"(name|arguments|command|path|query|task_id|pct|note|content|files|message|description|code_patch|question|offset|limit):\s', r'"\1": ', raw)
+    # Try: as-is, then with newlines escaped inside strings only
+    for attempt in [raw, _escape_newlines_in_json_strings(raw)]:
+        try:
+            tc = json.loads(attempt)
+            if "arguments" in tc.get("arguments", {}):
+                tc["arguments"] = tc["arguments"]["arguments"]
+            if tc.get("name") in TOOL_DISPATCH:
+                return tc, None
+            else:
+                return None, f"Tool '{tc.get('name')}' does not exist."
+        except (json.JSONDecodeError, ValueError):
+            continue
+    return None, f"Malformed JSON in tool call: {raw}"
+
 def extract_tool_calls(text):
     calls = []
     errors = []
+    # Primary: <tool_call>...</tool_call> tags
     for m in re.finditer(r'<tool_call>\s*(.*?)\s*</tool_call>', text, re.DOTALL):
-        raw = m.group(1).strip()
-        # Fix common model output issues
-        raw = re.sub(r',\s*([}\]])', r'\1', raw)  # remove trailing commas
-        raw = raw.replace("'", '"')  # single to double quotes
-        raw = re.sub(r'"arguments:\s*\{', '"arguments": {', raw)  # fix missing ": after arguments
-        raw = re.sub(r'"name:\s*"', '"name": "', raw)  # fix missing ": after name
-        try:
-            tc = json.loads(raw)
-            # Anti-Hallucination Check: flatten nested arguments if model hallucinates them
-            if "arguments" in tc.get("arguments", {}):
-                tc["arguments"] = tc["arguments"]["arguments"]
-            if tc.get("name") in TOOL_DISPATCH: 
+        tc, err = _try_parse_tool_json(m.group(1).strip())
+        if tc:
+            calls.append(tc)
+        elif err:
+            errors.append(err)
+    # Fallback: bare JSON with "name" and "arguments" keys (no tags)
+    if not calls:
+        for m in re.finditer(r'\{[^{}]*"name"\s*:\s*"[^"]+"\s*,\s*"arguments"\s*:\s*\{[^}]*\}[^}]*\}', text):
+            tc, err = _try_parse_tool_json(m.group(0).strip())
+            if tc:
                 calls.append(tc)
-            else:
-                errors.append(f"Tool '{tc.get('name')}' does not exist.")
-        except json.JSONDecodeError as e:
-            try:
-                fixed = raw.replace('\n', '\\n')
-                tc = json.loads(fixed)
-                if "arguments" in tc.get("arguments", {}):
-                    tc["arguments"] = tc["arguments"]["arguments"]
-                if tc.get("name") in TOOL_DISPATCH: 
-                    calls.append(tc)
-                else:
-                    errors.append(f"Tool '{tc.get('name')}' does not exist.")
-            except Exception as e2: 
-                errors.append(f"Malformed JSON in tool call: {raw}\nError: {e2}")
+                break  # only take the first bare match to avoid false positives
+            elif err:
+                errors.append(err)
     return calls, errors
 
 def get_multiline_input(prompt_text="Task (Ctrl+D to submit):"):
@@ -569,19 +608,12 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
                     run_agent._parse_fail_count += 1
 
                     if run_agent._parse_fail_count >= 3:
-                        # Escalate to Claude for help with persistent failures
-                        print(f"\n{C.RED}⚠️ [ESCALATING TO CLAUDE]: 3+ parse failures. Asking Claude for help.{C.RESET}")
-                        try:
-                            # Get the broken content and ask Claude to fix it
-                            broken = full_content[:500] if full_content else "empty response"
-                            fix = ask_claude(f"My tool call JSON keeps failing to parse. Here's my broken output:\n{broken}\n\nThe correct format is: <tool_call>\n{{\"name\": \"execute_bash\", \"arguments\": {{\"command\": \"pwd\"}}}}\n</tool_call>\n\nWhat am I doing wrong? Give me the corrected tool call.")
-                            history.append({"role": "user", "content": f"[CLAUDE FIX]: {fix}\n\nNow try again with correct JSON syntax."})
-                        except Exception:
-                            # Fallback: just reset context
-                            sys_msg = history[0]
-                            last_user = [m for m in history if m["role"] == "user"][-1]
-                            history = [sys_msg, last_user]
-                            history.append({"role": "user", "content": "[SYSTEM]: Tool calls had broken JSON. Format:\n<tool_call>\n{\"name\": \"execute_bash\", \"arguments\": {\"command\": \"pwd\"}}\n</tool_call>"})
+                        # Hard reset context instead of wasting Claude tokens
+                        print(f"\n{C.RED}⚠️ [HARD RESET]: 3+ parse failures. Resetting context.{C.RESET}")
+                        sys_msg = history[0]
+                        last_user = [m for m in history if m["role"] == "user"][-1]
+                        history = [sys_msg, last_user]
+                        history.append({"role": "user", "content": "STOP. Do NOT explain. Respond with ONLY a tool call:\n<tool_call>\n{\"name\": \"execute_bash\", \"arguments\": {\"command\": \"pwd\"}}\n</tool_call>"})
                         run_agent._parse_fail_count = 0
                         continue
 
@@ -591,7 +623,19 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
                     continue
 
                 if not tool_calls:
-                    break
+                    # No tool call found at all (pure reasoning / no JSON)
+                    if not hasattr(run_agent, '_no_tool_count'):
+                        run_agent._no_tool_count = 0
+                    run_agent._no_tool_count += 1
+                    if run_agent._no_tool_count >= 3:
+                        # Hard reset: wipe history back to system + last user msg
+                        print(f"\n{C.RED}⚠️ [HARD RESET]: 3 responses with no tool call. Resetting context.{C.RESET}")
+                        sys_msg = history[0]
+                        last_user = [m for m in history if m["role"] == "user"][-1]
+                        history = [sys_msg, last_user]
+                        run_agent._no_tool_count = 0
+                    history.append({"role": "user", "content": "STOP. Do NOT think or explain. Output ONLY:\n<tool_call>\n{\"name\": \"execute_bash\", \"arguments\": {\"command\": \"pwd\"}}\n</tool_call>\nReplace pwd with your actual command. Nothing else."})
+                    continue
 
                 # Reset parse failure counter on success
                 run_agent._parse_fail_count = 0
