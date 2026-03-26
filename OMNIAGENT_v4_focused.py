@@ -48,6 +48,14 @@ def sigint_handler(signum, frame):
 
 signal.signal(signal.SIGINT, sigint_handler)
 
+_shutdown_requested = False
+def sigterm_handler(signum, frame):
+    global _shutdown_requested
+    _shutdown_requested = True
+    print(f"\n{C.YELLOW}[SIGTERM received — finishing current turn then exiting]{C.RESET}")
+
+signal.signal(signal.SIGTERM, sigterm_handler)
+
 # =====================================================
 # CONFIGURATION
 # =====================================================
@@ -89,6 +97,10 @@ client = OpenAI(base_url=PRIMARY_URL, api_key="sk-local", timeout=600.0)
 def execute_bash(command: str, timeout: int = 30) -> str:
     try:
         cmd_str = command.strip()
+        # Fix Linux→macOS path for remote agents
+        import platform
+        if platform.system() == 'Darwin' and '/home/z/' in cmd_str:
+            cmd_str = cmd_str.replace('/home/z/', os.path.expanduser('~/'))
         if cmd_str.endswith('&'):
             cmd_str = cmd_str.rstrip('&').strip()
             log_file = os.path.expanduser(f"~/AGENT/LOGS/bg_{int(time.time())}.log")
@@ -204,6 +216,10 @@ def ask_reviewer(query: str) -> str:
 
 def ask_cuda_brain(query: str) -> str:
     """Escalate to the 122B CUDA brain for genuinely HARD problems."""
+    # Redirect simple queries to local brain — CUDA is expensive
+    hard_keywords = ['debug', 'architecture', 'design', 'complex', 'multi-file', 'race condition', 'deadlock']
+    if len(query) < 100 and not any(kw in query.lower() for kw in hard_keywords):
+        return _ask_brain("coder", query, "You are a coding expert. Be precise and concise.")
     # Rate limit: track calls
     if not hasattr(ask_cuda_brain, '_count'):
         ask_cuda_brain._count = 0
@@ -617,7 +633,7 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
         except Exception:
             pass
 
-    print(f"{C.BOLD}{C.CYAN}🚀 {agent_name} ONLINE | Model: {MODEL_NAME}{C.RESET}")
+    print(f"{C.BOLD}{C.CYAN}🚀 {agent_name} ONLINE {VERSION} | Model: {MODEL_NAME}{C.RESET}")
     history = [{"role": "system", "content": SYSTEM_PROMPT}]
 
     # Session performance tracking
@@ -634,6 +650,10 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
         C.BLUE = C.CYAN = C.GREEN = C.YELLOW = C.MAGENTA = C.RED = C.DIM = C.RESET = C.BOLD = ''
 
     while True:
+        if _shutdown_requested:
+            print(f"{C.YELLOW}[GRACEFUL SHUTDOWN]{C.RESET}")
+            break
+
         try:
             # Auto-go: load GO_PROMPT only FIRST turn. After that, nudge to continue.
             if first_turn and (auto_go or no_tty):
@@ -778,6 +798,12 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
                     print(f"\n{C.DIM}┌─ 📊 Turn {session_total_turns}: {turn_token_count} tok | {tps:.1f} t/s | TTFT {ttft*1000:.0f}ms | {turn_elapsed:.1f}s{C.RESET}")
                     print(f"{C.DIM}└─ 📈 Session: {session_total_tokens} tok total | {session_total_tokens/session_elapsed:.1f} avg t/s | {session_elapsed:.0f}s uptime{C.RESET}")
                     print()
+                    # Heartbeat — issue #34
+                    try:
+                        hb_path = os.path.expanduser("~/AGENT/LOGS/heartbeat.txt")
+                        with open(hb_path, 'w') as hb:
+                            hb.write(f"{datetime.now().isoformat()}|Turn {session_total_turns}|{my_task or '-'}|{tps:.1f} t/s\n")
+                    except: pass
                 except InterruptSignal:
                     print(f"\n{C.RED}[🛑 INTERRUPTED BY USER]{C.RESET}")
                     break
