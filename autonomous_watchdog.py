@@ -506,7 +506,7 @@ def analyze_node(name, node):
                   raw.count("COMPLETED") + raw.count("Successfully wrote") +
                   raw.count("execute_bash") + raw.count("push_changes") +
                   raw.count("EXIT CODE: 0"))
-    if result["turns"] > 20 and productive == 0:
+    if result["turns"] > 30 and productive == 0:
         result["warnings"].append("NO PRODUCTIVE OUTPUT despite many turns")
 
     # Multi-claim detection

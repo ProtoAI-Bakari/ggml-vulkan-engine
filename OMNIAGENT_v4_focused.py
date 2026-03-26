@@ -439,7 +439,7 @@ TOOL FORMAT:
 </tool_call>
 
 PROJECT: Vulkan GPU inference engine on Asahi Linux M1 Ultra.
-For large files (>20 lines): use execute_bash with cat<<'EOF'>file.py ... EOF
+For edits: use sed -i. For new files >20 lines: use execute_bash with cat<<'EOF'>file.py ... EOF
 Do NOT put large code blocks in write_file — it breaks JSON parsing.
 - C engine: ~/AGENT/ggml_llama_gguf.c → libggml_llama_gguf.so (22 TPS)
 - Python: ~/AGENT/ggml_vllm_backend.py
@@ -776,7 +776,7 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
             
             while True: 
                 # --- PERFECT CONTEXT MANAGEMENT ---
-                if sum(len(str(m.get("content", ""))) for m in history) > 20000:
+                if sum(len(str(m.get("content", ""))) for m in history) > 15000:
                     sys_prompt = history[0]
                     new_tail = history[-10:]
                     while new_tail and new_tail[0]["role"] != "user":
