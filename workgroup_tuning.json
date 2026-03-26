@@ -1,0 +1,21 @@
+{
+  "architecture": "Apple M1 Ultra (Honeykrisp)",
+  "subgroup_size": 32,
+  "l1_cache_kb": 8,
+  "shared_memory_kb": 32,
+  "memory_bandwidth_gb_s": 800,
+  "tested_workgroup_sizes": [
+    64,
+    128,
+    256,
+    512
+  ],
+  "recommendations": {
+    "gemv": 256,
+    "gemm": 256,
+    "element_wise": 256,
+    "rope": 256
+  },
+  "current_default": 256,
+  "notes": "256 threads (8 warps) is optimal for most kernels on AGX"
+}
