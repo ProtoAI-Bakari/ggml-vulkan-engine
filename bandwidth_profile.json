@@ -1,0 +1,8 @@
+{
+  "theoretical_peak_gb_s": 800,
+  "measured_bandwidth_gb_s": 11.358585613663719,
+  "utilization_percent": 1.4198232017079648,
+  "model": "Apple M1 Ultra",
+  "tps_22_bandwidth_gb_s": 101.19999999999999,
+  "tps_30_bandwidth_gb_s": 138.0
+}
