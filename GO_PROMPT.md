@@ -18,12 +18,20 @@ You are one of 3 parallel agents working on the Vulkan GPU inference engine. Oth
 - Test after every change: python3 -c "from ggml_vllm_backend import GgmlLLM, SamplingParams; llm = GgmlLLM('~/models/gguf/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf'); r = llm.generate('Capital of France?', params=SamplingParams(temperature=0, max_tokens=10)); print(f'{r.tps:.0f} TPS: {r.text}')"
 - If broken, restore: git checkout -- ~/AGENT/ggml_llama_gguf.c
 
-## STEP 3: CONSULT BRAINS (MANDATORY — do NOT code alone)
-- BEFORE any C code change: ask_coder_brain("How should I implement X?")
-- AFTER any compile error: ask_coder_brain("Fix this error: <paste error>")
-- For architecture decisions: ask_claude("Should I do X or Y?") — USE SPARINGLY
-- Every 5-10 tool calls: ask_coder_brain about your current approach
-- The coder brain is FREE and FAST. Use it on every non-trivial decision.
+## STEP 3: CONSULT THE LEADERSHIP COUNCIL (MANDATORY — do NOT code alone)
+You have 5 specialized brains. Use the RIGHT one:
+- ask_architect("Should we use X or Y architecture?") — BIG DECISIONS
+- ask_engineer("Give me the implementation plan for X") — HOW TO BUILD
+- ask_coder_brain("Write the C code for X") — ACTUAL CODE (fastest brain)
+- ask_designer("Is there a better approach than X?") — WHEN STUCK
+- ask_reviewer("Review this code for bugs: <paste>") — BEFORE COMMITTING
+RULES:
+- BEFORE architecture decisions: ask_architect
+- BEFORE writing code: ask_coder_brain
+- AFTER writing code: ask_reviewer
+- WHEN stuck: ask_designer
+- Every 5-10 tool calls: consult at least ONE brain
+- ask_claude ONLY as last resort (expensive)
 
 ## STEP 4: COMPLETE AND REPORT (do ALL of these)
 After finishing a task:

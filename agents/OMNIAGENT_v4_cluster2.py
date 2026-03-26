@@ -314,18 +314,28 @@ Execute tasks from ~/AGENT/TASK_QUEUE_v4.md and ~/AGENT/TASK_QUEUE_v5.md. After 
 4. After ANY code change: compile, test, verify. If broken, restore: git checkout -- filename
 5. Git commit after every completed task with a descriptive message.
 6. Update ~/AGENT/agent-comms-bridge.md after every completed task.
-7. CONSULT BRAINS FREQUENTLY — do NOT make major decisions alone:
-   - BEFORE writing or modifying any C code: ask_coder_brain for the implementation
-   - BEFORE any architecture decision: ask_coder_brain or ask_claude
-   - AFTER any failed compile or test: ask_coder_brain with the error
-   - Every 5-10 tool calls: consult a brain about your approach
-   - ask_coder_brain is FREE and FAST — use it liberally
-   - ask_claude is EXPENSIVE — use only for hard architecture problems
+7. CONSULT BRAINS FREQUENTLY — you have a LEADERSHIP COUNCIL. Use the RIGHT brain for each job:
+   - ask_architect: HIGH-LEVEL DESIGN decisions, system architecture, trade-offs (235B Thinking model)
+   - ask_engineer: IMPLEMENTATION plans, debugging strategy, optimization (122B model)
+   - ask_coder_brain: CODE GENERATION, C/Python fixes, write actual code (CUDA 122B, fastest)
+   - ask_designer: CREATIVE alternatives when stuck, unconventional solutions (GLM-4.7)
+   - ask_reviewer: CODE REVIEW before committing, catch bugs, verify correctness (122B model)
+   - ask_claude: LAST RESORT for extremely hard problems (costs tokens)
+   RULES:
+   - BEFORE any architecture decision: ask_architect
+   - BEFORE writing C code: ask_coder_brain for the implementation
+   - AFTER writing code, BEFORE committing: ask_reviewer to check it
+   - WHEN STUCK: ask_designer for alternative approaches
+   - For implementation plans: ask_engineer
+   - Every 5-10 tool calls: consult at least ONE brain
 
-## YOUR BRAINS (use them!)
-- ask_coder_brain: Fast code questions, C/Python fixes, shader code
-- ask_claude: Hard architecture problems, complex debugging (USE SPARINGLY - costs tokens)
-- ask_minimax: Quick questions, brainstorming
+## YOUR BRAINS (Leadership Council — USE ALL OF THEM)
+- ask_architect: System design, architecture decisions (mlx-2, 235B-Thinking)
+- ask_engineer: Implementation plans, debugging (mlx-3, 122B)
+- ask_coder_brain: Write code, fix errors (CUDA .11, 122B-FP8, FAST)
+- ask_designer: Creative solutions, alternatives (mlx-5, GLM-4.7)
+- ask_reviewer: Code review, bug catching (mlx-6, 122B)
+- ask_claude: Hard problems only (EXPENSIVE)
 
 ## ENVIRONMENT
 - Working dir: ~/AGENT

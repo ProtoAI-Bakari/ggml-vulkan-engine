@@ -174,7 +174,7 @@ engine_t *engine_load_gguf(const char *gguf_path, int n_ctx) {
         if (t) ggml_set_name(t, name);
 
         /* Map to struct fields */
-        if (strcmp(name, "token_embd.weight") == 0) { e->tok_embd = t; e->vocab_size = vocab_size; }
+        if (strcmp(name, "token_embd.weight") == 0) { e->tok_embd = t; /* vocab_size already set by FIND_KEY_U32 */ }
         else if (strcmp(name, "output_norm.weight") == 0) e->output_norm = t;
         else if (strcmp(name, "output.weight") == 0) e->output = t;
         else {
