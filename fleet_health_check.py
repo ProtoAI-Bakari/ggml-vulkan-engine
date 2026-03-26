@@ -123,6 +123,14 @@ def check_node(name, node):
     task_match = re.findall(r'CLAIMED (T\d+)', raw)
     task = task_match[-1] if task_match else "-"
     
+    # DETECT: Low disk space
+    disk_line = ssh(ip, "df -h / 2>/dev/null | tail -1", auth)
+    if disk_line:
+        import re as _r2
+        pct_match = _r2.search(r"(\d+)%", disk_line)
+        if pct_match and int(pct_match.group(1)) > 85:
+            issues.append(f"LOW DISK: {pct_match.group(1)}% used")
+    
     status = "SICK" if issues else "OK"
     return {
         "node": name, "status": status, "task": task,

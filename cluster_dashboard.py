@@ -257,7 +257,7 @@ def _agent_task(ip, auth):
             return f"[{M.YELLOW}]{m2.group(1)}[/]"
     except Exception:
         pass
-    # Fallback: check agent log for CLAIMED
+    # Fallback: check agent log for CLAIMED + show phase
     claimed = ssh_cmd(ip, "strings ~/AGENT/LOGS/agent_trace.log 2>/dev/null | grep -oE 'CLAIMED T[0-9]+' | tail -1", auth, timeout=5)
     if claimed:
         tid = claimed.replace("CLAIMED ", "")

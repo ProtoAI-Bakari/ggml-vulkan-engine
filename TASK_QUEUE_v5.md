@@ -201,7 +201,7 @@
 - Success: vLLM recognizes platform
 - Time: 6h
 
-### T28: [IN_PROGRESS by OmniAgent [sys2] | 0% | started:2026-03-26T02:16] Create VulkanWorker(WorkerBase) stub
+### T28: [IN_PROGRESS by OmniAgent [sys2] | 20% | started:2026-03-26T02:16] | t10] Create VulkanWorker(WorkerBase) stub
 - init_device(), determine_available_memory(), load_model()
 - Success: worker initializes without crash
 - Time: 6h
@@ -382,7 +382,7 @@ STEPS
 4. complete_task T38
 
 Write the test IMMEDIATELY. First tool call must be write_file.] | 0% | started:2026-03-26T03:41] Benchmark T57 vs ggml GEMV
-### T59: [IN_PROGRESS by OmniAgent [sys3] | 40% | started:2026-03-26T04:02] | t20] | t10]Write RMSNorm, RoPE, softmax, SiLU SPIR-V shaders
+### T59: [IN_PROGRESS by OmniAgent [sys3] | 60% | started:2026-03-26T04:02] | t30] | t20] | t10]Write RMSNorm, RoPE, softmax, SiLU SPIR-V shaders
 ### T60: [READY]Implement static CB recording for one transformer layer
 ### T61: [IN_PROGRESS by OmniAgent [sys1-Main]Full model: chain all layers + embedding + output projection
 ### T62: [READY]Push-constant-only token stepping (no CB re-recording)
