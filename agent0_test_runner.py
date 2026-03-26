@@ -157,6 +157,20 @@ def test_server_alive():
         log("  SERVER: DOWN")
         return False
 
+def test_c_compilation():
+    """Try to compile any .c files that changed recently."""
+    log("Checking for C files to compile...")
+    code, out, err = run_cmd(
+        "cd ~/AGENT && for f in *.c engine/*.c; do "
+        "if [ -f \"$f\" ] && [ \"$f\" -nt libggml_llama_gguf.so ]; then "
+        "echo \"Compiling $f...\"; "
+        "gcc -fsyntax-only \"$f\" -I ~/GITDEV/llama.cpp/ggml/include 2>&1 | head -5; "
+        "fi; done", timeout=30
+    )
+    if out:
+        log(f"  C compilation check: {out[:200]}")
+    return out
+
 def test_new_files():
     """Check for new files pushed by remote agents and test them."""
     log("Checking for new agent-pushed files...")

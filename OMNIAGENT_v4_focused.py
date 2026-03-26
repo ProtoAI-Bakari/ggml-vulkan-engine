@@ -221,7 +221,10 @@ def _ask_brain(brain_name: str, query: str, system_hint: str = "") -> str:
         toks = len(full.split())
         print(f"{C.RESET}")
         print(f"{C.DIM}[🧠 {brain_name.upper()}: ~{toks} words in {elapsed:.1f}s]{C.RESET}")
-        return f"[{brain_name.upper()} ADVICE]:\n{full}"
+        # Strip <think> blocks from response
+        import re as _re2
+        full = _re2.sub(r'<think>.*?</think>', '', full, flags=_re2.DOTALL).strip()
+        return f"[{brain_name.upper()} ADVICE]:\n{full}" 
     except Exception as e: return f"{brain_name.upper()} Call Failed: {e}"
 
 def ask_coder_brain(query: str) -> str:
