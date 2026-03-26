@@ -202,7 +202,18 @@ def _gpu_pct(ip, auth, node_os, chip):
             color = M.GREEN if pct < 50 else M.YELLOW if pct < 85 else M.RED
             return f"[{color}]{pct}%[/]"
     elif node_os == "macos":
-        # macOS: sudo powermetrics for GPU active residency %
+        # macOS: GPU% cached (powermetrics is slow)
+        import hashlib
+        _gpu_cache_file = f'/tmp/gpu_cache_{hashlib.md5(ip.encode()).hexdigest()}'
+        try:
+            import os as _os
+            if _os.path.exists(_gpu_cache_file) and time.time() - _os.path.getmtime(_gpu_cache_file) < 15:
+                cached = open(_gpu_cache_file).read().strip()
+                if cached:
+                    pct = int(cached)
+                    color = M.GREEN if pct < 50 else M.YELLOW if pct < 85 else M.RED
+                    return f'[{color}]{pct}%[/]'
+        except: pass
         raw = ssh_cmd(ip, 'cat ~/DEV/authpass | sudo -S powermetrics --samplers gpu_power -i 500 -n 1 2>/dev/null | grep "GPU HW active residency" | grep -oE "[0-9]+\\.[0-9]+" | head -1', auth, timeout=8)
         if raw:
             try:
@@ -337,7 +348,7 @@ def poll_node(name, node):
         # sys1: parse ggml_server timing logs
         import subprocess as _sp
         try:
-            r = _sp.run('strings ~/AGENT/LOGS/ggml_server.log 2>/dev/null | grep -oE "[0-9]+\.[0-9]+ TPS" | tail -5 | grep -oE "[0-9]+\.[0-9]+"',
+            r = _sp.run('strings ~/AGENT/LOGS/ggml_server.log 2>/dev/null | grep -oE "[0-9]+[.][0-9]+ TPS" | tail -5 | grep -oE "[0-9]+[.][0-9]+"',
                 shell=True, capture_output=True, text=True, timeout=5)
             vals = [float(x) for x in r.stdout.strip().split() if x]
             if vals: data['tps'] = round(sum(vals)/len(vals), 1)

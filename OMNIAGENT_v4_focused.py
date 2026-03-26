@@ -196,8 +196,14 @@ def ask_reviewer(query: str) -> str:
     return _ask_brain("reviewer", query, "You are THE REVIEWER. Review the code/approach for correctness, safety, performance, and maintainability. Be thorough but not pedantic.")
 
 def ask_cuda_brain(query: str) -> str:
-    """Escalate to the 122B CUDA brain for genuinely HARD problems. Don't use for routine questions."""
-    return _ask_brain("cuda_brain", query, "You are the most capable reasoning model in this cluster (Qwen3.5-122B-FP8 on 2x3090). Give thorough, high-quality analysis. This question was escalated because the local model couldn't handle it.")
+    """Escalate to the 122B CUDA brain for genuinely HARD problems."""
+    # Rate limit: track calls
+    if not hasattr(ask_cuda_brain, '_count'):
+        ask_cuda_brain._count = 0
+    ask_cuda_brain._count += 1
+    if ask_cuda_brain._count > 5:
+        return "RATE LIMITED: You've called cuda_brain 5+ times. Use your LOCAL brain or ask_coder_brain instead."
+    return _ask_brain("cuda_brain", query, "You are Qwen3.5-122B-FP8. Give thorough analysis. This was escalated because the local model couldn't handle it.")
 
 def ask_minimax(query: str) -> str:
     print(f"\n{C.MAGENTA}[🧠 Pinging MiniMax Model at {MINIMAX_IP}...]{C.RESET}")
@@ -778,6 +784,20 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
                     history.append({"role": "user", "content": "You MUST use a tool call. Example:\n<tool_call>\n{\"name\": \"execute_bash\", \"arguments\": {\"command\": \"pwd\"}}\n</tool_call>"})
                     continue
 
+                # Auto-progress: update every 10 tool calls
+                if not hasattr(run_agent, '_tool_count'):
+                    run_agent._tool_count = 0
+                run_agent._tool_count += len(tool_calls)
+                if run_agent._tool_count % 10 == 0:
+                    try:
+                        import urllib.request as _ur
+                        with _ur.urlopen('http://10.255.255.128:9091/tasks', timeout=2) as _r:
+                            _q = _r.read().decode()
+                        _m = re.search(rf'### (T\d+):.*?\[IN_PROGRESS by [^\]]*{re.escape(_AGENT_NAME)}', _q)
+                        if _m:
+                            pct = min(90, run_agent._tool_count * 2)
+                            update_progress(_m.group(1), str(pct), f't{run_agent._tool_count}')
+                    except: pass
                 # Reset parse failure counter on success
                 run_agent._parse_fail_count = 0
 
