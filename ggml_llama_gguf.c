@@ -522,6 +522,7 @@ void engine_reset_kv(engine_t *e) {
     ggml_backend_buffer_clear(e->kv_buf[1], 0);
 }
 
+/* T08: Guard flags to prevent double-free */static bool sched_freed = false;static bool backend_cpu_freed = false;static bool backend_vk_freed = false;
 void engine_free(engine_t *e) {
     if (e->_persistent_ctx) ggml_free(e->_persistent_ctx);
     if (e->compute_buf) free(e->compute_buf);
@@ -530,8 +531,21 @@ void engine_free(engine_t *e) {
     ggml_backend_buffer_free(e->kv_buf[0]);
     ggml_backend_buffer_free(e->kv_buf[1]);
     if (e->kv_ctx) ggml_free(e->kv_ctx);
-    if (e->sched) ggml_backend_sched_free(e->sched);
-    if (e->backend_cpu) ggml_backend_free(e->backend_cpu);
-    if (e->backend_vk) ggml_backend_free(e->backend_vk);
+    /* T08: Guard against double-free */
+    if (e->sched && !sched_freed) {
+        ggml_backend_sched_free(e->sched);
+        e->sched = NULL;
+        sched_freed = true;
+    }
+    if (e->backend_cpu && !backend_cpu_freed) {
+        ggml_backend_free(e->backend_cpu);
+        e->backend_cpu = NULL;
+        backend_cpu_freed = true;
+    }
+    if (e->backend_vk && !backend_vk_freed) {
+        ggml_backend_free(e->backend_vk);
+        e->backend_vk = NULL;
+        backend_vk_freed = true;
+    }
     free(e);
 }

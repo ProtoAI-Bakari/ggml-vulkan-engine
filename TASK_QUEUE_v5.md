@@ -10,20 +10,20 @@
 
 ## PHASE 0: STABILITY + MEASUREMENT [DO FIRST — nothing else matters if broken]
 
-### T01: [READY] Verify standalone engine: 12+ sequential requests, all coherent
+### T01: [IN_PROGRESS by OmniAgent [Cluster2]] Verify standalone engine: 12+ sequential requests, all coherent
 - Run 12 diverse prompts through GgmlLLM.generate() 
 - Include: math, factual, creative, long-gen, multi-sentence
 - Success: 12/12 coherent, no crash, consistent TPS
 - Time: 1h
 
-### T02: [READY] Fix standalone streaming server startup + stability
+### T02: [IN_PROGRESS by OmniAgent [Main]] Fix standalone streaming server startup + stability
 - Server must start in <30s, serve on 0.0.0.0:8080
 - ThreadingMixIn for concurrent HTTP (sequential engine underneath)
 - KV reset between every request (engine_reset_kv)
 - Success: 50 sequential HTTP requests without crash, all coherent
 - Time: 2h
 
-### T03: [READY] Coherency blast test: 50 diverse prompts through HTTP server
+### T03: [IN_PROGRESS by OmniAgent [Main]] Coherency blast test: 50 diverse prompts through HTTP server
 - Math: 2+2, complex arithmetic, word problems
 - Factual: capitals, dates, science, history
 - Creative: stories, poetry, code generation
@@ -41,7 +41,7 @@
 - Time: 4h
 - Files: benchmark_vulkan.py, run_benchmarks.sh
 
-### T05: [READY] Profile CPU time breakdown with py-spy + custom instrumentation
+### T05: [IN_PROGRESS by OmniAgent [Main]] Profile CPU time breakdown with py-spy + custom instrumentation
 - Confirm: ~6ms CB recording, ~4ms graph build, ~3ms Python overhead
 - Instrument ggml_vk_dispatch_pipeline, CB begin/end, queue submit, fence wait
 - Success: flamegraph + per-stage timing CSV matching OpR's predicted breakdown
@@ -88,7 +88,7 @@
 - Success: fingerprint matches consecutive decode tokens
 - Time: 4h
 
-### T12: [READY] Add graph caching via ggml_gallocr (PR #20927 pattern)
+### T12: [IN_PROGRESS by OmniAgent [Main]] Add graph caching via ggml_gallocr (PR #20927 pattern)
 - ggml_gallocr_reserve() at init with worst-case graph
 - ggml_gallocr_alloc_graph() each token — near-no-op when topology matches
 - Success: graph alloc time drops from 4ms to <0.5ms
@@ -107,20 +107,20 @@
 - Success: correct output after topology change, no stale CB
 - Time: 6h
 
-### T15: [READY] Move Python/ctypes hot path to C extension
+### T15: [IN_PROGRESS by OmniAgent [Main]] Move Python/ctypes hot path to C extension
 - Compiled C shim replaces ctypes for tensor dispatch
 - Eliminate numpy→ctypes→C boundary crossing per forward()
 - Success: Python overhead drops from 3ms to <0.5ms
 - Time: 8h
 
-### T16: [READY] Implement fence polling optimization
+### T16: [IN_PROGRESS by OmniAgent [Sys4]] Implement fence polling optimization
 - Insert fence at ~80% graph completion
 - Spin-wait for final fence instead of blocking
 - Reduces fence latency by 1-2ms
 - Success: measurable latency reduction
 - Time: 4h
 
-### T17: [READY] Test flash attention scalar path on Honeykrisp
+### T17: [IN_PROGRESS by OmniAgent [Main]] Test flash attention scalar path on Honeykrisp
 - Enable flash_attn.comp shader (FA_SCALAR code path)
 - Fuses Q×K softmax and attention×V
 - Success: FA runs without crash on AGX, correct output

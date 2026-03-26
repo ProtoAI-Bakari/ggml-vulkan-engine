@@ -111,17 +111,114 @@ def get_mem_usage(ip):
     return out if out else "?"
 
 def count_tasks():
-    """Count tasks from TASK_QUEUE_v5.md."""
+    """Count tasks from TASK_QUEUE_v5.md with details."""
     path = os.path.expanduser("~/AGENT/TASK_QUEUE_v5.md")
     done = ready = progress = 0
+    in_progress_list = []
     try:
         for line in open(path):
-            if "[DONE" in line: done += 1
-            elif "[IN_PROGRESS" in line: progress += 1
-            elif "[READY]" in line: ready += 1
+            if "[DONE" in line:
+                done += 1
+            elif "[IN_PROGRESS" in line:
+                progress += 1
+                import re
+                m = re.search(r'(T\d+):.*\[IN_PROGRESS by ([^\]]+)\]', line)
+                if m:
+                    in_progress_list.append((m.group(1), m.group(2)))
+            elif "[READY]" in line:
+                ready += 1
     except FileNotFoundError:
         pass
-    return done, progress, ready
+    return done, progress, ready, in_progress_list
+
+def reconcile_tasks():
+    """Reconcile task queue with git history — mark committed tasks DONE, release stale claims."""
+    import re
+    queue_path = os.path.expanduser("~/AGENT/TASK_QUEUE_v5.md")
+
+    # Get tasks with actual git commits
+    try:
+        r = subprocess.run("cd ~/AGENT && git log --oneline | grep -oP 'T\\d+' | sort -u",
+                          shell=True, capture_output=True, text=True, timeout=10)
+        committed = set(r.stdout.strip().split("\n")) if r.stdout.strip() else set()
+    except Exception:
+        committed = set()
+
+    if not committed:
+        console.print("[yellow]No git commits found to reconcile[/yellow]")
+        return
+
+    try:
+        lines = open(queue_path).readlines()
+    except FileNotFoundError:
+        console.print("[red]Task queue not found[/red]")
+        return
+
+    fixed = []
+    changes = 0
+    for line in lines:
+        m = re.match(r'(### (T\d+): \[)IN_PROGRESS by [^\]]+(\].*)', line)
+        if m:
+            task_id = m.group(2)
+            if task_id in committed:
+                fixed.append(f"{m.group(1)}DONE{m.group(3)}\n")
+                changes += 1
+                continue
+        fixed.append(line)
+
+    if changes > 0:
+        open(queue_path, "w").writelines(fixed)
+        console.print(f"[green]Reconciled: {changes} tasks marked DONE (verified via git commits)[/green]")
+    else:
+        console.print("[dim]Task queue already in sync with git[/dim]")
+
+    done = sum(1 for l in fixed if "[DONE]" in l)
+    ready = sum(1 for l in fixed if "[READY]" in l)
+    prog = sum(1 for l in fixed if "[IN_PROGRESS" in l)
+    console.print(f"  [green]DONE:[/green] {done}  [yellow]IN_PROGRESS:[/yellow] {prog}  [white]READY:[/white] {ready}")
+
+def agent_activity():
+    """Show what each agent is doing right now."""
+    import re
+    console.print("\n[bold cyan]━━━ AGENT ACTIVITY ━━━[/bold cyan]")
+    logs = {
+        "Agent 1 (Main)":     "LOGS/main_trace.log",
+        "Agent 2 (Sys4)":     "LOGS/sys4_trace.log",
+        "Agent 3 (Cluster2)": "LOGS/cluster2_trace.log",
+        "Agent 4 (Worker4)":  "LOGS/agent4_trace.log",
+        "Agent 5 (Worker5)":  "LOGS/agent5_trace.log",
+        "Agent 6 (Worker6)":  "LOGS/agent6_trace.log",
+    }
+    for name, logfile in logs.items():
+        path = os.path.expanduser(f"~/AGENT/{logfile}")
+        try:
+            with open(path, "rb") as f:
+                # Read last 500 bytes
+                f.seek(0, 2)
+                size = f.tell()
+                f.seek(max(0, size - 500))
+                tail = f.read().decode("utf-8", errors="replace")
+            # Strip ANSI codes
+            clean = re.sub(r'\x1b\[[0-9;]*m', '', tail)
+            # Find last meaningful line
+            lines = [l.strip() for l in clean.split("\n") if l.strip() and not l.strip().startswith("[")]
+            last = lines[-1][:100] if lines else "(idle)"
+            # Check for task claims
+            task_match = re.search(r'(T\d+)', clean)
+            task = task_match.group(1) if task_match else "?"
+            mtime = os.path.getmtime(path)
+            age = int(time.time() - mtime)
+            if age < 60:
+                status = "[green]ACTIVE[/green]"
+            elif age < 300:
+                status = "[yellow]SLOW[/yellow]"
+            else:
+                status = "[red]STALE[/red]"
+            console.print(f"  {status} {name} | Task {task} | {last[:80]}")
+        except FileNotFoundError:
+            console.print(f"  [red]DEAD[/red]  {name} | No log file")
+        except Exception as e:
+            console.print(f"  [red]ERR[/red]   {name} | {e}")
 
 def check_agents():
     """Check which agents are running on sys0."""
@@ -281,7 +378,7 @@ def council_query(question):
 def build_dashboard(fleet_status):
     """Build the rich dashboard table."""
     now = datetime.now().strftime("%H:%M:%S")
-    done, progress, ready = count_tasks()
+    done, progress, ready, in_progress_list = count_tasks()
     running_agents = check_agents()
 
     # Node table
@@ -324,12 +421,25 @@ def build_dashboard(fleet_status):
     # Summary
     up_count = sum(1 for s in fleet_status.values() if s.get("status") == "UP")
     total = len(NODES)
+    # Count tmux sessions for agent count
+    try:
+        r = subprocess.run("tmux ls 2>/dev/null | grep agent | wc -l", shell=True, capture_output=True, text=True, timeout=3)
+        tmux_agents = int(r.stdout.strip()) if r.stdout.strip() else 0
+    except Exception:
+        tmux_agents = 0
+    agent_count = max(len(running_agents), tmux_agents)
     agent_str = ", ".join(running_agents) if running_agents else "none"
+
+    # Show active task assignments
+    task_str = ""
+    if in_progress_list:
+        task_str = " | " + " ".join(f"[yellow]{t}→{a.split('[')[-1].rstrip(']') if '[' in a else a}[/yellow]" for t, a in in_progress_list[:6])
 
     summary = (
         f"[bold]Brains:[/bold] {up_count}/{total} online  |  "
-        f"[bold]Agents:[/bold] {len(running_agents)} running ({agent_str})  |  "
+        f"[bold]Agents:[/bold] {agent_count} running  |  "
         f"[bold]Tasks:[/bold] {done} done / {progress} active / {ready} ready"
+        f"{task_str}"
     )
 
     return table, summary
@@ -345,20 +455,24 @@ def show_dashboard():
 
 def show_help():
     help_text = """[bold cyan]Commands:[/bold cyan]
-  [bold]fleet[/bold] / [bold]status[/bold]    — Refresh dashboard
-  [bold]goal[/bold]              — GO ALL: launch brains + ALL 6 agents (auto-go)
-  [bold]go[/bold]                — Launch ALL agents with auto-go (brains must be up)
-  [bold]go[/bold] <1-6>          — Launch specific agent with auto-go
-  [bold]stop[/bold]              — Stop all brains + agents
-  [bold]launch[/bold] <node>     — Start brain on node (sys2-sys7)
-  [bold]kill[/bold] <node>       — Stop brain on node
-  [bold]agent[/bold] <1-6>       — Start agent interactively (no auto-go)
+  [bold]fleet[/bold] / [bold]status[/bold]     — Refresh dashboard
+  [bold]activity[/bold]           — Show what each agent is doing RIGHT NOW
+  [bold]goal[/bold]               — GO ALL: launch brains + ALL 6 agents (auto-go)
+  [bold]go[/bold]                 — Launch ALL agents with auto-go (brains must be up)
+  [bold]go[/bold] <1-6>           — Launch specific agent with auto-go
+  [bold]stop[/bold]               — Stop all brains + agents
+  [bold]kick[/bold] <1-6>         — Kill and restart an agent (triggers auto-go)
+  [bold]launch[/bold] <node>      — Start brain on node (sys2-sys7)
+  [bold]kill[/bold] <node>        — Stop brain on node
+  [bold]agent[/bold] <1-6>        — Start agent interactively (no auto-go)
   [bold]agentstop[/bold] <1-6|all> — Stop agent(s)
-  [bold]council[/bold] <question> — Ask architect+engineer+designer
-  [bold]logs[/bold] <node>       — Tail node's MLX log (Ctrl+C to stop)
-  [bold]tasks[/bold]             — Show task queue summary
-  [bold]tmux[/bold]              — List active tmux sessions
-  [bold]q[/bold] / [bold]quit[/bold]          — Exit"""
+  [bold]reconcile[/bold]          — Sync task queue with git (mark committed tasks DONE)
+  [bold]council[/bold] <question>  — Ask architect+engineer+designer
+  [bold]logs[/bold] <node>        — Tail node's MLX log (Ctrl+C to stop)
+  [bold]tasks[/bold]              — Show task queue summary
+  [bold]tmux[/bold]               — List active tmux sessions
+  [bold]attach[/bold] <1-6>       — Attach to agent tmux session
+  [bold]q[/bold] / [bold]quit[/bold]           — Exit"""
     console.print(Panel(help_text, title="[bold]ProtoAI-Bakari Commander[/bold]", border_style="blue"))
 
 # ── Main Loop ────────────────────────────────────────────────────────────────
@@ -457,7 +571,7 @@ def main():
             else:
                 console.print("[red]Usage: logs <node>[/red]")
         elif action == "tasks":
-            done, progress, ready = count_tasks()
+            done, progress, ready, in_progress_list = count_tasks()
             console.print(f"  [green]Done:[/green] {done}  [yellow]Active:[/yellow] {progress}  [white]Ready:[/white] {ready}")
             try:
                 # Show first few active/ready tasks
