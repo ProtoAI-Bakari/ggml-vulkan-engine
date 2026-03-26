@@ -244,21 +244,43 @@ def ask_claude(query: str) -> str:
 
 _AGENT_NAME = "OmniAgent [Main]"  # Set by run_agent() at startup
 
+_claim_block_count = 0
+
 def claim_task(task_id: str) -> str:
     """Claim a task from the queue so other agents don't work on it."""
+    global _claim_block_count
     import subprocess
+
+    # If we've been blocked 3+ times, refuse to even try
+    if _claim_block_count >= 3:
+        try:
+            import urllib.request
+            with urllib.request.urlopen("http://10.255.255.128:9091/tasks", timeout=2) as _r:
+                _q = _r.read().decode()
+            for _line in _q.split("\n"):
+                if "IN_PROGRESS" in _line and _AGENT_NAME in _line:
+                    _tm = re.match(r'###\s+(T\d+):', _line)
+                    if _tm:
+                        tid = _tm.group(1)
+                        return f"REFUSED. You have been blocked {_claim_block_count} times. Your task is {tid}. STOP calling claim_task. Call execute_bash to work on {tid} RIGHT NOW."
+        except:
+            pass
+        return f"REFUSED. Stop calling claim_task. Use execute_bash to work on your existing task."
+
     result = subprocess.run(
         ["bash", os.path.expanduser("~/AGENT/claim_task.sh"), task_id, _AGENT_NAME],
         capture_output=True, text=True, timeout=5
     )
     out = result.stdout.strip()
     print(f"{C.YELLOW}[📋 {out}]{C.RESET}")
-    # If BLOCKED, tell agent to WORK on the task they already have
     if "BLOCKED" in out:
+        _claim_block_count += 1
         existing = re.search(r'already has (T\d+)', out)
         if existing:
             return f"BLOCKED — you already have {existing.group(1)}. STOP claiming. WORK on {existing.group(1)} NOW using execute_bash."
         return f"BLOCKED — you already have a task. STOP claiming. Use execute_bash to work on it."
+    # Successful claim — reset counter
+    _claim_block_count = 0
     return out
 
 def complete_task(task_id: str) -> str:
@@ -348,7 +370,7 @@ TOOL_DISPATCH = {
 TOOLS_SCHEMA = [
     {"type": "function", "function": {"name": "execute_bash", "description": "Run shell command", "parameters": {"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"]}}},
     {"type": "function", "function": {"name": "read_file", "description": "Read file", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "offset": {"type": "integer"}, "limit": {"type": "integer"}}, "required": ["path"]}}},
-    {"type": "function", "function": {"name": "write_file", "description": "Write file", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}}, "required": ["path", "content"]}}},
+    {"type": "function", "function": {"name": "write_file", "description": "Write file. For files >20 lines, use execute_bash with cat<<'EOF' instead", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}}, "required": ["path", "content"]}}},
     {"type": "function", "function": {"name": "ask_cuda_brain", "description": "Ask 122B for hard problems", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}},
     {"type": "function", "function": {"name": "ask_claude", "description": "Ask Claude when stuck", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}},
     {"type": "function", "function": {"name": "ask_coder_brain", "description": "Ask coder for code", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}},
@@ -377,6 +399,8 @@ TOOL FORMAT:
 </tool_call>
 
 PROJECT: Vulkan GPU inference engine on Asahi Linux M1 Ultra.
+For large files (>20 lines): use execute_bash with cat<<'EOF'>file.py ... EOF
+Do NOT put large code blocks in write_file — it breaks JSON parsing.
 - C engine: ~/AGENT/ggml_llama_gguf.c → libggml_llama_gguf.so (22 TPS)
 - Python: ~/AGENT/ggml_vllm_backend.py
 - Task queue: ~/AGENT/TASK_QUEUE_v5.md (ONLY this file, no v4)
@@ -509,17 +533,32 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
                     import urllib.request
                     with urllib.request.urlopen("http://10.255.255.128:9091/tasks", timeout=2) as _r:
                         _q = _r.read().decode()
-                    # Find FIRST IN_PROGRESS task for this agent
-                    _m = re.search(rf'### (T\d+): \[IN_PROGRESS by [^\]]*{re.escape(_AGENT_NAME)}[^\]]*\]\s*(.*?)(?=\n###|\Z)', _q, re.DOTALL)
-                    if _m:
-                        my_task = _m.group(1)
-                        my_task_desc = _m.group(2).strip()[:200]
+                    # Find FIRST IN_PROGRESS task for this agent using simple string search
+                    # (regex escaping breaks on agent names with brackets like "OmniAgent [sys3]")
+                    for _line in _q.split("\n"):
+                        if "IN_PROGRESS" in _line and _AGENT_NAME in _line:
+                            _tm = re.match(r'###\s+(T\d+):', _line)
+                            if _tm:
+                                my_task = _tm.group(1)
+                                # Get the description from subsequent lines
+                                _idx = _q.find(_line)
+                                _rest = _q[_idx + len(_line):_idx + len(_line) + 300]
+                                my_task_desc = _rest.strip().split("\n")[0][:200]
+                                break
                 except Exception:
                     pass
                 if my_task:
-                    user_input = f"FOCUS: You are on {my_task}. DO NOT read the task queue again. DO NOT claim more tasks. EXECUTE code for {my_task} NOW using execute_bash. Description: {my_task_desc}"
+                    user_input = (
+                        f"Your assigned task is {my_task}. You MUST work on it now.\n"
+                        f"Description: {my_task_desc}\n\n"
+                        f"RESPOND WITH ONLY ONE TOOL CALL. Use execute_bash or write_file to make progress on {my_task}.\n"
+                        f"DO NOT call claim_task. DO NOT call read_file on TASK_QUEUE. Just write code or run commands for {my_task}."
+                    )
                 else:
-                    user_input = "You have NO task. Run: execute_bash with command 'grep READY ~/AGENT/TASK_QUEUE_v5.md | head -3' then claim_task the first one."
+                    user_input = (
+                        "You have no assigned task. Call claim_task with the ID of a READY task.\n"
+                        "Pick from: T42, T43, T44, T45, T49, T50, T52, T54, T55, T59"
+                    )
             else:
                 user_input = get_multiline_input()
 

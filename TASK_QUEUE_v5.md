@@ -381,7 +381,7 @@ STEPS
 4. complete_task T38
 
 Write the test IMMEDIATELY. First tool call must be write_file.] | 0% | started:2026-03-26T03:41] Benchmark T57 vs ggml GEMV
-### T59: [READY]Write RMSNorm, RoPE, softmax, SiLU SPIR-V shaders
+### T59: [IN_PROGRESS by OmniAgent [sys3] | 0% | started:2026-03-26T04:02]Write RMSNorm, RoPE, softmax, SiLU SPIR-V shaders
 ### T60: [READY]Implement static CB recording for one transformer layer
 ### T61: [READY]Full model: chain all layers + embedding + output projection
 ### T62: [READY]Push-constant-only token stepping (no CB re-recording)
