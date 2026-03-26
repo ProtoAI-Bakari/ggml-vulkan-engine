@@ -143,3 +143,58 @@
 - P7 Security: 10 issues
 - P8 Observability: 10 issues
 - P9 Agent Intelligence: 10 issues
+
+## P10: ADDITIONAL ISSUES (101-150)
+
+101. [OPEN] Agents should write tests for code they produce
+102. [OPEN] No diff review before push_changes — blind SCP
+103. [OPEN] Agent should verify compilation succeeds before calling complete_task
+104. [OPEN] No rollback mechanism if agent breaks something
+105. [OPEN] task_server has no authentication — any node can claim/complete
+106. [OPEN] Deployer sync uses SCP per-file — should rsync (faster, atomic)
+107. [OPEN] No model version pinning — HF cache auto-updates could break
+108. [OPEN] Dashboard refresh blocks on slow SSH — should be async
+109. [OPEN] No alert when agent produces gibberish output
+110. [OPEN] Agent doesn't check if its MLX server is healthy before working
+111. [OPEN] No rate limit on task claims per minute
+112. [OPEN] Complete_task doesn't verify files were pushed first
+113. [OPEN] No way to see agent's current conversation context size
+114. [OPEN] Agent should report estimated time remaining for current task
+115. [OPEN] No cross-agent code review (agent A reviews agent B's output)
+116. [OPEN] Orchestrator on z4090 not running any agents — wasted capacity
+117. [OPEN] Dashboard should show agent uptime (time since last restart)
+118. [OPEN] No way to pause an agent without killing it
+119. [OPEN] Agent should detect when its model server crashes and alert
+120. [OPEN] No centralized error log aggregating all agent errors
+121. [OPEN] Task queue file getting corrupted with duplicate brackets ]]]]
+122. [OPEN] No visualization of task completion over time
+123. [OPEN] Agent should batch small file operations instead of one per turn
+124. [OPEN] No way to set max_tokens dynamically per task complexity
+125. [OPEN] CUDA brain at 42K context but agents rarely need >4K
+126. [OPEN] Watchdog and fleet_health_check overlap in functionality
+127. [OPEN] No way to see total tokens generated across all agents
+128. [OPEN] Agent0 test runner doesn't report results to dashboard
+129. [OPEN] No integration test that verifies full claim→work→push→complete cycle
+130. [OPEN] Dashboard doesn't show which phase each agent is working on
+131. [OPEN] No alert when disk drops below threshold on any node
+132. [OPEN] Agent should minimize context by summarizing completed work
+133. [OPEN] No way to share findings between agents (KB not synced to remotes)
+134. [OPEN] Task server should reject claims for tasks with unmet dependencies
+135. [OPEN] No health endpoint for the agent process itself
+136. [OPEN] Dashboard arch column truncates model info with ellipsis
+137. [OPEN] No way to see agent error rate over time
+138. [OPEN] Agent should use sed for small edits instead of rewriting files
+139. [OPEN] No git branch per agent — all work on master
+140. [OPEN] Push_changes doesn't handle merge conflicts
+141. [OPEN] No way to compare agent productivity across different models
+142. [OPEN] Agent TTFT spikes when conversation history grows
+143. [OPEN] No way to tell an agent to focus on code quality over speed
+144. [OPEN] Dashboard should auto-refresh without manual restart
+145. [OPEN] No webhook/Slack notification when task completes
+146. [OPEN] Agent should validate JSON tool calls before outputting them
+147. [OPEN] No way to see which tools each agent uses most
+148. [OPEN] Task queue READY tasks should show estimated effort (time)
+149. [OPEN] No way to mark a task as WONTFIX or DEFERRED
+150. [OPEN] Agent should write a completion report for each task
+
+## TOTAL: 150 issues
