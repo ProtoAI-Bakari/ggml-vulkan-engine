@@ -55,7 +55,7 @@ def run_cmd(cmd, timeout=120):
     except Exception as e:
         return -1, "", str(e)
 
-def test_vulkan_coherency(n_prompts=10):
+def test_vulkan_coherency(n_prompts=20):
     """Test the Vulkan ggml server for coherent output."""
     log(f"Running coherency test ({n_prompts} prompts)...")
     prompts = [
@@ -69,6 +69,16 @@ def test_vulkan_coherency(n_prompts=10):
         "What year did WW2 end?",
         "Translate hello to Spanish.",
         "What is the largest planet?",
+        "Explain why the sky is blue in one sentence.",
+        "What is the square root of 144?",
+        "Name three programming languages.",
+        "Who painted the Mona Lisa?",
+        "What is the chemical symbol for water?",
+        "Name the largest ocean.",
+        "What is 15 * 7?",
+        "Name a famous physicist.",
+        "What continent is Brazil on?",
+        "What is the boiling point of water in Celsius?",
     ][:n_prompts]
 
     passed = 0

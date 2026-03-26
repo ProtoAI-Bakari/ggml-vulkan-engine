@@ -28,6 +28,16 @@ QUEUE_PATH = os.path.expanduser("~/AGENT/TASK_QUEUE_v5.md")
 BIND_ADDR = "0.0.0.0"
 BIND_PORT = 9091
 LOG_FILE = os.path.expanduser("~/AGENT/LOGS/task_server.log")
+HISTORY_FILE = os.path.expanduser("~/AGENT/LOGS/task_history.jsonl")
+
+def log_history(event, task_id, agent, detail=""):
+    import json
+    entry = {"ts": datetime.now().isoformat(), "event": event, "task": task_id, "agent": agent, "detail": detail}
+    try:
+        with open(HISTORY_FILE, "a") as f:
+            f.write(json.dumps(entry) + "
+")
+    except: pass
 
 
 def log(msg):
@@ -112,6 +122,7 @@ def atomic_claim(task_id, agent_name):
             f.seek(0)
             f.write(new_content)
             f.truncate()
+            log_history("CLAIM", task_id, agent_name)
             return True, f"CLAIMED {task_id} for {agent_name}"
         finally:
             fcntl.flock(f, fcntl.LOCK_UN)
@@ -151,6 +162,7 @@ def atomic_complete(task_id, agent_name):
             f.seek(0)
             f.write(new_content)
             f.truncate()
+            log_history("COMPLETE", task_id, agent_name)
             return True, f"COMPLETED {task_id} by {agent_name}"
         finally:
             fcntl.flock(f, fcntl.LOCK_UN)

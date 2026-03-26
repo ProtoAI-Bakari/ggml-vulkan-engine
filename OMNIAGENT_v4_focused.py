@@ -667,6 +667,25 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
                             history.append({"role": "user", "content": user_input})
                             continue
                     except: pass
+                # Check for task redirect in comms bridge (issue #20)
+                try:
+                    comms_path = os.path.expanduser("~/AGENT/COMMS_BRIDGE.md")
+                    if os.path.exists(comms_path):
+                        with open(comms_path, 'r') as f:
+                            comms = f.read()
+                        redirect_m = re.search(r'\[REDIRECT (T\d+)\](.*)', comms)
+                        if redirect_m:
+                            new_task = redirect_m.group(1)
+                            reason = redirect_m.group(2).strip()
+                            comms = comms.replace(redirect_m.group(0), '[REDIRECT CONSUMED]')
+                            with open(comms_path, 'w') as f:
+                                f.write(comms)
+                            user_input = f"TASK REDIRECT: Switch to {new_task}. Reason: {reason}. Call claim_task('{new_task}') then work on it."
+                            print(f"{C.MAGENTA}[REDIRECT] -> {new_task}: {reason}{C.RESET}")
+                            history.append({"role": "user", "content": user_input})
+                            continue
+                except Exception:
+                    pass
                 if my_task:
                     user_input = (
                         f"Your assigned task is {my_task}. You MUST work on it now.\n"
@@ -737,6 +756,12 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
                     # Perf stats
                     session_total_tokens += turn_token_count
                     session_total_turns += 1
+                    # Write token stats for monitoring
+                    try:
+                        with open(os.path.expanduser('~/AGENT/.token_stats'), 'w') as _ts:
+                            _ts.write(f'{_AGENT_NAME}|{session_total_tokens}|{session_total_turns}|{time.time()-session_start_time:.0f}s
+')
+                    except: pass
                     turn_elapsed = t_turn_end - t_turn_start
                     ttft = (t_first_token - t_turn_start) if t_first_token else 0
                     tps = turn_token_count / turn_elapsed if turn_elapsed > 0 else 0
@@ -785,7 +810,7 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
                         run_agent._parse_fail_count = 0
                         continue
 
-                    error_msg = "[SYSTEM]: Tool call JSON was malformed. CORRECT format:\n<tool_call>\n{\"name\": \"execute_bash\", \"arguments\": {\"command\": \"your command\"}}\n</tool_call>\nKey issue: use COLON (:) not EQUALS (=) between key and value.\n\nErrors: " + "\n".join(parse_errors)
+                    error_msg = "[SYSTEM]: Tool call JSON was malformed. CORRECT format:\n<tool_call>\n{\"name\": \"execute_bash\", \"arguments\": {\"command\": \"your command\"}}\n</tool_call>\nKey issue: use COLON (:) not EQUALS (=) between key and value.\nIMPORTANT: For large files (>20 lines), do NOT use write_file — use execute_bash with heredoc: cat<<'EOF'>file.py\n...content...\nEOF\n\nErrors: " + "\n".join(parse_errors)
                     print(f"\n{C.RED}⚠️ [AGENT SELF-CORRECTION]: Tool parsing failed ({run_agent._parse_fail_count}/3). Feeding correction...{C.RESET}")
                     history.append({"role": "user", "content": error_msg})
                     continue
