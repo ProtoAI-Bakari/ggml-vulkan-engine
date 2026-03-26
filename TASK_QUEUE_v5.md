@@ -311,7 +311,7 @@
 
 ## PHASE 3: 120B MODEL + FLEET [from Sys12 task queue]
 
-### T49: [IN_PROGRESS by OmniAgent [sys6] | 40% | started:2026-03-26T05:03 | t20]Test 120B on standalone ggml engine
+### T49: [IN_PROGRESS by OmniAgent [sys6] | 90% | started:2026-03-26T05:03 | t2080]Test 120B on standalone ggml engine
 - Verify coherent output
 - Measure TPS
 - Success: coherent text at any TPS
@@ -350,7 +350,7 @@
 ### T57: [DONE by OmniAgent [sys5] | completed:2026-03-26T03:39] | 0% | started:2026-03-26T02:19] Write Q4_K_M dequant+GEMV SPIR-V shader (subgroup shuffle, SIMD 32)
 ### T58: [DONE by OmniAgent | completed:2026-03-26T05:01] Benchmark T57 vs ggml GEMV
 ### T59: [DONE by OmniAgent | completed:2026-03-26T05:01]Write RMSNorm, RoPE, softmax, SiLU SPIR-V shaders
-### T60: [IN_PROGRESS by OmniAgent [sys7] | 20% | started:2026-03-26T05:02 | t10]Full model: chain all layers + embedding + output projection
+### T60: [IN_PROGRESS by OmniAgent [sys7] | 90% | started:2026-03-26T05:02 | t2630]Full model: chain all layers + embedding + output projection
 ### T62: [IN_PROGRESS by OmniAgent [sys6]Push-constant-only token stepping (no CB re-recording)
 ### T63: [DONE by OmniAgent | completed:2026-03-26T05:02]Benchmark pure engine vs ggml at batch=1
 ### T64: [IN_PROGRESS by OmniAgent [sys6]Paged KV cache in pure engine
@@ -358,31 +358,24 @@
 
 ## PHASE 5: VALIDATION + PRODUCTION HARDENING
 
-### T66: [READY]Numerical accuracy: logits comparison ggml vs llama.cpp for 1000 tokens
-### T67: [IN_PROGRESS by OmniAgent | 0% | started:2026-03-26T05:02]Memory leak testing: 10,000 requests, monitor RSS + Vulkan memory
-### T68: [READY]Edge case testing: empty, max-length, special tokens, unicode
-### T69: [READY]M1 Max (32GB) validation: run all benchmarks on Sys12
-### T70: [READY]Deployment documentation: hardware reqs, install, config, troubleshoot
-
-## PHASE 6: DOCUMENTATION + UPSTREAM
-
-### T71: [READY]Comprehensive README with architecture diagram
-### T72: [READY]Benchmark report: all models, all quants, all batch sizes
-### T73: [READY]Blog post: Vulkan LLM Inference on Apple Silicon Linux
-### T74: [READY]Draft PR for vLLM: Vulkan platform plugin
-### T75: [READY]Draft PR for ggml: graph caching + CB optimization patches
-### T76: [READY]File Mesa issue: VK_KHR_cooperative_matrix request with benchmark data
+### T66: [IN_PROGRESS by OmniAgent [sys4] | 90% | started:2026-03-26T05:02]] | t100] | t90] | t80] | t70] | t60] | t50] | t40] | t30] | t20] | t10] | t170] | t160] | t150] | t140] | t130] | t120] | t110] | t100] | t90] | t80] | t70] | t60] | t50] | t40] | t30] | t20] | t10] | t40] | t30] | t20] | t10] | t10] | t10] | t10] | t420] | t410] | t400] | t390] | t380] | t370] | t360] | t350] | t340] | t330] | t320] | t310] | t300] | t290] | t280] | t270] | t260] | t250] | t240] | t230] | t220] | t210] | t200] | t190] | t180] | t170] | t160] | t150] | t140] | t130] | t120] | t110] | t100] | t90] | t80] | t70] | t60] | t50] | t40] | t30] | t20] | t10] | t10] | t70] | t60] | t50] | t40] | t30] | t20] | t10] | t10] | t10] | t10] | t10] | t10] | t10] | t10] | t20] | t10] | t10] | t30] | t20] | t10] | t10] | t10] | t10] | t10] | t50] | t40] | t30] | t20] | t10] | t1190] | t1180] | t1170] | t1160] | t1150] | t1140] | t1130] | t1120] | t1110] | t1100] | t1090] | t1080] | t1070] | t1060] | t1050] | t1040] | t1030] | t1020] | t1010] | t1000] | t990] | t980] | t970] | t960] | t950] | t940] | t930] | t920] | t910] | t900] | t890] | t880] | t870] | t860] | t850] | t840] | t830] | t820] | t810] | t800] | t790] | t780] | t770] | t760] | t750] | t740] | t730] | t720] | t710] | t700] | t690] | t680] | t670] | t660] | t650] | t640] | t630] | t620] | t610] | t600] | t590] | t580] | t570] | t560] | t550] | t540] | t530] | t520] | t510] | t500] | t490] | t480] | t470] | t460] | t450] | t440] | t430] | t420] | t410] | t400] | t390] | t380] | t370] | t360] | t350] | t340] | t330] | t320] | t310] | t300] | t290] | t280] | t270] | t260] | t250] | t240] | t230] | t220] | t210] | t200] | t190] | t180] | t170] | t160] | t150] | t140] | t130] | t120] | t110] | t100] | t90] | t80] | t70] | t60] | t50] | t40] | t30] | t20] | t10] | t210] | t200] | t190] | t180] | t170] | t160] | t150] | t140] | t130] | t120] | t110] | t100] | t90] | t80] | t70] | t60] | t50] | t40] | t30]Memory leak testing: 10,000 requests, monitor RSS + Vulkan memory
+### T68: [IN_PROGRESS by OmniAgent [sys1-Main] | 20% | started:2026-03-26T08:54 | t10]M1 Max (32GB) validation: run all benchmarks on Sys12
+### T70: [DONE by OmniAgent [sys3] | completed:2026-03-26T05:18]Comprehensive README with architecture diagram
+### T72: [IN_PROGRESS by OmniAgent[sys1-Main]Benchmark report: all models, all quants, all batch sizes
+### T73: [IN_PROGRESS by OmniAgent [sys3] | 90% | started:2026-03-26T05:21 | t2500]Draft PR for vLLM: Vulkan platform plugin
+### T75: [IN_PROGRESS by OmniAgent [sys1-Main]Draft PR for ggml: graph caching + CB optimization patches
+### T76: [IN_PROGRESS by OmniAgent [sys1-Main]File Mesa issue: VK_KHR_cooperative_matrix request with benchmark data
 
 ## PHASE 7: ADVANCED OPTIMIZATION
 
-### T77: [READY]Study ThunderMittens findings: register-direct loads beat shared memory on UMA
-### T78: [READY]Profile register pressure per kernel (occupancy analysis)
-### T79: [READY]Test VK_EXT_memory_budget on Honeykrisp
-### T80: [READY]Investigate ggml_backend_sched optimization for single-backend (skip routing)
+### T77: [IN_PROGRESS by OmniAgent [sys1-Main]Study ThunderMittens findings: register-direct loads beat shared memory on UMA
+### T78: [IN_PROGRESS by OmniAgent [sys1-Main]Profile register pressure per kernel (occupancy analysis)
+### T79: [IN_PROGRESS by OmniAgent [sys1-Main]Test VK_EXT_memory_budget on Honeykrisp
+### T80: [IN_PROGRESS by OmniAgent [sys1-Main]Investigate ggml_backend_sched optimization for single-backend (skip routing)
 
 ## PHASE 8: AGENTIC FRAMEWORK PROTOTYPE
 
-### T81: [READY]Design agent-to-model routing protocol (gRPC or HTTP)
+### T81: [TAKEN]Design agent-to-model routing protocol (gRPC or HTTP)
 ### T82: [READY]Build prototype: agent → router → best model → response
 ### T83: [READY]Multi-model serving: 0.5B fast + 8B smart + 120B reasoning on same box
 ### T84: [READY]Agent communication bridge: cross-machine task coordination

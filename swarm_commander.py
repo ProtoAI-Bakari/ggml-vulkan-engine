@@ -518,7 +518,7 @@ def build_dashboard(fleet_status):
     # Node table
     table = Table(title=f"SWARM STATUS — {now}", box=box.DOUBLE_EDGE, show_lines=False,
                   title_style="bold white on blue", padding=(0, 1))
-    table.add_column("Node", style="bold", width=8)
+    table.add_column("Node", style="bold", width=12)
     table.add_column("Role", width=12)
     table.add_column("Model", width=36)
     table.add_column("Chip", width=10)
