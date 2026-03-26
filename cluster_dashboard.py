@@ -276,13 +276,8 @@ def _agent_task(ip, auth):
     if claimed:
         tid = claimed.replace("CLAIMED ", "")
         return f"[{M.TEAL}]{tid}[/]"
-    # Fallback 2: check turns
-    turns = ssh_cmd(ip, "strings ~/AGENT/LOGS/agent_trace.log 2>/dev/null | grep -c 'Turn'", auth, timeout=5)
-    try:
-        t = int(turns.strip())
-        if t > 0:
-            return f"[{M.OVERLAY}]t{t}[/]"
-    except: pass
+    # No task found
+    pass
     return f"[{M.OVERLAY}]-[/]"
 
 def _req_count(ip, auth):
