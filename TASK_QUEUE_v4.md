@@ -47,7 +47,7 @@
 **Reference:** ~/GITDEV/llama.cpp/src/models/openai-moe-iswa.cpp
 **Model:** ~/models/gguf/gpt-oss-120b-mxfp4.gguf (60GB, merged)
 
-### T08: [IN_PROGRESS by OmniAgent [Main]] Fix tokenizer discovery for all model families
+### T08: [DONE] Fix tokenizer discovery for all model families
 **Goal:** ggml_vllm_backend.py _find_tokenizer() only finds Llama-3.1-8B
 **Method:**
 1. Make _find_tokenizer() search for ANY matching HF model in cache
@@ -55,7 +55,7 @@
 3. If no local tokenizer, try downloading from HF
 **Test:** All models in ~/models/gguf/ should auto-find tokenizers
 
-### T09: [IN_PROGRESS by OmniAgent [Sys4]] Benchmark 32B Qwen with tokenizer fix
+### T09: [IN_PROGRESS by OmniAgent [Main]] Benchmark 32B Qwen with tokenizer fix
 **Goal:** Verify Qwen2.5-32B produces coherent output at 7+ TPS
 **Test:** python -c "from ggml_vllm_backend import GgmlLLM, SamplingParams; llm = GgmlLLM('~/models/gguf/Qwen2.5-32B-Instruct-Q4_K_M.gguf'); r = llm.generate('What is quantum computing?', params=SamplingParams(temperature=0, max_tokens=30)); print(f'{r.tps:.0f} TPS: {r.text}')"
 
