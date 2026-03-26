@@ -73,7 +73,7 @@
 - Success: CI-ready test script that catches coherency regressions
 - Time: 3h
 
-### T10: [READY] Test 120B model on llama-bench (THE big number)
+### T10: [IN_PROGRESS by OmniAgent [Main]] Test 120B model on llama-bench (THE big number)
 - Merge shards first (llama-gguf-split --merge)
 - Run: llama-bench -m 120b-merged.gguf -ngl 99 -t 4 -p 64 -n 32
 - If OOM: try with HK_SYSMEM=112000000000
@@ -94,33 +94,33 @@
 - Success: graph alloc time drops from 4ms to <0.5ms
 - Time: 6h
 
-### T13: [READY] Implement command buffer template recording
+### T13: [IN_PROGRESS by OmniAgent [Main]] Implement command buffer template recording
 - Record full pipeline once on first execution
 - Use vkCmdPushConstants for dynamic params: KV offset, seq_len, position
 - vkResetCommandPool for pool-level reset (not per-buffer)
 - Success: CB recording drops from 6ms to <1ms for stable graphs
 - Time: 12h
 
-### T14: [READY] Add CB invalidation logic
+### T14: [IN_PROGRESS by OmniAgent [Main]] Add CB invalidation logic
 - Detect topology changes: context size thresholds, batch size changes
 - Re-record when graph fingerprint changes
 - Success: correct output after topology change, no stale CB
 - Time: 6h
 
-### T15: [READY] Move Python/ctypes hot path to C extension
+### T15: [IN_PROGRESS by OmniAgent [Main]] Move Python/ctypes hot path to C extension
 - Compiled C shim replaces ctypes for tensor dispatch
 - Eliminate numpy→ctypes→C boundary crossing per forward()
 - Success: Python overhead drops from 3ms to <0.5ms
 - Time: 8h
 
-### T16: [READY] Implement fence polling optimization
+### T16: [IN_PROGRESS by OmniAgent [Main]] Implement fence polling optimization
 - Insert fence at ~80% graph completion
 - Spin-wait for final fence instead of blocking
 - Reduces fence latency by 1-2ms
 - Success: measurable latency reduction
 - Time: 4h
 
-### T17: [READY] Test flash attention scalar path on Honeykrisp
+### T17: [IN_PROGRESS by OmniAgent [Main]] Test flash attention scalar path on Honeykrisp
 - Enable flash_attn.comp shader (FA_SCALAR code path)
 - Fuses Q×K softmax and attention×V
 - Success: FA runs without crash on AGX, correct output

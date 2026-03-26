@@ -96,7 +96,7 @@ SYSTEM_PROMPT = f"You are an AI assistant running on {HOSTNAME} (Apple M1 Ultra 
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "model": MODEL_ID, "host": HOSTNAME, "active": _active_count}
+    return {"status": "ok", "model": MODEL_ID, "host": HOSTNAME, "role": ROLE if 'ROLE' in dir() else 'BRAIN', "active": _active_count}
 
 @app.get("/v1/models")
 async def list_models():

@@ -61,9 +61,11 @@ BRAIN_COLORS = {
     "mini":  C.MINI,
     "claude": "\033[38;5;141m",  # Purple for Claude
     "fast":   "\033[38;5;208m",  # Orange for fast rewrite
-    "sys5":   "\033[38;5;203m",  # Red for sys5
-    "sys6":   "\033[38;5;226m",  # Yellow for sys6
-    "sys7":   "\033[38;5;51m",   # Cyan for sys7
+    "architect": "\033[38;5;203m",  # Red — strategic decisions
+    "engineer":  "\033[38;5;226m",  # Yellow — implementation
+    "designer":  "\033[38;5;51m",   # Cyan — creative
+    "reviewer":  "\033[38;5;118m",  # Bright green — quality
+    "coder2":    "\033[38;5;213m",  # Pink — fast code
 }
 
 BRAIN_LABELS = {
@@ -72,9 +74,11 @@ BRAIN_LABELS = {
     "mini":  "MiniMaxM2",
     "claude": "Claude-Opus-4.6",
     "fast":   "Qwen3B-Fast",
-    "sys5":   "gpt-oss-120b-sys5",
-    "sys6":   "gpt-oss-120b-sys6",
-    "sys7":   "gpt-oss-120b-sys7",
+    "architect": "Qwen3-235B-ARCHITECT",
+    "engineer":  "Qwen3.5-122B-ENGINEER",
+    "designer":  "GLM-4.7-DESIGNER",
+    "reviewer":  "Qwen3.5-122B-REVIEWER",
+    "coder2":    "Qwen3-Coder-FAST",
 }
 
 # ── Brain endpoint configuration ────────────────────────────────────────────
@@ -127,34 +131,34 @@ BRAINS = {
         ),
         "max_tokens": 16384,
     },
-    "sys5": {
+    "architect": {
+        "endpoint": "http://10.255.255.2:8000/v1/chat/completions",
+        "model": "mlx-community/Qwen3-235B-A22B-Thinking-2507-4bit",
+        "system": "You are THE ARCHITECT. High-level system design and architecture decisions only. Numbered bullet points. No code.",
+        "max_tokens": 4096,
+    },
+    "engineer": {
+        "endpoint": "http://10.255.255.3:8000/v1/chat/completions",
+        "model": "mlx-community/Qwen3.5-122B-A10B-4bit",
+        "system": "You are THE ENGINEER. Implementation plans, debugging, optimization. Be specific with file paths and function signatures.",
+        "max_tokens": 4096,
+    },
+    "designer": {
         "endpoint": "http://10.255.255.5:8000/v1/chat/completions",
-        "model": "mlx-community/gpt-oss-120b-MXFP4-Q8",
-        "system": (
-            "You are gpt-oss-120b running on sys5, part of a multi-agent swarm. "
-            "Expert in code generation, reasoning, and systems engineering. "
-            "Be precise and actionable."
-        ),
+        "model": "mlx-community/GLM-4.7-Flash-8bit",
+        "system": "You are THE DESIGNER. Creative alternative approaches. Challenge assumptions. Unconventional but viable solutions.",
         "max_tokens": 4096,
     },
-    "sys6": {
+    "reviewer": {
         "endpoint": "http://10.255.255.6:8000/v1/chat/completions",
-        "model": "mlx-community/gpt-oss-120b-MXFP4-Q8",
-        "system": (
-            "You are gpt-oss-120b running on sys6, part of a multi-agent swarm. "
-            "Expert in code generation, reasoning, and systems engineering. "
-            "Be precise and actionable."
-        ),
+        "model": "mlx-community/Qwen3.5-122B-A10B-4bit",
+        "system": "You are THE REVIEWER. Code review, bug catching, correctness verification. Thorough but not pedantic.",
         "max_tokens": 4096,
     },
-    "sys7": {
+    "coder2": {
         "endpoint": "http://10.255.255.7:8000/v1/chat/completions",
-        "model": "mlx-community/gpt-oss-120b-MXFP4-Q8",
-        "system": (
-            "You are gpt-oss-120b running on sys7, part of a multi-agent swarm. "
-            "Expert in code generation, reasoning, and systems engineering. "
-            "Be precise and actionable."
-        ),
+        "model": "mlx-community/Qwen3-Coder-Next-4bit",
+        "system": "You are a fast code generator. Write working code immediately. No preamble.",
         "max_tokens": 4096,
     },
 }

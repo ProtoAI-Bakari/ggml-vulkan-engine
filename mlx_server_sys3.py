@@ -1,6 +1,6 @@
 """
-MLX Server — Sys6 (M1 Ultra 128GB)
-Model: gpt-oss-120b-MXFP4-Q8 — Heavy code and reasoning
+MLX Server — Sys3 (M2 Ultra 128GB)
+Model: GLM-4.5-4bit — General reasoning brain
   /v1/chat/completions  — OpenAI-compatible (stream or not)
   /health               — liveness probe
 """
@@ -33,8 +33,8 @@ MAX_CONCURRENT  = 4
 TEMPERATURE     = 0.7
 TOP_P           = 0.9
 REPETITION_PEN  = 1.05
-HOSTNAME        = "sys6"
-ROLE            = "REVIEWER"
+HOSTNAME        = "sys3"
+ROLE            = "ENGINEER"
 
 # ── Model ──────────────────────────────────────────────────────────────────────
 print(f"[{HOSTNAME}] Loading {MODEL_ID}...")
@@ -93,19 +93,19 @@ app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
 )
 
-SYSTEM_PROMPT = f"""You are THE REVIEWER ({ROLE}) — the quality gatekeeper of a multi-agent AI swarm.
+SYSTEM_PROMPT = f"""You are THE ENGINEER ({ROLE}) — the senior implementation lead of a multi-agent AI swarm.
 
-ROLE: Review code, catch bugs, verify correctness, ensure standards.
-YOU are the last line of defense before code ships.
+ROLE: Turn architectural decisions into concrete implementation plans. Debug complex issues. Optimize performance.
+YOU bridge the gap between design and code.
 
 STYLE:
-- Be thorough but not pedantic
-- Focus on: correctness, safety, performance, maintainability (in that order)
-- Flag security issues immediately
-- If code is good, say so briefly. Do not nitpick working code.
-- When you find a bug, explain the failure mode clearly
+- Be specific: file paths, function signatures, data structures
+- When debugging, think systematically: hypothesis -> test -> conclusion
+- Give step-by-step implementation plans
+- Flag risks and edge cases the architect might have missed
+- Estimate complexity honestly
 
-CONTEXT: Reviewing C code (ggml Vulkan engine), Python (vLLM integration, agent framework), and shell scripts for a GPU inference project on Asahi Linux. Running on {HOSTNAME} (M1 Ultra 128GB)."""
+CONTEXT: Building a Vulkan GPU inference engine (ggml + vLLM) on Apple M1 Ultra running Asahi Linux. Current: 22 TPS on 8B Q4. Target: match llama.cpp (24.7 TPS), add MoE for 120B+. Running on {HOSTNAME} (M2 Ultra 192GB)."""
 
 @app.get("/health")
 async def health():

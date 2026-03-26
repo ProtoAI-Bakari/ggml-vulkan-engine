@@ -1,6 +1,6 @@
 """
-MLX Server — Sys6 (M1 Ultra 128GB)
-Model: gpt-oss-120b-MXFP4-Q8 — Heavy code and reasoning
+MLX Server — Sys2 (M2 Ultra 128GB)
+Model: GLM-4.5-4bit — General reasoning brain
   /v1/chat/completions  — OpenAI-compatible (stream or not)
   /health               — liveness probe
 """
@@ -24,17 +24,17 @@ from mlx_lm.sample_utils import make_sampler, make_logits_processors
 from pydantic import BaseModel
 
 # ── Config ─────────────────────────────────────────────────────────────────────
-MODEL_ID        = "mlx-community/Qwen3.5-122B-A10B-4bit"
+MODEL_ID        = "mlx-community/Qwen3-235B-A22B-Thinking-2507-4bit"
 HOST            = "0.0.0.0"
 PORT            = 8000
-MAX_TOKENS      = 32000
-MAX_KV_SIZE     = 32000
-MAX_CONCURRENT  = 4
-TEMPERATURE     = 0.7
+MAX_TOKENS      = 8192
+MAX_KV_SIZE     = 8192
+MAX_CONCURRENT  = 2       # 235B is heavy — limit concurrency
+TEMPERATURE     = 0.6     # More focused for architecture
 TOP_P           = 0.9
 REPETITION_PEN  = 1.05
-HOSTNAME        = "sys6"
-ROLE            = "REVIEWER"
+HOSTNAME        = "sys2"
+ROLE            = "ARCHITECT"
 
 # ── Model ──────────────────────────────────────────────────────────────────────
 print(f"[{HOSTNAME}] Loading {MODEL_ID}...")
@@ -93,19 +93,19 @@ app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
 )
 
-SYSTEM_PROMPT = f"""You are THE REVIEWER ({ROLE}) — the quality gatekeeper of a multi-agent AI swarm.
+SYSTEM_PROMPT = f"""You are THE ARCHITECT ({ROLE}) — the strategic technical lead of a multi-agent AI swarm.
 
-ROLE: Review code, catch bugs, verify correctness, ensure standards.
-YOU are the last line of defense before code ships.
+ROLE: High-level system design, architecture decisions, trade-off analysis.
+YOU DO NOT write code. You design systems and make architectural decisions.
 
 STYLE:
-- Be thorough but not pedantic
-- Focus on: correctness, safety, performance, maintainability (in that order)
-- Flag security issues immediately
-- If code is good, say so briefly. Do not nitpick working code.
-- When you find a bug, explain the failure mode clearly
+- Think in systems, not functions
+- Always consider: scalability, maintainability, performance, correctness
+- Give decisions as numbered bullet points
+- When asked to choose between approaches, give a clear recommendation with WHY
+- Reference real-world precedents (Linux kernel, LLVM, vLLM, etc.)
 
-CONTEXT: Reviewing C code (ggml Vulkan engine), Python (vLLM integration, agent framework), and shell scripts for a GPU inference project on Asahi Linux. Running on {HOSTNAME} (M1 Ultra 128GB)."""
+CONTEXT: You lead a team building a Vulkan GPU inference engine on Apple M1 Ultra (Asahi Linux) + a multi-agent coordination framework. The team has 7 AI brains and 3+ autonomous agents working in parallel. You are running on {HOSTNAME} (M2 Ultra 192GB)."""
 
 @app.get("/health")
 async def health():
