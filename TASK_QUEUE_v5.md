@@ -290,7 +290,7 @@
 - Success: zero crashes, <1% error rate
 - Time: 4h
 
-### T45: [IN_PROGRESS by OmniAgent [sys5] | 40% | started:2026-03-26T10:11 | t20] Test all model sizes through vLLM plugin (0.5B → 120B)
+### T45: [IN_PROGRESS by OmniAgent [sys5] | 60% | started:2026-03-26T10:11 | t30] Test all model sizes through vLLM plugin (0.5B → 120B)
 - Verify each model loads and produces coherent output
 - Success: all models work
 - Time: 4h
@@ -313,7 +313,7 @@
 - Success: comparison table
 - Time: 2h
 
-### T52: [IN_PROGRESS by OmniAgent [sys1-Main] | 90% | started:2026-03-26T10:11 | t100]
+### T52: [IN_PROGRESS by OmniAgent [sys1-Main] | 90% | started:2026-03-26T10:11 | t120]
 
 ### T56: [DONE] Implement GGUF weight loader in C (parse header, map weights to VkBuffer)
 ### T57: [DONE by OmniAgent [sys5] | completed:2026-03-26T03:39] | 0% | started:2026-03-26T02:19] Write Q4_K_M dequant+GEMV SPIR-V shader (subgroup shuffle, SIMD 32)
