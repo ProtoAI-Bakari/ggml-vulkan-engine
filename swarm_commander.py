@@ -44,7 +44,7 @@ NODES = {
     "cuda-sys3": {"ip": "10.255.255.13", "port": 0,    "role": "CUDA-WORK",    "chip": "2x3090",  "ram": "64G",  "os": "Linux"},
     "cuda-sys4": {"ip": "10.255.255.14", "port": 0,    "role": "CUDA-WORK",    "chip": "2x3090",  "ram": "64G",  "os": "Linux"},
     # ── Standalone GPU ──
-    "gpu-10":    {"ip": "10.255.255.10", "port": 8000, "role": "HYPER-CODER",  "chip": "1x4090",  "ram": "64G",  "os": "Linux"},
+    "z4090":     {"ip": "10.255.255.10", "port": 8000, "role": "HYPER-CODER",  "chip": "1x4090",  "ram": "64G",  "os": "Linux"},
 }
 # Aliases so old names still work
 NODE_ALIASES = {
@@ -53,7 +53,7 @@ NODE_ALIASES = {
     "mlx-5": "sys5", "mlx-6": "sys6", "mlx-7": "sys7",
     "cuda-1": "cuda-sys1", "cuda-2": "cuda-sys2",
     "cuda-3": "cuda-sys3", "cuda-4": "cuda-sys4",
-    "z4090": "gpu-10",
+    "gpu-10": "z4090",
 }
 
 AGENTS = {
