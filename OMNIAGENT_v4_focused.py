@@ -463,8 +463,20 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
                 if not user_input:
                     user_input = "Read ~/AGENT/TASK_QUEUE_v5.md, claim the next [READY] task, execute it."
             elif no_tty:
-                # Subsequent turns: brief nudge, NOT the full GO_PROMPT again
-                user_input = "Continue. If task done: push_changes, complete_task, claim next. If stuck: ask_cuda_brain."
+                # Subsequent turns: tell agent exactly what task they have
+                my_task = ""
+                try:
+                    import urllib.request
+                    with urllib.request.urlopen("http://10.255.255.128:9091/tasks", timeout=2) as _r:
+                        _q = _r.read().decode()
+                    _m = re.search(rf'### (T\d+):.*?\[IN_PROGRESS by [^\]]*{re.escape(_AGENT_NAME)}', _q)
+                    if _m: my_task = _m.group(1)
+                except Exception:
+                    pass
+                if my_task:
+                    user_input = f"You are working on {my_task}. Continue executing it. Use execute_bash and read_file. When done: push_changes, complete_task('{my_task}'), then claim_task for next READY task."
+                else:
+                    user_input = "You have no task claimed. Read ~/AGENT/TASK_QUEUE_v5.md, find a [READY] task, and claim_task it."
             else:
                 user_input = get_multiline_input()
 

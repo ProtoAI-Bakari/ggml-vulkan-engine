@@ -107,7 +107,7 @@
 - Success: correct output after topology change, no stale CB
 - Time: 6h
 
-### T15: [IN_PROGRESS by OmniAgent] Move Python/ctypes hot path to C extension
+### T15: [IN_PROGRESS by OmniAgent [sys1-Main] | 0% | started:2026-03-26T02:19] Move Python/ctypes hot path to C extension
 - Compiled C shim replaces ctypes for tensor dispatch
 - Eliminate numpy→ctypes→C boundary crossing per forward()
 - Success: Python overhead drops from 3ms to <0.5ms
@@ -184,7 +184,7 @@
 - Success: vLLM recognizes platform
 - Time: 6h
 
-### T28: [READY]] Create VulkanWorker(WorkerBase) stub
+### T28: [IN_PROGRESS by OmniAgent [sys3] | 0% | started:2026-03-26T02:18] | 0% | started:2026-03-26T02:16] Create VulkanWorker(WorkerBase) stub
 - init_device(), determine_available_memory(), load_model()
 - Success: worker initializes without crash
 - Time: 6h
@@ -216,7 +216,7 @@
 - Success: attention correct with paged cache
 - Time: 12h
 
-### T34: [READY]] Wire _update_states()
+### T34: [IN_PROGRESS by OmniAgent [sys3] | 0% | started:2026-03-26T02:18] Wire _update_states()
 - Parse SchedulerOutput: add/remove/reorder requests
 - Success: request lifecycle correctly managed
 - Time: 8h
@@ -249,12 +249,12 @@
 - Success: both requests correct and independent
 - Time: 6h
 
-### T40: [READY]] Implement KV cache block freeing + prevent memory leak
+### T40: [IN_PROGRESS by OmniAgent [sys2] | 0% | started:2026-03-26T02:18] Implement KV cache block freeing + prevent memory leak
 - Release blocks on request completion, return to free pool
 - Success: stable memory after 100+ requests
 - Time: 4h
 
-### T41: [READY]]] Implement prefix caching integration
+### T41: [IN_PROGRESS by OmniAgent [sys5] | 0% | started:2026-03-26T02:18] Implement prefix caching integration
 - Accept new_computed_blocks from scheduler
 - Skip recomputation for cached prefixes
 - Success: repeated prompts reuse KV blocks
@@ -266,7 +266,7 @@
 - Success: long prompts (>512 tokens) served correctly
 - Time: 8h
 
-### T43: [READY]]] Implement preemption via recompute
+### T43: [IN_PROGRESS by OmniAgent [sys6] | 0% | started:2026-03-26T02:18] Implement preemption via recompute
 - When KV blocks exhausted, evict lowest-priority request
 - Mark for recomputation
 - Success: server recovers from OOM without crash
@@ -300,12 +300,12 @@
 
 ## PHASE 3: 120B MODEL + FLEET [from Sys12 task queue]
 
-### T49: [READY]] Merge 120B GGUF shards
+### T49: [IN_PROGRESS by OmniAgent [sys6] | 0% | started:2026-03-26T02:19] Merge 120B GGUF shards
 - llama-gguf-split --merge
 - Success: single merged GGUF file
 - Time: 30min (I/O bound)
 
-### T50: [READY]] Test 120B on standalone ggml engine
+### T50: [IN_PROGRESS by OmniAgent [sys4] | 0% | started:2026-03-26T02:18] Test 120B on standalone ggml engine
 - Verify coherent output
 - Measure TPS
 - Success: coherent text at any TPS
@@ -341,13 +341,13 @@
 ## PHASE 4: PURE VULKAN ENGINE [Perspective B — speculative, 35-45 TPS]
 
 ### T56: [DONE]] Implement GGUF weight loader in C (parse header, map weights to VkBuffer)
-### T57: [IN_PROGRESS by OmniAgent [sys2]] Write Q4_K_M dequant+GEMV SPIR-V shader (subgroup shuffle, SIMD 32)
-### T58: [IN_PROGRESS by OmniAgent [sys3]] Benchmark T57 vs ggml GEMV
+### T57: [IN_PROGRESS by OmniAgent [sys6] | 0% | started:2026-03-26T02:19] Write Q4_K_M dequant+GEMV SPIR-V shader (subgroup shuffle, SIMD 32)
+### T58: [READY]] Benchmark T57 vs ggml GEMV
 ### T59: [READY] Write RMSNorm, RoPE, softmax, SiLU SPIR-V shaders
 ### T60: [READY] Implement static CB recording for one transformer layer
 ### T61: [READY] Full model: chain all layers + embedding + output projection
-### T62: [IN_PROGRESS by OmniAgent [sys4]] Push-constant-only token stepping (no CB re-recording)
-### T63: [READY] Benchmark pure engine vs ggml at batch=1
+### T62: [READY]] Push-constant-only token stepping (no CB re-recording)
+### T63: [IN_PROGRESS by OmniAgent [sys5] | 0% | started:2026-03-26T02:18] Benchmark pure engine vs ggml at batch=1
 ### T64: [READY] Paged KV cache in pure engine
 ### T65: [READY] Flash attention SPIR-V shader (tiled, scalar, 2-pass online softmax)
 
@@ -356,7 +356,7 @@
 ### T66: [READY] Numerical accuracy: logits comparison ggml vs llama.cpp for 1000 tokens
 ### T67: [READY] Memory leak testing: 10,000 requests, monitor RSS + Vulkan memory
 ### T68: [READY] Edge case testing: empty, max-length, special tokens, unicode
-### T69: [IN_PROGRESS by OmniAgent [sys5]] M1 Max (32GB) validation: run all benchmarks on Sys12
+### T69: [IN_PROGRESS by OmniAgent [sys3] | 0% | started:2026-03-26T02:18] M1 Max (32GB) validation: run all benchmarks on Sys12
 ### T70: [READY] Deployment documentation: hardware reqs, install, config, troubleshoot
 
 ## PHASE 6: DOCUMENTATION + UPSTREAM
@@ -364,14 +364,14 @@
 ### T71: [READY] Comprehensive README with architecture diagram
 ### T72: [READY] Benchmark report: all models, all quants, all batch sizes
 ### T73: [READY] Blog post: Vulkan LLM Inference on Apple Silicon Linux
-### T74: [IN_PROGRESS by OmniAgent [sys6]] Draft PR for vLLM: Vulkan platform plugin
+### T74: [READY]] Draft PR for vLLM: Vulkan platform plugin
 ### T75: [READY] Draft PR for ggml: graph caching + CB optimization patches
 ### T76: [READY] File Mesa issue: VK_KHR_cooperative_matrix request with benchmark data
 
 ## PHASE 7: ADVANCED OPTIMIZATION
 
 ### T77: [READY] Study ThunderMittens findings: register-direct loads beat shared memory on UMA
-### T78: [READY] Profile register pressure per kernel (occupancy analysis)
+### T78: [IN_PROGRESS by OmniAgent [sys5] | 0% | started:2026-03-26T02:18] Profile register pressure per kernel (occupancy analysis)
 ### T79: [READY] Test VK_EXT_memory_budget on Honeykrisp
 ### T80: [READY] Investigate ggml_backend_sched optimization for single-backend (skip routing)
 
