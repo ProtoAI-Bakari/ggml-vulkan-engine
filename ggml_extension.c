@@ -1,37 +1,51 @@
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <stdio.h>
+#include <numpy/arrayobject.h>
 
-// Forward declaration of engine_forward from the engine library
-extern int engine_forward(void* ctx, const void* input, size_t input_size, 
-                          void* output, size_t output_size);
+// Forward declaration of the engine function we are wrapping
+typedef struct {
+    float* weights;
+    int size;
+} EngineContext;
 
+static EngineContext g_engine_ctx = {NULL, 0};
+
+// Mock implementation - replace with actual engine_forward from your library
+static float engine_forward(float* input, int input_size) {
+    printf("engine_forward called with input_size=%d\n", input_size);
+    return 0.0f;
+}
+
+// Python wrapper function
 static PyObject* py_engine_forward(PyObject* self, PyObject* args) {
-    Py_buffer input_buf;
-    Py_buffer output_buf;
+    PyArrayObject* input_array = NULL;
     
-    if (!PyArg_ParseTuple(args, "s*s*", &input_buf, &output_buf)) {
+    if (!PyArg_ParseTuple(args, "O!", &PyArray_Type, &input_array)) {
+        PyErr_SetString(PyExc_TypeError, "Expected numpy array as argument");
         return NULL;
     }
     
-    int result = engine_forward(NULL, 
-                                input_buf.buf, 
-                                input_buf.len,
-                                output_buf.buf, 
-                                output_buf.len);
+    if (PyArray_NDIM(input_array) != 1) {
+        PyErr_SetString(PyExc_ValueError, "Input must be 1D array");
+        return NULL;
+    }
     
-    PyBuffer_Release(&input_buf);
-    PyBuffer_Release(&output_buf);
+    float* input_data = (float*)PyArray_DATA(input_array);
+    int input_size = (int)PyArray_SIZE(input_array);
     
-    return PyLong_FromLong(result);
+    float result = engine_forward(input_data, input_size);
+    
+    return PyFloat_FromDouble((double)result);
 }
 
+// Initialize function for the module
 static PyMethodDef ExtensionMethods[] = {
-    {"engine_forward", py_engine_forward, METH_VARARGS, 
-     "Call engine_forward with input/output buffers"},
+    {"forward", py_engine_forward, METH_VARARGS, "Call engine_forward on input data"},
     {NULL, NULL, 0, NULL}
 };
 
-static struct PyModuleDef moduledef = {
+static struct PyModuleDef extensionmodule = {
     PyModuleDef_HEAD_INIT,
     "ggml_extension",
     "GGML Engine Forward Extension",
@@ -40,5 +54,6 @@ static struct PyModuleDef moduledef = {
 };
 
 PyMODINIT_FUNC PyInit_ggml_extension(void) {
-    return PyModule_Create(&moduledef);
+    import_array();
+    return PyModule_Create(&extensionmodule);
 }

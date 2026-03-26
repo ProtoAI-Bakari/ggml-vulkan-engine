@@ -628,28 +628,13 @@ def fix_restart_agent(name, node, reason="watchdog auto-restart"):
     # Step 2: Ensure requests module available
     ssh(ip, "python3 -c 'import requests' 2>/dev/null || pip3 install requests 2>/dev/null", auth, timeout=30)
 
-    # Step 3: Write launch script (avoids quoting issues)
+    # Step 3: Launch agent — use nohup directly (tmux has quoting issues through SSH layers)
     ssh(ip, (
-        "cat > ~/AGENT/.watchdog_launch.sh << 'WDEOF'\n"
-        "#!/bin/bash\n"
-        "export PATH=/opt/homebrew/bin:/usr/local/bin:$PATH\n"
-        "cd ~/AGENT\n"
-        "python3 OMNIAGENT_v4_focused.py --auto-go < /dev/null 2>&1 | tee -a ~/AGENT/LOGS/agent_trace.log\n"
-        "WDEOF\n"
-        "chmod +x ~/AGENT/.watchdog_launch.sh"
-    ), auth, timeout=10)
-
-    # Step 4: Launch via tmux
-    rc, out = ssh(ip, f"{TMUX} new-session -d -s agent 'bash ~/AGENT/.watchdog_launch.sh'", auth, timeout=15)
+        "cd ~/AGENT && "
+        "nohup python3 OMNIAGENT_v4_focused.py --auto-go "
+        ">> ~/AGENT/LOGS/agent_trace.log 2>&1 &"
+    ), auth, timeout=15)
     time.sleep(5)
-
-    # Check tmux
-    rc2, sessions = ssh(ip, f"{TMUX} list-sessions 2>&1", auth, timeout=8)
-    if "agent" not in (sessions or ""):
-        # Tmux failed — fall back to nohup
-        log("WARN", f"Tmux failed on {name}, trying nohup fallback...")
-        ssh(ip, "cd ~/AGENT && nohup bash .watchdog_launch.sh > /dev/null 2>&1 &", auth, timeout=10)
-        time.sleep(5)
 
     rc3, pid = ssh(ip, "pgrep -f OMNIAGENT | head -1", auth, timeout=8)
 

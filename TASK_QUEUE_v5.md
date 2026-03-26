@@ -232,7 +232,7 @@
 - Success: attention correct with paged cache
 - Time: 12h
 
-### T34: [READY]Wire _update_states()
+### T34: [IN_PROGRESS by OmniAgent [Main] | 0% | started:2026-03-26T03:50]Wire _update_states()
 - Parse SchedulerOutput: add/remove/reorder requests
 - Success: request lifecycle correctly managed
 - Time: 8h
