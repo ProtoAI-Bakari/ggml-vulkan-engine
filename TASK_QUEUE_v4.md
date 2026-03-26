@@ -55,11 +55,11 @@
 3. If no local tokenizer, try downloading from HF
 **Test:** All models in ~/models/gguf/ should auto-find tokenizers
 
-### T09: [IN_PROGRESS by OmniAgent [Main]] Benchmark 32B Qwen with tokenizer fix
+### T09: [BLOCKED by C engine crash] Benchmark 32B Qwen with tokenizer fix
 **Goal:** Verify Qwen2.5-32B produces coherent output at 7+ TPS
 **Test:** python -c "from ggml_vllm_backend import GgmlLLM, SamplingParams; llm = GgmlLLM('~/models/gguf/Qwen2.5-32B-Instruct-Q4_K_M.gguf'); r = llm.generate('What is quantum computing?', params=SamplingParams(temperature=0, max_tokens=30)); print(f'{r.tps:.0f} TPS: {r.text}')"
 
-### T10: [IN_PROGRESS by OmniAgent [Main]] Run 50-request stress test on standalone server
+### T10: [DONE by OmniAgent [Main]]] Run 50-request stress test on standalone server
 **Goal:** Verify server handles 50 diverse sequential requests without crash
 **Method:** Start server, run curl loop with diverse prompts, verify all responses coherent
 **Test:** All 50 responses must be non-empty and relevant

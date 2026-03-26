@@ -60,14 +60,14 @@
 - Success: capability matrix document
 - Time: 1h
 
-### T08: [READY] Run llama-bench on ALL models for reference baseline
+### T08: [IN_PROGRESS by OmniAgent [Main]] Run llama-bench on ALL models for reference baseline
 - 8B Q4_K_M, Q8_0, F16
 - 0.5B, 1.5B, 3B, 32B Q4_K_M
 - 120B mxfp4 (after merge)
 - Success: llama.cpp baseline TPS table for every model
 - Time: 2h
 
-### T09: [READY] Create automated regression test: golden output comparison
+### T09: [IN_PROGRESS by OmniAgent [Main]] Create automated regression test: golden output comparison
 - 10 prompts with expected output patterns (regex or substring match)
 - Run before AND after every code change
 - Success: CI-ready test script that catches coherency regressions
