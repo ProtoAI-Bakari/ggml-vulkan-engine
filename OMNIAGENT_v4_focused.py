@@ -496,10 +496,12 @@ RULES:
 - Call update_progress('TXX', 'NN') every few steps to report %.
 - After finishing: push_changes then complete_task.
 
-TOOL FORMAT:
+CRITICAL: Your ENTIRE response must be ONLY this format, nothing else:
 <tool_call>
 {"name": "execute_bash", "arguments": {"command": "pwd"}}
 </tool_call>
+
+No thinking. No explanation. No <think> tags. JUST the tool call above.
 
 PROJECT: Vulkan GPU inference engine on Asahi Linux M1 Ultra.
 For edits: use sed -i. Before risky changes: git stash. For new files >20 lines: use execute_bash with cat<<'EOF'>file.py ... EOF
@@ -1123,10 +1125,16 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
                     print(f"\n{C.BOLD}{C.YELLOW}🔧 [EXECUTING]: {fn_name}{C.RESET}")
                     try:
                         res = TOOL_DISPATCH[fn_name](**args)
+                    except TypeError as te:
+                        # Wrong kwargs — try with just positional values
+                        try:
+                            vals = list(args.values())
+                            res = TOOL_DISPATCH[fn_name](*vals)
+                        except Exception:
+                            res = f"ERROR: {te}. Correct args for {fn_name}: check the tool schema."
+                    try:
                         res_str = str(res)
-                        # Remove truncating block entirely so LLM reads the full file
                         if len(res_str) > 100000: res_str = res_str[:50000] + "\n...[TRUNCATED]...\n" + res_str[-50000:]
-                        # Remove terminal screen limits so human sees exactly what the LLM sees
                         print(f"{C.GREEN}📥 [RESULT]:\n{res_str}{C.RESET}")
                         results_msg += f"[RESULT FROM {fn_name}]:\n{res_str}\n\n"
                     except Exception as e:
