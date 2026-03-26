@@ -1,6 +1,6 @@
 # CLUSTER ISSUES TRACKER v1
 # 100 issues to fix — prioritized
-# Updated: 2026-03-26T04:15
+# Updated: 2026-03-26T09:09
 
 ## P0: CRITICAL (agents broken/looping)
 
@@ -18,10 +18,10 @@
 ## P1: HIGH (agents inefficient)
 
 11. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:08] grep READY | head -3 in GO_PROMPT
-12. [OPEN — next] Agents re-read files they already read
+12. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Agents re-read files they already read
 13. [OPEN — next] No file cache between turns
-14. [IN_PROGRESS by LEAD_CLAUDE | 40% | started:2026-03-26T04:08] push_changes tool deployed, agents dont always call it
-15. [IN_PROGRESS by LEAD_CLAUDE | 70% | started:2026-03-26T04:15] Agent writes code but never calls complete_task
+14. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] push_changes tool deployed, agents dont always call it
+15. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Agent writes code but never calls complete_task
 16. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:15] Agent calls ask_cuda_brain for simple questions
 17. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:15] Verbose reasoning — system prompt cut to 232 tokens
 18. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:15] write_file with large content (>500 lines) always fails JSON parse
@@ -31,12 +31,12 @@
 ## P2: MEDIUM (dashboard/monitoring gaps)
 
 21. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:15] Dashboard TPS column shows 0 for sys1 (ggml server logs differently)
-22. [IN_PROGRESS by LEAD_CLAUDE | 70% | started:2026-03-26T04:15] Dashboard Reqs column shows 0 for sys1
+22. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Dashboard Reqs column shows 0 for sys1
 23. [OPEN] Dashboard Arch column fails on some models (binary log issue)
 24. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:15] Dashboard GPU% uses powermetrics (needs sudo, adds 500ms per node)
-25. [OPEN] Commander still uses old node names (mlx-0, cuda-1) not sys1, cuda-sys1
+25. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Commander still uses old node names (mlx-0, cuda-1) not sys1, cuda-sys1
 26. [OPEN] Commander agent detection shows wrong count in "Agents: 1 running"
-27. [OPEN] Fleet health checker doesn't detect "agent writing but no files produced"
+27. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Fleet health checker doesn't detect "agent writing but no files produced"
 28. [OPEN] No dashboard column for "last file written" or "last commit"
 29. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:15] Task server timestamps accumulate — "| 0% | started:... | 0% | started:..."
 30. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:08] Task server BLOCKED regex fixed for brackets
@@ -45,14 +45,14 @@
 
 31. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:15] No graceful agent shutdown — pkill -9 loses in-flight work
 32. [OPEN] Agent doesn't save state between restarts — loses context
-33. [OPEN] Agent can't resume a partially-completed task after restart
+33. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Agent can't resume a partially-completed task after restart
 34. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:15] No heartbeat mechanism — can't tell if agent is alive vs thinking
 35. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:15] Agent log grows unbounded — no rotation
 36. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:15] agent_trace.log has ANSI escape codes making grep/analysis painful
 37. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:15] No way to inject a message into a running agent's context
-38. [IN_PROGRESS by LEAD_CLAUDE | 50% | started:2026-03-26T04:15] Agents on macOS use /home/z paths that don't exist (needs /Users/z)
-39. [OPEN] Agent name patching (sed on OMNIAGENT) is fragile — can corrupt file
-40. [OPEN] No version tracking — can't tell which code version an agent is running
+38. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Agents on macOS use /home/z paths that don't exist (needs /Users/z)
+39. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Agent name patching (sed on OMNIAGENT) is fragile — can corrupt file
+40. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] No version tracking — can't tell which code version an agent is running
 
 ## P4: TASK MANAGEMENT
 
@@ -71,10 +71,10 @@
 
 51. [OPEN] No automated test suite for OMNIAGENT changes
 52. [OPEN] No CI/CD — changes go live without testing
-53. [OPEN] agent0 test runner doesn't test new code from remote agents
+53. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] agent0 test runner doesn't test new code from remote agents
 54. [OPEN] No regression test when OMNIAGENT is modified
 55. [OPEN] No smoke test after fleet restart
-56. [OPEN] Vulkan coherency test only runs 5 prompts — need 50+
+56. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Vulkan coherency test only runs 5 prompts — need 50+
 57. [OPEN] No load test for task server under concurrent agent pressure
 58. [OPEN] No test for push_changes actually landing on sys1
 59. [OPEN] No test for claim_task race condition prevention
@@ -90,8 +90,8 @@
 66. [OPEN] No dashboard persistence — state lost on restart
 67. [OPEN] No backup schedule for ~/AGENT directory
 68. [DONE by LEAD_CLAUDE | completed:2026-03-26T04:15] No git auto-push — commits stay local until manual push
-69. [OPEN] task_server.py runs in tmux — should be systemd service
-70. [OPEN] ggml_server.py runs via sg video hack — should be proper service
+69. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] task_server.py runs in tmux — should be systemd service
+70. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] ggml_server.py runs via sg video hack — should be proper service
 
 ## P7: SECURITY
 
@@ -100,7 +100,7 @@
 73. [OPEN] SSH accepts password auth on all nodes — should be key-only
 74. [OPEN] No firewall rules — all ports open between nodes
 75. [OPEN] Agent can execute arbitrary bash commands on any node
-76. [OPEN] No audit trail for destructive agent actions (rm, pkill)
+76. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] No audit trail for destructive agent actions (rm, pkill)
 77. [OPEN] No sandboxing — agents have full filesystem access
 78. [OPEN] CUDA cluster settings modifiable by any SSH session
 79. [OPEN] Orchestrator has write access to everything (no read-only mode)
@@ -109,11 +109,11 @@
 ## P8: OBSERVABILITY
 
 81. [OPEN] No Prometheus/Grafana for fleet metrics
-82. [OPEN] No token usage tracking per agent per task
+82. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] No token usage tracking per agent per task
 83. [OPEN] No cost tracking for CUDA brain usage
 84. [OPEN] No agent efficiency metric (useful output per token)
 85. [OPEN] No task completion velocity tracking
-86. [OPEN] No heatmap of which tools are used most/least
+86. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] No heatmap of which tools are used most/least
 87. [OPEN] No error rate per model/node correlation
 88. [OPEN] No TTFT trend over time
 89. [OPEN] No disk usage trend alerting
@@ -130,7 +130,7 @@
 97. [OPEN] Agents don't update KNOWLEDGE_BASE.md with findings
 98. [OPEN] No cross-agent communication (agent on sys2 can't ask agent on sys4)
 99. [OPEN] Agents don't adapt prompts based on what worked before
-100. [OPEN] No abort mechanism — agent keeps working on impossible task forever
+100. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] No abort mechanism — agent keeps working on impossible task forever
 
 ## SUMMARY
 - P0 Critical: 10 issues (agents broken)
@@ -147,54 +147,54 @@
 ## P10: ADDITIONAL ISSUES (101-150)
 
 101. [OPEN] Agents should write tests for code they produce
-102. [OPEN] No diff review before push_changes — blind SCP
-103. [OPEN] Agent should verify compilation succeeds before calling complete_task
+102. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] No diff review before push_changes — blind SCP
+103. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Agent should verify compilation succeeds before calling complete_task
 104. [OPEN] No rollback mechanism if agent breaks something
-105. [OPEN] task_server has no authentication — any node can claim/complete
+105. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] task_server has no authentication — any node can claim/complete
 106. [OPEN] Deployer sync uses SCP per-file — should rsync (faster, atomic)
 107. [OPEN] No model version pinning — HF cache auto-updates could break
-108. [OPEN] Dashboard refresh blocks on slow SSH — should be async
+108. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Dashboard refresh blocks on slow SSH — should be async
 109. [OPEN] No alert when agent produces gibberish output
-110. [OPEN] Agent doesn't check if its MLX server is healthy before working
-111. [OPEN] No rate limit on task claims per minute
+110. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Agent doesn't check if its MLX server is healthy before working
+111. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] No rate limit on task claims per minute
 112. [OPEN] Complete_task doesn't verify files were pushed first
 113. [OPEN] No way to see agent's current conversation context size
 114. [OPEN] Agent should report estimated time remaining for current task
 115. [OPEN] No cross-agent code review (agent A reviews agent B's output)
 116. [OPEN] Orchestrator on z4090 not running any agents — wasted capacity
-117. [OPEN] Dashboard should show agent uptime (time since last restart)
+117. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Dashboard should show agent uptime (time since last restart)
 118. [OPEN] No way to pause an agent without killing it
-119. [OPEN] Agent should detect when its model server crashes and alert
-120. [OPEN] No centralized error log aggregating all agent errors
-121. [OPEN] Task queue file getting corrupted with duplicate brackets ]]]]
+119. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Agent should detect when its model server crashes and alert
+120. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] No centralized error log aggregating all agent errors
+121. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Task queue file getting corrupted with duplicate brackets ]]]]
 122. [OPEN] No visualization of task completion over time
 123. [OPEN] Agent should batch small file operations instead of one per turn
 124. [OPEN] No way to set max_tokens dynamically per task complexity
-125. [OPEN] CUDA brain at 42K context but agents rarely need >4K
+125. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] CUDA brain at 42K context but agents rarely need >4K
 126. [OPEN] Watchdog and fleet_health_check overlap in functionality
 127. [OPEN] No way to see total tokens generated across all agents
-128. [OPEN] Agent0 test runner doesn't report results to dashboard
-129. [OPEN] No integration test that verifies full claim→work→push→complete cycle
+128. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Agent0 test runner doesn't report results to dashboard
+129. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] No integration test that verifies full claim→work→push→complete cycle
 130. [OPEN] Dashboard doesn't show which phase each agent is working on
-131. [OPEN] No alert when disk drops below threshold on any node
-132. [OPEN] Agent should minimize context by summarizing completed work
-133. [OPEN] No way to share findings between agents (KB not synced to remotes)
+131. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] No alert when disk drops below threshold on any node
+132. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Agent should minimize context by summarizing completed work
+133. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] No way to share findings between agents (KB not synced to remotes)
 134. [OPEN] Task server should reject claims for tasks with unmet dependencies
-135. [OPEN] No health endpoint for the agent process itself
+135. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] No health endpoint for the agent process itself
 136. [OPEN] Dashboard arch column truncates model info with ellipsis
 137. [OPEN] No way to see agent error rate over time
-138. [OPEN] Agent should use sed for small edits instead of rewriting files
+138. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Agent should use sed for small edits instead of rewriting files
 139. [OPEN] No git branch per agent — all work on master
 140. [OPEN] Push_changes doesn't handle merge conflicts
 141. [OPEN] No way to compare agent productivity across different models
-142. [OPEN] Agent TTFT spikes when conversation history grows
+142. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Agent TTFT spikes when conversation history grows
 143. [OPEN] No way to tell an agent to focus on code quality over speed
 144. [OPEN] Dashboard should auto-refresh without manual restart
 145. [OPEN] No webhook/Slack notification when task completes
-146. [OPEN] Agent should validate JSON tool calls before outputting them
+146. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] Agent should validate JSON tool calls before outputting them
 147. [OPEN] No way to see which tools each agent uses most
 148. [OPEN] Task queue READY tasks should show estimated effort (time)
-149. [OPEN] No way to mark a task as WONTFIX or DEFERRED
+149. [DONE by LEAD_CLAUDE | completed:2026-03-26T09:09] No way to mark a task as WONTFIX or DEFERRED
 150. [OPEN] Agent should write a completion report for each task
 
 ## TOTAL: 150 issues
