@@ -169,24 +169,22 @@ def _mem_pct(ip, auth, node_os):
     if node_os == "linux":
         raw = ssh_cmd(ip, "head -3 /proc/meminfo | tr -s ' ' | cut -d' ' -f2 | paste -sd' ' | python3 -c 'T,F,A=map(int,input().split());print(int((T-A)/T*100))'", auth, timeout=5)
     else:
-        # macOS: top -l 1 gives "XG used" — parse and compute %
+        # macOS: vm_stat active+wired pages (real pressure, not file cache)
         raw = ssh_cmd(ip,
-            'top -l 1 -n 0 2>/dev/null | grep PhysMem | grep -oE "[0-9]+[MG] used"',
+            'vm_stat 2>/dev/null | grep -E "Pages (active|wired)" | grep -oE "[0-9]+"',
             auth, timeout=10)
         if raw:
-            m = re.search(r'(\d+)([MG])', raw)
-            if m:
-                used = int(m.group(1))
-                unit = m.group(2)
-                used_gb = used if unit == 'G' else used / 1024
-                tot_raw = ssh_cmd(ip, 'sysctl -n hw.memsize', auth, timeout=5)
-                try:
-                    tot_gb = int(tot_raw.strip()) / (1024**3)
-                    pct = int(used_gb / tot_gb * 100)
+            try:
+                pages = [int(x) for x in raw.strip().split('\n') if x.strip().isdigit()]
+                if len(pages) >= 2:
+                    used_bytes = sum(pages) * 16384  # macOS page = 16KB
+                    tot_raw = ssh_cmd(ip, 'sysctl -n hw.memsize', auth, timeout=5)
+                    tot = int(tot_raw.strip())
+                    pct = int(used_bytes / tot * 100)
                     color = M.RED if pct >= 85 else M.YELLOW if pct >= 60 else M.GREEN
                     return f"[{color}]{pct}%[/]"
-                except (ValueError, ZeroDivisionError):
-                    pass
+            except (ValueError, ZeroDivisionError):
+                pass
         return f"[{M.OVERLAY}]?[/]"
     if raw and raw.strip().lstrip("-").isdigit():
         pct = int(raw.strip())
@@ -204,12 +202,15 @@ def _gpu_pct(ip, auth, node_os, chip):
             color = M.GREEN if pct < 50 else M.YELLOW if pct < 85 else M.RED
             return f"[{color}]{pct}%[/]"
     elif node_os == "macos":
-        # macOS: Apple GPU % via powermetrics is root-only; use iogpu if available
-        raw = ssh_cmd(ip, 'ioreg -r -d 1 -c IOGPUDevice 2>/dev/null | grep -i "gpu-active" | grep -oE "[0-9]+" | head -1', auth, timeout=5)
-        if raw and raw.strip().isdigit():
-            pct = int(raw.strip())
-            color = M.GREEN if pct < 50 else M.YELLOW if pct < 85 else M.RED
-            return f"[{color}]{pct}%[/]"
+        # macOS: sudo powermetrics for GPU active residency %
+        raw = ssh_cmd(ip, 'cat ~/DEV/authpass | sudo -S powermetrics --samplers gpu_power -i 500 -n 1 2>/dev/null | grep "GPU HW active residency" | grep -oE "[0-9]+\\.[0-9]+" | head -1', auth, timeout=8)
+        if raw:
+            try:
+                pct = int(float(raw.strip()))
+                color = M.GREEN if pct < 50 else M.YELLOW if pct < 85 else M.RED
+                return f"[{color}]{pct}%[/]"
+            except ValueError:
+                pass
     return f"[{M.OVERLAY}]-[/]"
 
 def _disk_avail(ip, auth):
