@@ -591,6 +591,13 @@ def load_go_prompt():
         print(f"{C.RED}[GO] GO_PROMPT.md not found at {GO_PROMPT_PATH}{C.RESET}")
         return None
 
+def _load_saved_task():
+    """Load last known task from heartbeat/state files."""
+    try:
+        state = json.load(open(os.path.expanduser("~/AGENT/.agent_state")))
+        return state.get("task", "")
+    except: return ""
+
 def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
     global _AGENT_NAME
     _AGENT_NAME = agent_name
