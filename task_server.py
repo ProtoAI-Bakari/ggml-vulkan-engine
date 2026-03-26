@@ -315,6 +315,48 @@ class TaskHandler(BaseHTTPRequestHandler):
                     fcntl.flock(f, fcntl.LOCK_UN)
             return
 
+        elif self.path == "/redirect":
+            # Issue #20: Redirect an agent to a different task
+            agent = params.get("agent", [None])[0]
+            new_task = params.get("new_task", [None])[0]
+            reason = params.get("reason", ["operator redirect"])[0]
+            if not agent or not new_task:
+                self._respond(400, "Missing agent or new_task param")
+                return
+            # Release agent's current task back to READY, then write redirect file
+            with open(QUEUE_PATH, "r+") as f:
+                fcntl.flock(f, fcntl.LOCK_EX)
+                try:
+                    content = f.read()
+                    # Find and release agent's current IN_PROGRESS task
+                    release_pat = rf"(### (T\d+):.*?)\[IN_PROGRESS by {re.escape(agent)}[^\]]*\](\]*)"
+                    release_m = re.search(release_pat, content)
+                    old_task = release_m.group(2) if release_m else None
+                    if release_m:
+                        content = re.sub(release_pat, rf"\g<1>[READY]", content, count=1)
+                        f.seek(0)
+                        f.write(content)
+                        f.truncate()
+                        log(f"REDIRECT: Released {old_task} from {agent}")
+                        log_history("REDIRECT_RELEASE", old_task, agent, f"redirected to {new_task}")
+                finally:
+                    fcntl.flock(f, fcntl.LOCK_UN)
+            # Write redirect instruction to COMMS_BRIDGE.md
+            comms_path = os.path.expanduser("~/AGENT/COMMS_BRIDGE.md")
+            try:
+                existing = ""
+                if os.path.exists(comms_path):
+                    with open(comms_path, "r") as cf:
+                        existing = cf.read()
+                with open(comms_path, "w") as cf:
+                    cf.write(f"[REDIRECT {new_task}] {reason}\n" + existing)
+            except Exception as e:
+                log(f"REDIRECT: Failed to write comms bridge: {e}")
+            msg = f"REDIRECTED {agent}: {old_task or 'none'} -> {new_task} ({reason})"
+            log(msg)
+            log_history("REDIRECT", new_task, agent, reason)
+            self._respond(200, json.dumps({"ok": True, "msg": msg, "old_task": old_task, "new_task": new_task}), "application/json")
+
         elif self.path == "/complete":
             task_id = params.get("task", [None])[0]
             agent = params.get("agent", [None])[0]
