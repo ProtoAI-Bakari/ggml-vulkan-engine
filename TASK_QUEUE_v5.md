@@ -244,17 +244,17 @@
 - Success: matches direct ggml output quality
 - Time: 4h
 
-### T39: [READY]] Enable max_num_seqs=2: two concurrent requests
+### T39: [IN_PROGRESS by OmniAgent [Main]]] Enable max_num_seqs=2: two concurrent requests
 - Paged KV isolates requests
 - Success: both requests correct and independent
 - Time: 6h
 
-### T40: [READY]] Implement KV cache block freeing + prevent memory leak
+### T40: [IN_PROGRESS by OmniAgent [Main]]] Implement KV cache block freeing + prevent memory leak
 - Release blocks on request completion, return to free pool
 - Success: stable memory after 100+ requests
 - Time: 4h
 
-### T41: [READY]] Implement prefix caching integration
+### T41: [IN_PROGRESS by OmniAgent [Main]]] Implement prefix caching integration
 - Accept new_computed_blocks from scheduler
 - Skip recomputation for cached prefixes
 - Success: repeated prompts reuse KV blocks
@@ -300,7 +300,7 @@
 
 ## PHASE 3: 120B MODEL + FLEET [from Sys12 task queue]
 
-### T49: [READY]] Merge 120B GGUF shards
+### T49: [IN_PROGRESS by OmniAgent [Main]]] Merge 120B GGUF shards
 - llama-gguf-split --merge
 - Success: single merged GGUF file
 - Time: 30min (I/O bound)
@@ -341,8 +341,8 @@
 ## PHASE 4: PURE VULKAN ENGINE [Perspective B — speculative, 35-45 TPS]
 
 ### T56: [DONE]] Implement GGUF weight loader in C (parse header, map weights to VkBuffer)
-### T57: [READY]] Write Q4_K_M dequant+GEMV SPIR-V shader (subgroup shuffle, SIMD 32)
-### T58: [READY]] Benchmark T57 vs ggml GEMV
+### T57: [IN_PROGRESS by OmniAgent [Main]]] Write Q4_K_M dequant+GEMV SPIR-V shader (subgroup shuffle, SIMD 32)
+### T58: [IN_PROGRESS by OmniAgent [Main]]] Benchmark T57 vs ggml GEMV
 ### T59: [READY] Write RMSNorm, RoPE, softmax, SiLU SPIR-V shaders
 ### T60: [READY] Implement static CB recording for one transformer layer
 ### T61: [READY] Full model: chain all layers + embedding + output projection

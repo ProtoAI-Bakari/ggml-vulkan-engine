@@ -186,28 +186,46 @@ class GgmlLLM:
                                         print(f"[tokenizer] Found {detected_family} tokenizer at {snap_path}")
                                         return snap_path
         
-        # Fallback: try to download from HF
+        # Fallback: try to download from HF with vocab validation
         print(f"[tokenizer] No cached tokenizer found for {detected_family}, attempting download...")
         try:
             from transformers import AutoTokenizer
             # Map detected family to common HF model IDs
             hf_model_map = {
-                "llama": "meta-llama/Meta-Llama-3.1-8B-Instruct",
-                "qwen": "Qwen/Qwen2.5-32B-Instruct",
-                "mistral": "mistralai/Mistral-7B-Instruct-v0.3",
-                "gemma": "google/gemma-2-27b-it",
-                "phi": "microsoft/Phi-3.5-mini-instruct",
-                "deepseek": "deepseek-ai/deepseek-coder-33b-instruct",
-                "gpt-oss": "openai/gpt-oss-120b",
+                "llama": ["meta-llama/Meta-Llama-3.1-8B-Instruct"],
+                "qwen": ["Qwen/Qwen2.5-32B", "Qwen/Qwen2.5-32B-Instruct", "Qwen/Qwen2.5-32B-Base"],
+                "mistral": ["mistralai/Mistral-7B-Instruct-v0.3"],
+                "gemma": ["google/gemma-2-27b-it"],
+                "phi": ["microsoft/Phi-3.5-mini-instruct"],
+                "deepseek": ["deepseek-ai/deepseek-coder-33b-instruct"],
+                "gpt-oss": ["openai/gpt-oss-120b"],
             }
-            model_id = hf_model_map.get(detected_family, "meta-llama/Meta-Llama-3.1-8B-Instruct")
-            tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
-            # Save tokenizer to a temp location
-            import tempfile
-            temp_dir = tempfile.mkdtemp(prefix="ggml_tokenizer_")
-            tokenizer.save_pretrained(temp_dir)
-            print(f"[tokenizer] Downloaded tokenizer to {temp_dir}")
-            return temp_dir
+            model_ids = hf_model_map.get(detected_family, ["meta-llama/Meta-Llama-3.1-8B-Instruct"])
+            
+            # Try each model ID until we find one with matching vocab
+            for model_id in model_ids:
+                try:
+                    tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
+                    tok_vocab = len(tokenizer.get_vocab())
+                    print(f"[tokenizer] {model_id} has vocab={tok_vocab}")
+                    
+                    # For Qwen, we need vocab=128256 to match GGUF
+                    if detected_family == "qwen" and tok_vocab != 128256:
+                        print(f"[tokenizer] Skipping {model_id} - vocab mismatch")
+                        continue
+                    
+                    # Save tokenizer to a temp location
+                    import tempfile
+                    temp_dir = tempfile.mkdtemp(prefix="ggml_tokenizer_")
+                    tokenizer.save_pretrained(temp_dir)
+                    print(f"[tokenizer] Downloaded {model_id} tokenizer to {temp_dir}")
+                    return temp_dir
+                except Exception as e:
+                    print(f"[tokenizer] Failed {model_id}: {e}")
+                    continue
+            
+            print(f"[tokenizer] No compatible tokenizer found for {detected_family}")
+            return None
         except Exception as e:
             print(f"[tokenizer] Failed to download tokenizer: {e}")
             return None
