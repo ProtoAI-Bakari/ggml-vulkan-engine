@@ -94,7 +94,7 @@ try:
 except:
     MODEL_NAME = "qwen-local"
 
-client = OpenAI(base_url=PRIMARY_URL, api_key="sk-local", timeout=600.0)
+client = OpenAI(base_url=PRIMARY_URL, api_key="sk-local", timeout=120.0)
 
 # =====================================================
 # TOOLS
@@ -339,6 +339,11 @@ def claim_task(task_id: str) -> str:
 
 def complete_task(task_id: str) -> str:
     """Mark a task as DONE. Saves agent state for resume."""
+    # Check if files were pushed before completing
+    if hasattr(run_agent if 'run_agent' in dir() else type('', (), {}), '_files_written'):
+        fw = getattr(run_agent, '_files_written', [])
+        if fw:
+            print(f"{C.YELLOW}[WARN] {len(fw)} files written but not pushed. Call push_changes first!{C.RESET}")
     # Save current task to state file for resume capability
     try:
         json.dump({"agent": _AGENT_NAME, "task": task_id, "time": time.time(), "action": "completed"}, 
@@ -462,7 +467,7 @@ TOOL FORMAT:
 </tool_call>
 
 PROJECT: Vulkan GPU inference engine on Asahi Linux M1 Ultra.
-For edits: use sed -i. For new files >20 lines: use execute_bash with cat<<'EOF'>file.py ... EOF
+For edits: use sed -i. Before risky changes: git stash. For new files >20 lines: use execute_bash with cat<<'EOF'>file.py ... EOF
 Do NOT put large code blocks in write_file — it breaks JSON parsing.
 - C engine: ~/AGENT/ggml_llama_gguf.c → libggml_llama_gguf.so (22 TPS)
 - Python: ~/AGENT/ggml_vllm_backend.py
@@ -815,8 +820,11 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
                     t_turn_start = time.time()
                     stream = client.chat.completions.create(model=MODEL_NAME, messages=history, stream=True, max_tokens=1500, temperature=0.3, extra_body={"repetition_penalty": 1.1})
                     t_first_token = None
+                    t_last_chunk = time.time()
+                    CHUNK_TIMEOUT = 120  # max seconds between chunks before assuming stream dead
                     print(f"\r{C.BOLD}{C.CYAN}[{agent_name}]: {C.RESET}", end="")
                     for chunk in stream:
+                        t_last_chunk = time.time()
                         if chunk.choices and chunk.choices[0].delta.content:
                             if t_first_token is None:
                                 t_first_token = time.time()
@@ -939,7 +947,7 @@ def run_agent(agent_name="OmniAgent [Main]", auto_go=False):
 
                 # Track file writes for push reminder
                 for tc in tool_calls:
-                    if tc['name'] == 'write_file':
+                    if tc['name'] == 'write_file' or (tc['name'] == 'execute_bash' and 'cat' in str(tc.get('arguments',{}).get('command','')) and 'EOF' in str(tc.get('arguments',{}).get('command',''))):
                         if not hasattr(run_agent, '_files_written'):
                             run_agent._files_written = []
                         run_agent._files_written.append(tc.get('arguments', {}).get('path', '?'))

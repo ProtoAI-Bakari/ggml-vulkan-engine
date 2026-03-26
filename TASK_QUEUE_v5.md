@@ -311,7 +311,7 @@
 
 ## PHASE 3: 120B MODEL + FLEET [from Sys12 task queue]
 
-### T49: [IN_PROGRESS by OmniAgent [sys6] | 40% | started:2026-03-26T05:03 | t20]Test 120B on standalone ggml engine
+### T49: [IN_PROGRESS by OmniAgent [sys6] | 90% | started:2026-03-26T05:03 | t50]Test 120B on standalone ggml engine
 - Verify coherent output
 - Measure TPS
 - Success: coherent text at any TPS
@@ -322,7 +322,7 @@
 - Success: comparison table
 - Time: 2h
 
-### T52: [IN_PROGRESS by OmniAgent [sys3] | 40% | started:2026-03-26T09:08 | t20]Test with Z's Streamlit telemetry deck
+### T52: [IN_PROGRESS by OmniAgent [sys3] | 90% | started:2026-03-26T09:08 | t60]Test with Z's Streamlit telemetry deck
 - Verify: streaming works, metrics display, no crash
 - Run 10 requests from Streamlit
 - Success: Z says it works
@@ -334,13 +334,13 @@
 ### T57: [DONE by OmniAgent [sys5] | completed:2026-03-26T03:39] | 0% | started:2026-03-26T02:19] Write Q4_K_M dequant+GEMV SPIR-V shader (subgroup shuffle, SIMD 32)
 ### T58: [DONE by OmniAgent | completed:2026-03-26T05:01] Benchmark T57 vs ggml GEMV
 ### T59: [DONE by OmniAgent | completed:2026-03-26T05:01]Write RMSNorm, RoPE, softmax, SiLU SPIR-V shaders
-### T60: [IN_PROGRESS by OmniAgent [sys7] | 40% | started:2026-03-26T05:02 | t20]Full model: chain all layers + embedding + output projection
+### T60: [IN_PROGRESS by OmniAgent [sys7] | 60% | started:2026-03-26T05:02 | t30]Full model: chain all layers + embedding + output projection
 ### T62: [DONE by test-cycle | completed:2026-03-26T09:09]Benchmark pure engine vs ggml at batch=1
 ### T64: [READY]Flash attention SPIR-V shader (tiled, scalar, 2-pass online softmax)
 
 ## PHASE 5: VALIDATION + PRODUCTION HARDENING
 
-### T66: [IN_PROGRESS by OmniAgent [sys4] | 80% | started:2026-03-26T09:04 | t40] | 90% | started:2026-03-26T08:54 | t110]M1 Max (32GB) validation: run all benchmarks on Sys12
+### T66: [IN_PROGRESS by OmniAgent [sys4] | 60% | started:2026-03-26T09:04 | t30] | 90% | started:2026-03-26T08:54 | t110]M1 Max (32GB) validation: run all benchmarks on Sys12
 ### T70: [DONE by OmniAgent [sys3] | completed:2026-03-26T05:18]Comprehensive README with architecture diagram
 ### T72: [READY] | 90% | started:2026-03-26T05:21 | t2630]Draft PR for vLLM: Vulkan platform plugin
 ### T75: [READY]File Mesa issue: VK_KHR_cooperative_matrix request with benchmark data

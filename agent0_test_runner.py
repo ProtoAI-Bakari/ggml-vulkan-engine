@@ -106,6 +106,10 @@ def test_vulkan_coherency(n_prompts=20):
             log(f"  [{i+1}] ERROR: {e}")
 
     log(f"Coherency: {passed}/{n_prompts}")
+    # Gibberish detection summary
+    gibberish_count = sum(1 for r in results if not r['ok'])
+    if gibberish_count > 0:
+        log(f"  WARNING: {gibberish_count} gibberish responses detected!")
     return passed, n_prompts, results
 
 def test_compilation():
